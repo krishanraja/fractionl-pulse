@@ -82,7 +82,7 @@ export function useFWIData(): UseFWIDataReturn {
 
         const liveData: FWIData = {
           asOf: today,
-          weights: (latest.weights as any) || { demand: 0.5, supply: 0.3, culture: 0.2 },
+          weights: { demand: (latest.weights as any)?.demand ?? 0.5, supply: (latest.weights as any)?.supply ?? 0.3, culture: (latest.weights as any)?.culture ?? (latest.weights as any)?.momentum ?? 0.2 },
           monthly: {
             months: scores.map(s => s.date.slice(0, 7)),
             overall: scores.map(s => Math.round(s.overall_score * 10) / 10),
