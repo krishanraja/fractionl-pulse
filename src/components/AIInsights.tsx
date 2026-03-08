@@ -1,71 +1,52 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, TrendingUp, AlertTriangle, Lightbulb, ChevronRight } from 'lucide-react';
+import { Sparkles, TrendingUp, AlertTriangle, Lightbulb, ChevronRight, RefreshCw } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
 import { staggerContainer, fadeInUp } from '@/lib/motion';
 import type { AIInsight } from '@/lib/types';
 
-// Mock AI insights - to be replaced with actual AI-generated content
-const mockInsights: AIInsight[] = [
+const supabase = createClient(
+  'https://dtlcprcpvdomrehbejhw.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0bGNwcmNwdmRvbXJlaGJlamh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM4MTM3ODEsImV4cCI6MjA2OTM4OTc4MX0.bSvVAJb5Y2Tszq_AcvAHaNeJs5m--kFlRH4XZ2dfP_8'
+);
+
+// Fallback insights shown before pipeline generates real ones
+const FALLBACK_INSIGHTS: AIInsight[] = [
   {
-    id: '1',
+    id: 'f1',
     type: 'summary',
     title: 'Weekly Market Summary',
-    body: 'Fractional executive demand surged +8% this week driven by Series A/B fundraising activity. Fractional CMO roles saw the largest spike (+12%), suggesting companies are prioritizing growth marketing expertise without full-time commitment.',
-    confidence: 92,
+    body: 'Fractional executive demand has been climbing steadily. Fractional CMO and CFO roles lead growth driven by Series A/B activity. Live AI analysis launches with the first full data pipeline run.',
+    confidence: 85,
     generatedAt: new Date().toISOString(),
     relatedSignals: ['Fractional CMO', 'Series A/B'],
   },
   {
-    id: '2',
-    type: 'prediction',
-    title: 'Q1 2026 Outlook',
-    body: 'Based on current momentum and seasonal patterns, the FWI is projected to reach 74 by end of Q1, representing a 6% increase from current levels. Key drivers: post-holiday hiring surge and budget cycle resets.',
-    confidence: 78,
-    generatedAt: new Date().toISOString(),
-    relatedSignals: ['Overall FWI', 'Demand Index'],
-  },
-  {
-    id: '3',
+    id: 'f2',
     type: 'opportunity',
-    title: 'Emerging Role: Fractional CRO',
-    body: '"Fractional CRO" search interest up 7% week-over-week. This emerging role shows strong demand-supply imbalance, presenting opportunities for revenue leaders considering fractional work.',
-    confidence: 85,
+    title: 'Emerging: Fractional CRO',
+    body: 'Revenue leadership demand is outpacing supply. Companies scaling from $1M to $10M ARR are the primary driver. Specialists with a SaaS background are particularly sought after.',
+    confidence: 80,
     generatedAt: new Date().toISOString(),
-    relatedSignals: ['Fractional CRO', 'Culture Index'],
-  },
-  {
-    id: '4',
-    type: 'alert',
-    title: 'Supply Constraint: AI Strategists',
-    body: 'AI Strategy Consultant supply is not keeping pace with demand (+9% supply vs +15% demand). Expect rate increases and longer placement times in this category over the next 30-60 days.',
-    confidence: 88,
-    generatedAt: new Date().toISOString(),
-    relatedSignals: ['AI Strategy Consultant', 'Supply Index'],
+    relatedSignals: ['Fractional CRO', 'Supply Index'],
   },
 ];
 
 const getInsightIcon = (type: AIInsight['type']) => {
   switch (type) {
-    case 'summary':
-      return Sparkles;
-    case 'prediction':
-      return TrendingUp;
-    case 'alert':
-      return AlertTriangle;
-    case 'opportunity':
-      return Lightbulb;
+    case 'summary': return Sparkles;
+    case 'prediction': return TrendingUp;
+    case 'alert': return AlertTriangle;
+    case 'opportunity': return Lightbulb;
   }
 };
 
 const getInsightColor = (type: AIInsight['type']) => {
   switch (type) {
-    case 'summary':
-      return 'text-primary bg-primary/10 border-primary/20';
-    case 'prediction':
-      return 'text-accent bg-accent/10 border-accent/20';
-    case 'alert':
-      return 'text-warning bg-warning/10 border-warning/20';
-    case 'opportunity':
-      return 'text-success bg-success/10 border-success/20';
+    case 'summary': return 'text-primary bg-primary/10 border-primary/20';
+    case 'prediction': return 'text-accent bg-accent/10 border-accent/20';
+    case 'alert': return 'text-warning bg-warning/10 border-warning/20';
+    case 'opportunity': return 'text-success bg-success/10 border-success/20';
   }
 };
 
@@ -74,7 +55,76 @@ interface AIInsightsProps {
 }
 
 const AIInsights = ({ compact = false }: AIInsightsProps) => {
-  const displayInsights = compact ? mockInsights.slice(0, 2) : mockInsights;
+  const [insights, setInsights] = useState<AIInsight[]>(FALLBACK_INSIGHTS);
+  const [isLive, setIsLive] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      // Try cached insights first
+      const { data } = await supabase
+        .from('cached_insights')
+        .select('insights_json, generated_at, valid_until')
+        .order('generated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data?.insights_json && Array.isArray(data.insights_json) && data.insights_json.length > 0) {
+        const mapped: AIInsight[] = (data.insights_json as any[]).map((ins: any, i: number) => ({
+          id: String(i + 1),
+          type: ins.type || 'summary',
+          title: ins.title || 'Insight',
+          body: ins.body || '',
+          confidence: Math.round((ins.confidence || 0.8) * 100),
+          generatedAt: data.generated_at,
+          relatedSignals: ins.relatedSignals || [],
+        }));
+        setInsights(mapped);
+        setIsLive(true);
+        setLastUpdated(data.generated_at);
+      }
+    };
+
+    load();
+  }, []);
+
+  const handleRefresh = async () => {
+    setIsGenerating(true);
+    try {
+      const res = await fetch(
+        'https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/generate-pulse-insights',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0bGNwcmNwdmRvbXJlaGJlamh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM4MTM3ODEsImV4cCI6MjA2OTM4OTc4MX0.bSvVAJb5Y2Tszq_AcvAHaNeJs5m--kFlRH4XZ2dfP_8`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      const data = await res.json();
+      if (data.insights && Array.isArray(data.insights)) {
+        const mapped: AIInsight[] = data.insights.map((ins: any, i: number) => ({
+          id: String(i + 1),
+          type: ins.type || 'summary',
+          title: ins.title || 'Insight',
+          body: ins.body || '',
+          confidence: Math.round((ins.confidence || 0.8) * 100),
+          generatedAt: new Date().toISOString(),
+          relatedSignals: ins.relatedSignals || [],
+        }));
+        setInsights(mapped);
+        setIsLive(true);
+        setLastUpdated(new Date().toISOString());
+      }
+    } catch (e) {
+      console.error('Insights refresh failed:', e);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const displayInsights = compact ? insights.slice(0, 2) : insights;
 
   return (
     <motion.div
@@ -83,30 +133,42 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
       animate="show"
       className="space-y-4"
     >
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles size={20} className="text-primary" />
           <h2 className="text-xl font-semibold">AI Insights</h2>
+          {isLive && (
+            <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">Live</span>
+          )}
         </div>
-        <span className="text-xs text-muted-foreground">
-          Updated {new Date().toLocaleDateString()}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            {lastUpdated
+              ? new Date(lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              : 'Sample data'}
+          </span>
+          <button
+            onClick={handleRefresh}
+            disabled={isGenerating}
+            className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+            title="Refresh insights"
+          >
+            <RefreshCw size={14} className={`text-muted-foreground ${isGenerating ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
 
-      {/* Insights Cards */}
       <div className={compact ? "space-y-3" : "grid gap-4 md:grid-cols-2"}>
         {displayInsights.map((insight) => {
           const Icon = getInsightIcon(insight.type);
           const colorClass = getInsightColor(insight.type);
-          
+
           return (
             <motion.div
               key={insight.id}
               variants={fadeInUp}
               className="glass-card p-4 space-y-3 cursor-pointer hover:border-primary/30 transition-colors"
             >
-              {/* Header */}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <div className={`p-1.5 rounded-lg border ${colorClass}`}>
@@ -121,30 +183,23 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
                 </span>
               </div>
 
-              {/* Content */}
               <div className="space-y-2">
-                <h3 className="font-medium text-foreground leading-tight">
-                  {insight.title}
-                </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {insight.body}
-                </p>
+                <h3 className="font-medium text-foreground leading-tight">{insight.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{insight.body}</p>
               </div>
 
-              {/* Tags */}
-              <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                <div className="flex flex-wrap gap-1.5">
-                  {insight.relatedSignals.map((signal) => (
-                    <span
-                      key={signal}
-                      className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground"
-                    >
-                      {signal}
-                    </span>
-                  ))}
+              {insight.relatedSignals.length > 0 && (
+                <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                  <div className="flex flex-wrap gap-1.5">
+                    {insight.relatedSignals.map((signal) => (
+                      <span key={signal} className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground">
+                        {signal}
+                      </span>
+                    ))}
+                  </div>
+                  <ChevronRight size={16} className="text-muted-foreground" />
                 </div>
-                <ChevronRight size={16} className="text-muted-foreground" />
-              </div>
+              )}
             </motion.div>
           );
         })}
