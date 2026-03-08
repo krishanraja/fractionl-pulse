@@ -12,7 +12,6 @@ import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useFWIData } from '@/hooks/useFWIData';
 import { staggerContainer } from '@/lib/motion';
 
-// FWI score label helper — used by HeroSection + exported for other components
 export const getFWILabel = (score: number): { label: string; emoji: string; color: string } => {
   if (score >= 75) return { label: 'Surging', emoji: '🚀', color: 'text-emerald-400' };
   if (score >= 60) return { label: 'Growing', emoji: '📈', color: 'text-green-400' };
@@ -27,10 +26,15 @@ const Index = () => {
   const { preferences } = useUserPreferences();
   const { data: fwiData, isLive, isLoading, lastUpdated } = useFWIData();
 
-  // Apply user-configured weights if customised
+  // Only use preferences weights if user has explicitly changed them from default (50/30/20)
+  const defaultWeights = { demand: 0.5, supply: 0.3, culture: 0.2 };
+  const userHasCustomWeights = preferences.weights &&
+    (Math.abs(preferences.weights.demand - 0.5) > 0.01 ||
+     Math.abs(preferences.weights.supply - 0.3) > 0.01);
+
   const data = {
     ...fwiData,
-    weights: preferences.weights ?? fwiData.weights
+    weights: userHasCustomWeights ? preferences.weights : fwiData.weights,
   };
 
   const fwiLabel = getFWILabel(data.today.overall);
@@ -42,7 +46,7 @@ const Index = () => {
       animate="show"
       className="container-width space-y-6 py-6"
     >
-      {/* Status banner — preview when no live data, live indicator when real */}
+      {/* Live / Preview banner */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -56,7 +60,9 @@ const Index = () => {
           <>
             <span className="text-emerald-400 text-xs font-medium">● Live</span>
             <span className="text-emerald-400/70 text-xs">
-              Updated {lastUpdated ? new Date(lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'today'}
+              Updated {lastUpdated
+                ? new Date(lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                : 'today'}
             </span>
           </>
         ) : (
@@ -67,37 +73,31 @@ const Index = () => {
         )}
       </motion.div>
 
-      {/* Hero Section */}
       <HeroSection
         data={data}
         fwiLabel={fwiLabel}
         onShowMethodology={() => setShowMethodology(true)}
       />
 
-      {/* Sub-Index Cards */}
       <section>
         <SubIndexCards data={data} compact={preferences.compactMode} />
       </section>
 
-      {/* 12-Month Trendline */}
       <section className="glass-card p-5">
         <h2 className="text-lg font-semibold mb-4 text-foreground">12-Month Trend</h2>
         <TrendlineChart data={data.monthly} />
       </section>
 
-      {/* Movers + Readiness */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <section className="lg:col-span-2 glass-card p-5">
           <h2 className="text-lg font-semibold mb-4 text-foreground">Top Movers</h2>
           <SignalsTable movers={data.movers} />
         </section>
-
         <aside>
           <FractionalReadiness score={data.today.overall} label={fwiLabel} />
         </aside>
       </div>
 
-      {/* AI Insights */}
       <section className="glass-card p-5">
         <AIInsights compact />
       </section>
@@ -105,11 +105,7 @@ const Index = () => {
   );
 
   const renderSignals = () => (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="container-width py-6"
-    >
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="container-width py-6">
       <div className="glass-card p-5">
         <h2 className="text-lg font-semibold mb-4 text-foreground">All Market Signals</h2>
         <SignalsTable movers={data.movers} />
@@ -118,11 +114,7 @@ const Index = () => {
   );
 
   const renderInsights = () => (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="container-width py-6"
-    >
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="container-width py-6">
       <div className="glass-card p-5">
         <AIInsights />
       </div>
@@ -140,7 +132,7 @@ const Index = () => {
       <MethodologyDrawer
         open={showMethodology}
         onOpenChange={setShowMethodology}
-        weights={preferences.weights ?? data.weights}
+        weights={data.weights}
       />
     </AppShell>
   );
