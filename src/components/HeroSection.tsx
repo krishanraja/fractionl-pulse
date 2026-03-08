@@ -8,9 +8,10 @@ import { calcComposite } from '@/lib/types';
 interface HeroSectionProps {
   data: any;
   onShowMethodology: () => void;
+  fwiLabel?: { label: string; emoji: string; color: string };
 }
 
-const HeroSection = ({ data, onShowMethodology }: HeroSectionProps) => {
+const HeroSection = ({ data, onShowMethodology, fwiLabel }: HeroSectionProps) => {
   const [animatedScore, setAnimatedScore] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -23,7 +24,7 @@ const HeroSection = ({ data, onShowMethodology }: HeroSectionProps) => {
     const steps = 50;
     const increment = compositeScore / steps;
     let current = 0;
-    
+
     const timer = setInterval(() => {
       current += increment;
       if (current >= compositeScore) {
@@ -48,11 +49,18 @@ const HeroSection = ({ data, onShowMethodology }: HeroSectionProps) => {
         <div>
           <h1 className="hero-title">
             <span className="hero-title-gradient">Fractional</span>
-            <span className="hero-title-accent"> Metrics</span>
+            <span className="hero-title-accent"> Working Index</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-2 tracking-wide uppercase">
-            Real-time market intelligence
-          </p>
+          <div className="flex items-center gap-3 mt-2">
+            <p className="text-sm text-muted-foreground tracking-wide uppercase">
+              Real-time market intelligence
+            </p>
+            {fwiLabel && (
+              <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 ${fwiLabel.color}`}>
+                {fwiLabel.emoji} {fwiLabel.label}
+              </span>
+            )}
+          </div>
         </div>
         <Button
           variant="ghost"
@@ -73,7 +81,7 @@ const HeroSection = ({ data, onShowMethodology }: HeroSectionProps) => {
               {animatedScore.toFixed(1)}
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-              Current Index Score
+              Current FWI Score
             </div>
           </div>
 
@@ -94,7 +102,7 @@ const HeroSection = ({ data, onShowMethodology }: HeroSectionProps) => {
           <div className="hidden md:block">
             <div className="text-sm font-medium text-foreground">
               {new Date(data.asOf).toLocaleDateString('en-US', {
-                month: 'short', 
+                month: 'short',
                 day: 'numeric',
                 year: 'numeric'
               })}
@@ -106,8 +114,8 @@ const HeroSection = ({ data, onShowMethodology }: HeroSectionProps) => {
 
           {/* Actions */}
           <div className="flex gap-2 justify-end">
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               variant="outline"
               onClick={onShowMethodology}
               className="hidden sm:flex"
@@ -115,7 +123,7 @@ const HeroSection = ({ data, onShowMethodology }: HeroSectionProps) => {
               <BookOpen size={14} className="mr-1.5" />
               Methodology
             </Button>
-            <Button 
+            <Button
               size="sm"
               onClick={() => window.open('/assets/fwi_sample_report.pdf', '_blank')}
             >
@@ -130,15 +138,15 @@ const HeroSection = ({ data, onShowMethodology }: HeroSectionProps) => {
           <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-primary" />
-              Demand ({Math.round(data.weights.demand * 100)}%)
+              Demand ({Math.round((data.weights.demand ?? 0.5) * 100)}%)
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-accent" />
-              Supply ({Math.round(data.weights.supply * 100)}%)
+              Supply ({Math.round((data.weights.supply ?? 0.3) * 100)}%)
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-secondary" />
-              Culture ({Math.round(data.weights.culture * 100)}%)
+              Momentum ({Math.round((data.weights.culture ?? data.weights.momentum ?? 0.2) * 100)}%)
             </span>
           </div>
         </div>
