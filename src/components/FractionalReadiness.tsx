@@ -9,7 +9,7 @@ interface FractionalReadinessProps {
 }
 
 const FractionalReadiness = ({ score, label }: FractionalReadinessProps) => {
-  const targetValue = score ?? 62;
+  const targetValue = score ?? 0;
   const [animatedValue, setAnimatedValue] = useState(0);
 
   useEffect(() => {

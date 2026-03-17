@@ -8,10 +8,11 @@ import { calcComposite } from '@/lib/types';
 interface HeroSectionProps {
   data: any;
   onShowMethodology: () => void;
+  onRefresh?: () => void;
   fwiLabel?: { label: string; emoji: string; color: string };
 }
 
-const HeroSection = ({ data, onShowMethodology, fwiLabel }: HeroSectionProps) => {
+const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSectionProps) => {
   const [animatedScore, setAnimatedScore] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -39,6 +40,7 @@ const HeroSection = ({ data, onShowMethodology, fwiLabel }: HeroSectionProps) =>
 
   const handleRefresh = () => {
     setIsRefreshing(true);
+    onRefresh?.();
     setTimeout(() => setIsRefreshing(false), 1000);
   };
 
@@ -146,7 +148,7 @@ const HeroSection = ({ data, onShowMethodology, fwiLabel }: HeroSectionProps) =>
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-secondary" />
-              Momentum ({Math.round((data.weights.culture ?? data.weights.momentum ?? 0.2) * 100)}%)
+              Culture ({Math.round((data.weights.culture ?? data.weights.momentum ?? 0.2) * 100)}%)
             </span>
           </div>
         </div>

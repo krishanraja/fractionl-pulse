@@ -24,7 +24,7 @@ const Index = () => {
   const [showMethodology, setShowMethodology] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const { preferences } = useUserPreferences();
-  const { data: fwiData, isLive, isLoading, lastUpdated } = useFWIData();
+  const { data: fwiData, isLive, isLoading, isStale, lastUpdated, refresh } = useFWIData();
 
   // Only use preferences weights if user has explicitly changed them from default (50/30/20)
   const defaultWeights = { demand: 0.5, supply: 0.3, culture: 0.2 };
@@ -51,12 +51,14 @@ const Index = () => {
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         className={`rounded-lg px-4 py-2.5 flex items-center gap-2 ${
-          isLive
+          isLive && !isStale
             ? 'bg-emerald-500/10 border border-emerald-500/20'
+            : isLive && isStale
+            ? 'bg-orange-500/10 border border-orange-500/20'
             : 'bg-amber-500/10 border border-amber-500/20'
         }`}
       >
-        {isLive ? (
+        {isLive && !isStale ? (
           <>
             <span className="text-emerald-400 text-xs font-medium">● Live</span>
             <span className="text-emerald-400/70 text-xs">
@@ -65,9 +67,18 @@ const Index = () => {
                 : 'today'}
             </span>
           </>
+        ) : isLive && isStale ? (
+          <>
+            <span className="text-orange-400 text-xs font-medium">● Stale</span>
+            <span className="text-orange-400/70 text-xs">
+              Last updated {lastUpdated
+                ? new Date(lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                : 'unknown'} — data may be outdated
+            </span>
+          </>
         ) : (
           <>
-            <span className="text-amber-400 text-xs font-medium">⚡ Preview Mode</span>
+            <span className="text-amber-400 text-xs font-medium">Preview Mode</span>
             <span className="text-amber-400/70 text-xs">Sample baseline data — live signals launching soon</span>
           </>
         )}
@@ -77,6 +88,7 @@ const Index = () => {
         data={data}
         fwiLabel={fwiLabel}
         onShowMethodology={() => setShowMethodology(true)}
+        onRefresh={refresh}
       />
 
       <section>
