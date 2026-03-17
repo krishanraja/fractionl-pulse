@@ -74,7 +74,10 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
         .limit(1)
         .maybeSingle();
 
-      if (data?.insights_json && Array.isArray(data.insights_json) && data.insights_json.length > 0) {
+      // Skip expired cached insights — treat as stale and fall back to defaults
+      const isExpired = data?.valid_until && new Date(data.valid_until).getTime() < Date.now();
+
+      if (data?.insights_json && Array.isArray(data.insights_json) && data.insights_json.length > 0 && !isExpired) {
         const mapped: AIInsight[] = (data.insights_json as any[]).map((ins: any, i: number) => ({
           id: String(i + 1),
           type: ins.type || 'summary',

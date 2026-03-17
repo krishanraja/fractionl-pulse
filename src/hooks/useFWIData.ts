@@ -2,12 +2,23 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { FWIData, Mover } from '@/lib/types';
 
+/** Generate trailing N month labels as "YYYY-MM" strings relative to today */
+function trailingMonths(count: number): string[] {
+  const now = new Date();
+  const result: string[] = [];
+  for (let i = count - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    result.push(d.toISOString().slice(0, 7));
+  }
+  return result;
+}
+
 // Fallback baseline data shown before real pipeline runs
 const BASELINE: FWIData = {
-  asOf: "2026-03-16",
+  asOf: new Date().toISOString().slice(0, 10),
   weights: { demand: 0.5, supply: 0.3, culture: 0.2 },
   monthly: {
-    months: ["2025-04","2025-05","2025-06","2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03"],
+    months: trailingMonths(12),
     overall: [56,57,59,61,62,63,65,66,67,68,69,71],
     demand:  [58,60,62,64,64,66,68,70,71,72,74,75],
     supply:  [54,55,57,58,60,61,63,64,64,65,66,67],
@@ -51,17 +62,19 @@ export function useFWIData(): UseFWIDataReturn {
 
   const load = useCallback(async () => {
     try {
-      // Fetch last 12 FWI scores
-      const { data: scores, error: scoreError } = await supabase
+      // Fetch last 12 FWI scores (descending so limit grabs the *latest*, then reverse for chronological order)
+      const { data: scoresDesc, error: scoreError } = await supabase
         .from('fwi_scores')
         .select('date, overall_score, demand_score, supply_score, momentum_score, weights')
-        .order('date', { ascending: true })
+        .order('date', { ascending: false })
         .limit(12);
 
-      if (scoreError || !scores || scores.length === 0) {
+      if (scoreError || !scoresDesc || scoresDesc.length === 0) {
         setIsLoading(false);
         return; // Use baseline
       }
+
+      const scores = [...scoresDesc].reverse(); // chronological order
 
       // Fetch today's movers
       const latestDate = scores[scores.length - 1].date;
@@ -118,8 +131,8 @@ export function useFWIData(): UseFWIDataReturn {
         })),
       };
 
-      // Detect staleness — data older than threshold
-      const dataAge = Date.now() - new Date(latestDate).getTime();
+      // Detect staleness — data older than threshold (append T00:00:00Z to avoid local-timezone parsing)
+      const dataAge = Date.now() - new Date(latestDate + 'T00:00:00Z').getTime();
       setIsStale(dataAge > STALE_THRESHOLD_MS);
 
       setData(liveData);
