@@ -175,16 +175,16 @@ const Login = () => {
           {/* Stats preview */}
           <div className="grid grid-cols-3 gap-4 pt-4">
             <div className="text-center p-4 glass-card">
-              <div className="text-2xl font-bold text-primary">68.4</div>
-              <div className="text-xs text-muted-foreground mt-1">Current Index</div>
+              <div className="text-2xl font-bold text-primary">0–100</div>
+              <div className="text-xs text-muted-foreground mt-1">Index Scale</div>
             </div>
             <div className="text-center p-4 glass-card">
-              <div className="text-2xl font-bold text-success">+4.2</div>
-              <div className="text-xs text-muted-foreground mt-1">30d Change</div>
+              <div className="text-2xl font-bold text-success">3</div>
+              <div className="text-xs text-muted-foreground mt-1">Sub-Indices</div>
             </div>
             <div className="text-center p-4 glass-card">
-              <div className="text-2xl font-bold text-accent">12</div>
-              <div className="text-xs text-muted-foreground mt-1">Data Sources</div>
+              <div className="text-2xl font-bold text-accent">Live</div>
+              <div className="text-xs text-muted-foreground mt-1">Data Pipeline</div>
             </div>
           </div>
         </motion.div>

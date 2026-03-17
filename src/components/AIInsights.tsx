@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, TrendingUp, AlertTriangle, Lightbulb, ChevronRight, RefreshCw } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase, SUPABASE_FUNCTIONS_URL } from '@/lib/supabase';
 import { staggerContainer, fadeInUp } from '@/lib/motion';
 import type { AIInsight } from '@/lib/types';
 
-const supabase = createClient(
-  'https://dtlcprcpvdomrehbejhw.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0bGNwcmNwdmRvbXJlaGJlamh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM4MTM3ODEsImV4cCI6MjA2OTM4OTc4MX0.bSvVAJb5Y2Tszq_AcvAHaNeJs5m--kFlRH4XZ2dfP_8'
-);
+/** Normalize confidence to 0-100 regardless of whether source uses 0-1 or 0-100 */
+function normalizeConfidence(value: number | undefined): number {
+  if (value == null) return 80;
+  // If value is between 0 and 1 (exclusive), treat as fraction
+  if (value > 0 && value <= 1) return Math.round(value * 100);
+  // Already on 0-100 scale
+  return Math.round(Math.min(100, Math.max(0, value)));
+}
 
 // Fallback insights shown before pipeline generates real ones
 const FALLBACK_INSIGHTS: AIInsight[] = [
@@ -76,7 +80,7 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
           type: ins.type || 'summary',
           title: ins.title || 'Insight',
           body: ins.body || '',
-          confidence: Math.round((ins.confidence || 0.8) * 100),
+          confidence: normalizeConfidence(ins.confidence),
           generatedAt: data.generated_at,
           relatedSignals: ins.relatedSignals || [],
         }));
@@ -92,12 +96,14 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
   const handleRefresh = async () => {
     setIsGenerating(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       const res = await fetch(
-        'https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/generate-pulse-insights',
+        `${SUPABASE_FUNCTIONS_URL}/generate-pulse-insights`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0bGNwcmNwdmRvbXJlaGJlamh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM4MTM3ODEsImV4cCI6MjA2OTM4OTc4MX0.bSvVAJb5Y2Tszq_AcvAHaNeJs5m--kFlRH4XZ2dfP_8`,
+            'Authorization': `Bearer ${token ?? ''}`,
             'Content-Type': 'application/json',
           },
         }
@@ -109,7 +115,7 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
           type: ins.type || 'summary',
           title: ins.title || 'Insight',
           body: ins.body || '',
-          confidence: Math.round((ins.confidence || 0.8) * 100),
+          confidence: normalizeConfidence(ins.confidence),
           generatedAt: new Date().toISOString(),
           relatedSignals: ins.relatedSignals || [],
         }));
