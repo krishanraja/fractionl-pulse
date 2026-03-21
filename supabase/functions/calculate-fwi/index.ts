@@ -10,17 +10,23 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-const WEIGHTS = { demand: 0.5, supply: 0.3, momentum: 0.2 };
+// Updated weights based on verified defensible signal methodology
+const WEIGHTS = { 
+  demand: 0.50,    // Adzuna fractional jobs + SEC Form D leading indicator
+  supply: 0.20,    // Placeholder (neutral baseline until Contra integration)
+  momentum: 0.30   // Google Trends + NewsAPI culture signals
+};
 
 const ROLE_NAMES: Record<string, string> = {
   cfo: 'Fractional CFO',
-  cto: 'Fractional CTO',
+  cto: 'Fractional CTO', 
   cmo: 'Fractional CMO',
   coo: 'Fractional COO',
   cro: 'Fractional CRO',
-  ceo: 'Fractional CEO',
-  vp_marketing: 'Fractional VP Marketing',
-  vp_sales: 'Fractional VP Sales',
+  ceo: 'Interim CEO',
+  vc_pipeline: 'VC Funding Pipeline',
+  search_interest: 'Search Interest',
+  media_coverage: 'Media Coverage'
 };
 
 const getFWILabel = (score: number) => {
@@ -37,78 +43,235 @@ serve(async (req) => {
   const targetDate = new URL(req.url).searchParams.get('date') || new Date().toISOString().slice(0, 10);
 
   try {
+    // Fetch all signals for the target date
     const { data: signals, error: sigError } = await supabase
       .from('signals')
-      .select('signal_type, category, normalized_value, raw_value')
+      .select('source, signal_type, category, normalized_value, raw_value, metadata')
       .eq('date', targetDate);
 
     if (sigError) throw sigError;
     if (!signals || signals.length === 0) {
-      return new Response(JSON.stringify({ error: 'No signals found', date: targetDate }), {
-        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      return new Response(JSON.stringify({ 
+        error: 'No signals found', 
+        date: targetDate,
+        suggestion: 'Run the ingest-signals function first' 
+      }), {
+        status: 404, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    const byType: Record<string, number[]> = { demand: [], supply: [], momentum: [] };
-    const roleScores: Record<string, { demand: number; supply: number; momentum: number }> = {};
+    console.log(`[FWI] Processing ${signals.length} signals for ${targetDate}`);
 
-    for (const sig of signals) {
-      if (sig.category === 'overall') continue;
-      const type = sig.signal_type as string;
-      if (byType[type]) byType[type].push(sig.normalized_value || 0);
-      if (!roleScores[sig.category]) roleScores[sig.category] = { demand: 0, supply: 0, momentum: 0 };
-      roleScores[sig.category][type as keyof typeof roleScores[string]] = sig.normalized_value || 0;
+    // Group signals by type and calculate averages
+    const signalsByType: Record<string, number[]> = { 
+      demand: [], 
+      supply: [], 
+      momentum: [] 
+    };
+
+    const detailedSignals: Record<string, any> = {};
+
+    for (const signal of signals) {
+      const type = signal.signal_type;
+      const value = signal.normalized_value || 0;
+      
+      if (signalsByType[type]) {
+        signalsByType[type].push(value);
+      }
+
+      // Track individual signals for movers calculation
+      detailedSignals[`${signal.source}_${signal.category}`] = {
+        source: signal.source,
+        category: signal.category,
+        type: signal.signal_type,
+        score: value,
+        raw_value: signal.raw_value,
+        metadata: signal.metadata
+      };
+      
+      console.log(`[FWI] ${signal.source}/${signal.category} (${type}): ${value}`);
     }
 
-    const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 50;
-    const demandScore = Math.round(avg(byType.demand) * 10) / 10;
-    const supplyScore = Math.round(avg(byType.supply) * 10) / 10;
-    const momentumScore = Math.round(avg(byType.momentum) * 10) / 10;
+    // Calculate type averages
+    const avgScore = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 50;
+    
+    const demandScore = Math.round(avgScore(signalsByType.demand) * 10) / 10;
+    const supplyScore = Math.round(avgScore(signalsByType.supply) * 10) / 10;
+    const momentumScore = Math.round(avgScore(signalsByType.momentum) * 10) / 10;
+
+    // Apply supply baseline if no supply signals collected
+    const finalSupplyScore = signalsByType.supply.length > 0 ? supplyScore : 50.0; // neutral baseline
+
+    // Calculate composite FWI score
     const overallScore = Math.round(
-      (demandScore * WEIGHTS.demand + supplyScore * WEIGHTS.supply + momentumScore * WEIGHTS.momentum) * 10
+      (demandScore * WEIGHTS.demand + 
+       finalSupplyScore * WEIGHTS.supply + 
+       momentumScore * WEIGHTS.momentum) * 10
     ) / 10;
 
-    await supabase.from('fwi_scores').upsert({
+    console.log(`[FWI] Component scores - Demand: ${demandScore}, Supply: ${finalSupplyScore}, Momentum: ${momentumScore}`);
+    console.log(`[FWI] Overall FWI: ${overallScore} (${getFWILabel(overallScore)})`);
+
+    // Calculate confidence based on signal coverage
+    const expectedSources = 4; // Adzuna, Google Trends, SEC Edgar, NewsAPI
+    const uniqueSources = new Set(signals.map(s => s.source)).size;
+    const confidence = Math.round((uniqueSources / expectedSources) * 100) / 100;
+
+    // Upsert FWI score record
+    const { error: fwiError } = await supabase.from('fwi_scores').upsert({
       date: targetDate,
       overall_score: overallScore,
       demand_score: demandScore,
-      supply_score: supplyScore,
+      supply_score: finalSupplyScore,
       momentum_score: momentumScore,
       weights: WEIGHTS,
-      confidence: signals.length >= 5 ? 1.0 : 0.7,
-      notes: getFWILabel(overallScore),
+      confidence: confidence,
+      notes: `${getFWILabel(overallScore)} - ${uniqueSources}/${expectedSources} sources`,
+      metadata: {
+        signals_used: signals.length,
+        sources: Array.from(new Set(signals.map(s => s.source))),
+        methodology: 'Adzuna jobs + SEC Form D + Google Trends + NewsAPI'
+      }
     }, { onConflict: 'date' });
 
-    // Build movers — only roles with actual demand data, vs market average
-    const marketAvgDemand = demandScore || 50;
-    const moversList = Object.entries(roleScores)
-      .filter(([, scores]) => scores.demand > 0)
-      .map(([category, scores]) => ({
-        date: targetDate,
-        role: ROLE_NAMES[category] || `Fractional ${category.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}`,
-        signal_type: 'demand',
-        change_pct: Math.round(((scores.demand - marketAvgDemand) / marketAvgDemand) * 100),
-        note: scores.demand > marketAvgDemand ? 'Above market average demand' : 'Below market average demand',
-      }))
-      .sort((a, b) => b.change_pct - a.change_pct)
-      .slice(0, 5)
-      .map((m, i) => ({ ...m, rank: i + 1 }));
+    if (fwiError) throw fwiError;
 
-    if (moversList.length > 0) {
-      // Delete old movers for this date first (to avoid stale data)
-      await supabase.from('movers').delete().eq('date', targetDate);
-      await supabase.from('movers').insert(moversList);
+    // Generate movers based on individual role performance vs market average
+    const moversList: any[] = [];
+    
+    // Find fractional role signals (from Adzuna)
+    const roleSignals = Object.entries(detailedSignals).filter(([key, sig]) => 
+      sig.source === 'adzuna' && ['cfo', 'cmo', 'cto', 'coo', 'cro', 'ceo'].includes(sig.category)
+    );
+
+    if (roleSignals.length > 0) {
+      const roleScores = roleSignals.map(([, sig]) => sig.score);
+      const marketAvg = roleScores.reduce((a, b) => a + b, 0) / roleScores.length;
+      
+      console.log(`[FWI] Role market average: ${marketAvg.toFixed(1)}`);
+
+      for (const [key, signal] of roleSignals) {
+        const changePct = marketAvg > 0 ? 
+          Math.round(((signal.score - marketAvg) / marketAvg) * 100) : 0;
+        
+        const mover = {
+          date: targetDate,
+          skill: ROLE_NAMES[signal.category] || signal.category,
+          signal_type: 'demand',
+          change_pct: changePct,
+          note: signal.score > marketAvg ? 
+            `${signal.raw_value} jobs - above market average` :
+            `${signal.raw_value} jobs - below market average`,
+          rank: 0 // will be set after sorting
+        };
+        
+        moversList.push(mover);
+      }
     }
 
-    return new Response(JSON.stringify({
-      ok: true, date: targetDate, overall_score: overallScore,
-      demand_score: demandScore, supply_score: supplyScore, momentum_score: momentumScore,
-      label: getFWILabel(overallScore), signals_used: signals.length, movers: moversList,
-    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    // Add non-role signals as movers if significant
+    const nonRoleSignals = [
+      detailedSignals['sec_edgar_vc_pipeline'],
+      detailedSignals['google_trends_search_interest'], 
+      detailedSignals['newsapi_media_coverage']
+    ].filter(Boolean);
+
+    for (const signal of nonRoleSignals) {
+      let note = '';
+      let changePct = 0;
+
+      if (signal.category === 'vc_pipeline') {
+        changePct = signal.score > 50 ? Math.round((signal.score - 50) / 50 * 100) : Math.round((signal.score - 50) / 50 * 100);
+        note = `${signal.raw_value} tech filings (90d) - ${signal.score > 55 ? 'strong' : signal.score > 45 ? 'moderate' : 'weak'} funding activity`;
+      } else if (signal.category === 'search_interest') {
+        changePct = signal.score > 40 ? Math.round((signal.score - 40) / 40 * 100) : Math.round((signal.score - 40) / 40 * 100);
+        note = `Search interest trending ${signal.score > 45 ? 'up' : signal.score > 35 ? 'steady' : 'down'}`;
+      } else if (signal.category === 'media_coverage') {
+        changePct = signal.score > 30 ? Math.round((signal.score - 30) / 30 * 100) : Math.round((signal.score - 30) / 30 * 100);
+        note = `${signal.raw_value} articles (28d) - ${signal.score > 35 ? 'high' : 'low'} media attention`;
+      }
+
+      if (Math.abs(changePct) >= 10) { // Only include significant movers
+        moversList.push({
+          date: targetDate,
+          skill: ROLE_NAMES[signal.category] || signal.category,
+          signal_type: signal.type,
+          change_pct: changePct,
+          note: note,
+          rank: 0
+        });
+      }
+    }
+
+    // Sort movers by change percentage and assign ranks
+    moversList.sort((a, b) => Math.abs(b.change_pct) - Math.abs(a.change_pct));
+    moversList.forEach((mover, index) => {
+      mover.rank = index + 1;
+    });
+
+    // Take top 5 movers
+    const topMovers = moversList.slice(0, 5);
+
+    // Delete existing movers for this date and insert new ones
+    if (topMovers.length > 0) {
+      await supabase.from('movers').delete().eq('date', targetDate);
+      const { error: moversError } = await supabase
+        .from('movers')
+        .insert(topMovers);
+      
+      if (moversError) {
+        console.error('[FWI] Failed to insert movers:', moversError);
+      } else {
+        console.log(`[FWI] Inserted ${topMovers.length} movers`);
+      }
+    }
+
+    // Prepare response
+    const result = {
+      success: true,
+      date: targetDate,
+      overall_score: overallScore,
+      demand_score: demandScore,
+      supply_score: finalSupplyScore,
+      momentum_score: momentumScore,
+      label: getFWILabel(overallScore),
+      confidence: confidence,
+      signals_used: signals.length,
+      sources_active: uniqueSources,
+      movers_count: topMovers.length,
+      weights: WEIGHTS,
+      methodology: 'Defensive signal stack: Adzuna fractional jobs + SEC Form D filings + Google Trends + NewsAPI',
+      component_breakdown: {
+        demand: {
+          sources: signals.filter(s => s.signal_type === 'demand').map(s => `${s.source}/${s.category}`),
+          average: demandScore
+        },
+        supply: {
+          sources: signals.filter(s => s.signal_type === 'supply').map(s => `${s.source}/${s.category}`),
+          average: finalSupplyScore,
+          note: finalSupplyScore === 50 ? 'Using baseline - direct supply data pending' : null
+        },
+        momentum: {
+          sources: signals.filter(s => s.signal_type === 'momentum').map(s => `${s.source}/${s.category}`),
+          average: momentumScore
+        }
+      }
+    };
+
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: String(error) }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    console.error('[FWI] Calculation failed:', error.message);
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      timestamp: new Date().toISOString(),
+      date: targetDate
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 });

@@ -2,169 +2,483 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': 'https://fractionl.ai',
+  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const FRACTIONAL_ROLES = [
-  { query: 'fractional CMO', category: 'cmo' },
-  { query: 'fractional CFO', category: 'cfo' },
-  { query: 'fractional CTO', category: 'cto' },
-  { query: 'fractional COO', category: 'coo' },
-  { query: 'fractional CRO', category: 'cro' },
-  { query: 'fractional VP Marketing', category: 'vp_marketing' },
-  { query: 'fractional VP Sales', category: 'vp_sales' },
-  { query: 'interim CEO', category: 'ceo' },
-];
-
-const ADZUNA_APP_ID = Deno.env.get('ADZUNA_APP_ID') || '';
-const ADZUNA_APP_KEY = Deno.env.get('ADZUNA_APP_KEY') || '';
-const NEWS_API_KEY = Deno.env.get('NEWS_API_KEY') || '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const ADZUNA_APP_ID = Deno.env.get('ADZUNA_APP_ID') || '';
+const ADZUNA_APP_KEY = Deno.env.get('ADZUNA_APP_KEY') || '';
+const APIFY_API_KEY = Deno.env.get('APIFY_API_KEY') || '';
+const NEWS_API_KEY = Deno.env.get('NEWS_API_KEY') || '';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-// Normalize a raw count to 0-100 using a rolling baseline
-const normalize = (value: number, baseline: number): number => {
-  if (baseline === 0) return 50;
-  return Math.min(Math.round((value / baseline) * 50), 100);
-};
+// 6 roles with verified job counts (excluded VP roles with 0 results)
+const FRACTIONAL_ROLES = [
+  { phrase: 'fractional CFO', category: 'cfo', weight: 1.5 },     // 121 jobs
+  { phrase: 'fractional CMO', category: 'cmo', weight: 1.2 },     // 13 jobs  
+  { phrase: 'fractional CTO', category: 'cto', weight: 1.2 },     // 19 jobs
+  { phrase: 'fractional COO', category: 'coo', weight: 1.0 },     // 5 jobs
+  { phrase: 'fractional CRO', category: 'cro', weight: 1.0 },     // 3 jobs
+  { phrase: 'interim CEO', category: 'ceo', weight: 1.3 },        // 10 jobs
+];
 
-async function ingestDemand(date: string) {
-  const results = [];
-  let baselineTotal = 0;
-  const counts: Record<string, number> = {};
+const GOOGLE_TRENDS_TERMS = [
+  'fractional CMO',
+  'fractional CFO', 
+  'fractional CTO',
+  'fractional executive'
+];
+
+interface SignalResult {
+  source: string;
+  signal_type: 'demand' | 'supply' | 'momentum';
+  category: string;
+  raw_value: number;
+  normalized_value: number;
+  metadata?: Record<string, any>;
+  success: boolean;
+  error?: string;
+}
+
+// Normalization functions based on verified data ranges
+function normalizeJobCount(count: number): number {
+  if (count === 0) return 15;  // floor for inactive markets
+  return Math.min(100, Math.round(Math.log10(count + 1) / Math.log10(200) * 100));
+}
+
+function normalizeFormD(count: number): number {
+  const baseline = 800;  // 800 filings = score 50
+  return Math.min(100, Math.round((count / baseline) * 50));
+}
+
+function normalizeNews(articleCount: number): number {
+  return Math.min(100, Math.round(Math.sqrt(articleCount) * 15));
+}
+
+function normalizeTrends(avg: number): number {
+  return Math.max(5, Math.min(100, Math.round(avg)));
+}
+
+async function collectAdzunaSignals(date: string): Promise<SignalResult[]> {
+  const results: SignalResult[] = [];
+  const jobCounts: Record<string, number> = {};
+
+  console.log('[Adzuna] Starting job count collection...');
 
   for (const role of FRACTIONAL_ROLES) {
     try {
-      const url = `https://api.adzuna.com/v1/api/jobs/us/search/1?app_id=${ADZUNA_APP_ID}&app_key=${ADZUNA_APP_KEY}&what_phrase=${encodeURIComponent(role.query)}&results_per_page=1`;
-      const res = await fetch(url);
-      if (!res.ok) continue;
-      const data = await res.json();
+      const url = `https://api.adzuna.com/v1/api/jobs/us/search/1?app_id=${ADZUNA_APP_ID}&app_key=${ADZUNA_APP_KEY}&what_phrase=${encodeURIComponent(role.phrase)}&results_per_page=1`;
+      
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await fetch(url, { 
+        signal: controller.signal,
+        headers: { 'User-Agent': 'FWI-Pulse/1.0 data@fractionl.ai' }
+      });
+      
+      clearTimeout(timeout);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
       const count = data.count || 0;
-      counts[role.category] = count;
-      baselineTotal += count;
-    } catch (e) {
-      console.error(`Adzuna error for ${role.query}:`, e);
+      jobCounts[role.category] = count;
+      
+      const normalized = normalizeJobCount(count);
+      
+      results.push({
+        source: 'adzuna',
+        signal_type: 'demand',
+        category: role.category,
+        raw_value: count,
+        normalized_value: normalized,
+        metadata: { role_phrase: role.phrase, weight: role.weight },
+        success: true
+      });
+      
+      console.log(`[Adzuna] ${role.phrase}: ${count} jobs → score ${normalized}`);
+      
+    } catch (error) {
+      console.error(`[Adzuna] ${role.phrase} failed:`, error.message);
+      results.push({
+        source: 'adzuna',
+        signal_type: 'demand', 
+        category: role.category,
+        raw_value: 0,
+        normalized_value: 15, // floor score
+        success: false,
+        error: error.message
+      });
     }
   }
 
-  const totalCount = Object.values(counts).reduce((a, b) => a + b, 0);
+  // Calculate weighted average for aggregate demand
+  const totalJobs = Object.values(jobCounts).reduce((a, b) => a + b, 0);
+  const weightedSum = FRACTIONAL_ROLES.reduce((sum, role) => {
+    const count = jobCounts[role.category] || 0;
+    return sum + (normalizeJobCount(count) * role.weight);
+  }, 0);
+  const totalWeights = FRACTIONAL_ROLES.reduce((sum, role) => sum + role.weight, 0);
+  const aggregateScore = Math.round(weightedSum / totalWeights);
 
-  for (const [category, count] of Object.entries(counts)) {
-    results.push({
-      date,
-      source: 'adzuna',
-      signal_type: 'demand',
-      category,
-      raw_value: count,
-      normalized_value: normalize(count, totalCount / FRACTIONAL_ROLES.length),
-      raw_data: { count, total_market: totalCount },
-    });
-  }
-
-  // Overall demand signal
   results.push({
-    date,
     source: 'adzuna',
     signal_type: 'demand',
-    category: 'overall',
-    raw_value: totalCount,
-    normalized_value: Math.min(Math.round((totalCount / 100) * 10), 100),
-    raw_data: { counts, total: totalCount },
+    category: 'aggregate',
+    raw_value: totalJobs,
+    normalized_value: aggregateScore,
+    metadata: { role_count: FRACTIONAL_ROLES.length, total_jobs: totalJobs },
+    success: true
   });
 
+  console.log(`[Adzuna] Aggregate: ${totalJobs} total jobs → score ${aggregateScore}`);
   return results;
 }
 
-async function ingestMomentum(date: string) {
-  const results = [];
-
+async function collectGoogleTrendsSignal(date: string): Promise<SignalResult> {
+  console.log('[Google Trends] Starting collection...');
+  
   try {
-    const query = 'fractional CMO OR fractional CFO OR fractional CTO OR "fractional executive"';
-    const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&from=${date}&sortBy=publishedAt&pageSize=100&apiKey=${NEWS_API_KEY}`;
-    const res = await fetch(url);
-    if (res.ok) {
-      const data = await res.json();
-      const articleCount = data.totalResults || 0;
-      results.push({
-        date,
-        source: 'newsapi',
-        signal_type: 'momentum',
-        category: 'overall',
-        raw_value: articleCount,
-        normalized_value: Math.min(Math.round(articleCount * 2), 100),
-        raw_data: { article_count: articleCount, query },
-      });
-    }
-  } catch (e) {
-    console.error('NewsAPI error:', e);
-  }
+    // Start Apify run
+    const runResponse = await fetch(`https://api.apify.com/v2/acts/apify~google-trends-scraper/runs?token=${APIFY_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        searchTerms: GOOGLE_TRENDS_TERMS,
+        geo: 'US',
+        timeRange: 'today 3-m',
+        outputMode: 'complete'
+      })
+    });
 
-  return results;
+    if (!runResponse.ok) {
+      throw new Error(`Apify run failed: HTTP ${runResponse.status}`);
+    }
+
+    const runData = await runResponse.json();
+    const runId = runData.data.id;
+    const datasetId = runData.data.defaultDatasetId;
+    
+    console.log(`[Google Trends] Started run ${runId}, polling...`);
+
+    // Poll until complete (max 120 seconds)
+    let status = 'READY';
+    let pollCount = 0;
+    const maxPolls = 24; // 120s / 5s
+    
+    while (status !== 'SUCCEEDED' && status !== 'FAILED' && pollCount < maxPolls) {
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      const statusResponse = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${APIFY_API_KEY}`);
+      const statusData = await statusResponse.json();
+      status = statusData.data.status;
+      pollCount++;
+      
+      console.log(`[Google Trends] Poll ${pollCount}: ${status}`);
+    }
+
+    if (status !== 'SUCCEEDED') {
+      throw new Error(`Trends run ${status} after ${pollCount * 5}s`);
+    }
+
+    // Fetch results
+    const resultsResponse = await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_KEY}`);
+    const results = await resultsResponse.json();
+    
+    if (!Array.isArray(results) || results.length === 0) {
+      throw new Error('No trends data returned');
+    }
+
+    // Calculate 4-week average from valid data points
+    const termAverages = results.map(item => {
+      const timeline = item.interestOverTime_timelineData || [];
+      const validPoints = timeline.filter((t: any) => t.hasData && t.hasData[0]);
+      const recent4Weeks = validPoints.slice(-4);
+      const avg = recent4Weeks.length > 0 
+        ? recent4Weeks.reduce((sum: number, t: any) => sum + (t.value[0] || 0), 0) / recent4Weeks.length
+        : 0;
+      
+      console.log(`[Google Trends] ${item.searchTerm}: 4-week avg = ${avg.toFixed(1)}`);
+      return avg;
+    });
+
+    const overallAvg = termAverages.reduce((a, b) => a + b, 0) / termAverages.length;
+    const normalizedScore = normalizeTrends(overallAvg);
+    
+    console.log(`[Google Trends] Overall average: ${overallAvg.toFixed(1)} → score ${normalizedScore}`);
+
+    return {
+      source: 'google_trends',
+      signal_type: 'momentum',
+      category: 'search_interest',
+      raw_value: Math.round(overallAvg * 10) / 10,
+      normalized_value: normalizedScore,
+      metadata: { 
+        terms: GOOGLE_TRENDS_TERMS, 
+        term_averages: termAverages.map(a => Math.round(a * 10) / 10),
+        valid_data_points: results.length
+      },
+      success: true
+    };
+
+  } catch (error) {
+    console.error('[Google Trends] Failed:', error.message);
+    return {
+      source: 'google_trends',
+      signal_type: 'momentum',
+      category: 'search_interest', 
+      raw_value: 0,
+      normalized_value: 25, // pessimistic fallback
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+async function collectSecEdgarSignal(date: string): Promise<SignalResult> {
+  console.log('[SEC EDGAR] Collecting Form D filings...');
+  
+  try {
+    // 90-day window for VC funding leading indicator
+    const endDate = new Date(date);
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - 90);
+    
+    const url = `https://efts.sec.gov/LATEST/search-index?forms=D&dateRange=custom&startdt=${startDate.toISOString().slice(0, 10)}&enddt=${endDate.toISOString().slice(0, 10)}&q=%22software%22+OR+%22technology%22+OR+%22SaaS%22`;
+    
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'FWI-Pulse/1.0 research@fractionl.ai' }
+    });
+    
+    clearTimeout(timeout);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    const data = await response.json();
+    const count = data.hits?.total?.value || 0;
+    const normalizedScore = normalizeFormD(count);
+    
+    console.log(`[SEC EDGAR] ${count} tech Form D filings (90 days) → score ${normalizedScore}`);
+    
+    return {
+      source: 'sec_edgar',
+      signal_type: 'demand',
+      category: 'vc_pipeline',
+      raw_value: count,
+      normalized_value: normalizedScore,
+      metadata: { 
+        window_days: 90, 
+        search_terms: ['software', 'technology', 'SaaS'],
+        start_date: startDate.toISOString().slice(0, 10),
+        end_date: endDate.toISOString().slice(0, 10)
+      },
+      success: true
+    };
+    
+  } catch (error) {
+    console.error('[SEC EDGAR] Failed:', error.message);
+    return {
+      source: 'sec_edgar',
+      signal_type: 'demand',
+      category: 'vc_pipeline',
+      raw_value: 0,
+      normalized_value: 30, // pessimistic fallback
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+async function collectNewsApiSignal(date: string): Promise<SignalResult> {
+  console.log('[NewsAPI] Collecting fractional executive coverage...');
+  
+  try {
+    // 28-day window (free tier limit)
+    const endDate = new Date(date);
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - 28);
+    
+    const query = encodeURIComponent('"fractional CMO" OR "fractional CFO" OR "fractional CTO" OR "fractional executive"');
+    const url = `https://newsapi.org/v2/everything?q=${query}&from=${startDate.toISOString().slice(0, 10)}&language=en&apiKey=${NEWS_API_KEY}`;
+    
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`HTTP ${response.status}: ${errorData.message || 'Unknown error'}`);
+    }
+    
+    const data = await response.json();
+    const count = data.totalResults || 0;
+    const normalizedScore = normalizeNews(count);
+    
+    console.log(`[NewsAPI] ${count} articles (28 days) → score ${normalizedScore}`);
+    
+    return {
+      source: 'newsapi',
+      signal_type: 'momentum',
+      category: 'media_coverage',
+      raw_value: count,
+      normalized_value: normalizedScore,
+      metadata: { 
+        window_days: 28,
+        search_phrases: ['fractional CMO', 'fractional CFO', 'fractional CTO', 'fractional executive']
+      },
+      success: true
+    };
+    
+  } catch (error) {
+    console.error('[NewsAPI] Failed:', error.message);
+    return {
+      source: 'newsapi', 
+      signal_type: 'momentum',
+      category: 'media_coverage',
+      raw_value: 0,
+      normalized_value: 20, // pessimistic fallback
+      success: false,
+      error: error.message
+    };
+  }
 }
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   const today = new Date().toISOString().slice(0, 10);
+  console.log(`[Pipeline] Starting signal collection for ${today}`);
 
-  // Log pipeline run start
+  // Track pipeline execution
   const { data: runData } = await supabase
     .from('pipeline_runs')
-    .insert({ source: 'ingest-signals', started_at: new Date().toISOString(), status: 'running' })
+    .insert({ 
+      source: 'ingest-signals', 
+      started_at: new Date().toISOString(), 
+      status: 'running',
+      metadata: { target_date: today }
+    })
     .select()
     .single();
 
   try {
-    const [demandSignals, momentumSignals] = await Promise.all([
-      ingestDemand(today),
-      ingestMomentum(today),
+    // Collect all signals in parallel for speed
+    const [
+      adzunaResults,
+      trendsResult, 
+      edgarResult,
+      newsResult
+    ] = await Promise.all([
+      collectAdzunaSignals(today),
+      collectGoogleTrendsSignal(today),
+      collectSecEdgarSignal(today),
+      collectNewsApiSignal(today)
     ]);
 
-    const allSignals = [...demandSignals, ...momentumSignals];
+    // Flatten all results
+    const allSignals = [
+      ...adzunaResults,
+      trendsResult,
+      edgarResult, 
+      newsResult
+    ];
 
-    if (allSignals.length > 0) {
-      // Upsert — if we already ran today, update
-      const { error } = await supabase
-        .from('signals')
-        .upsert(allSignals, { onConflict: 'date,source,signal_type,category' });
+    const successfulSignals = allSignals.filter(s => s.success);
+    const failedSignals = allSignals.filter(s => !s.success);
 
-      if (error) throw error;
+    console.log(`[Pipeline] ${successfulSignals.length}/${allSignals.length} signals collected successfully`);
+
+    if (successfulSignals.length < 2) {
+      throw new Error(`Insufficient signals: ${successfulSignals.length}/4 sources succeeded`);
     }
 
-    // Update source health
-    await supabase.from('data_source_health').upsert([
-      { source: 'adzuna', last_checked: new Date().toISOString(), last_success: new Date().toISOString(), status: 'healthy', error_count: 0 },
-      { source: 'newsapi', last_checked: new Date().toISOString(), last_success: new Date().toISOString(), status: 'healthy', error_count: 0 },
-    ], { onConflict: 'source' });
+    // Prepare database records
+    const signalRecords = successfulSignals.map(signal => ({
+      date: today,
+      source: signal.source,
+      signal_type: signal.signal_type,
+      category: signal.category,
+      normalized_value: signal.normalized_value,
+      raw_value: signal.raw_value,
+      metadata: signal.metadata || {}
+    }));
 
-    // Update pipeline run
+    // Upsert signals (replace any existing for today)
+    await supabase.from('signals').delete().eq('date', today);
+    const { error: insertError } = await supabase
+      .from('signals')
+      .insert(signalRecords);
+
+    if (insertError) throw insertError;
+
+    // Calculate confidence score
+    const confidence = successfulSignals.length / 4;
+    
+    // Update pipeline run status
     if (runData?.id) {
       await supabase.from('pipeline_runs').update({
         completed_at: new Date().toISOString(),
-        records_inserted: allSignals.length,
         status: 'success',
+        records_inserted: signalRecords.length,
+        confidence: confidence,
+        metadata: { 
+          successful_sources: successfulSignals.map(s => s.source),
+          failed_sources: failedSignals.map(s => ({ source: s.source, error: s.error }))
+        }
       }).eq('id', runData.id);
     }
 
-    return new Response(JSON.stringify({ ok: true, signals_inserted: allSignals.length, date: today }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // Trigger FWI calculation
+    console.log('[Pipeline] Triggering FWI calculation...');
+    const fwiResponse = await fetch(`${SUPABASE_URL}/functions/v1/calculate-fwi?date=${today}`, {
+      headers: { 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}` }
+    });
+
+    const fwiResult = fwiResponse.ok ? await fwiResponse.json() : { error: 'FWI calculation failed' };
+
+    return new Response(JSON.stringify({
+      success: true,
+      date: today,
+      signals_collected: successfulSignals.length,
+      signals_failed: failedSignals.length,
+      confidence: confidence,
+      fwi_result: fwiResult
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
+    console.error('[Pipeline] Failed:', error.message);
+    
+    // Update pipeline run with error
     if (runData?.id) {
       await supabase.from('pipeline_runs').update({
         completed_at: new Date().toISOString(),
         status: 'error',
-        error: String(error),
+        error: error.message
       }).eq('id', runData.id);
     }
 
-    return new Response(JSON.stringify({ error: String(error) }), {
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      timestamp: new Date().toISOString()
+    }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 });
