@@ -1,4 +1,8 @@
-# Technical Specification — Fractional Working Index
+# Technical Specification — Fractionl Pulse
+
+_Updated: 2026-03-21 — reflects defensible signal stack and agent-native architecture_
+
+---
 
 ## 1. System Architecture
 
@@ -11,481 +15,250 @@
                           │ HTTPS
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                   LOVABLE CLOUD (Supabase)                   │
+│                   SUPABASE (Postgres + Deno)                 │
 ├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │   Auth      │  │  Database   │  │   Edge Functions     │  │
-│  │  (Supabase) │  │ (PostgreSQL)│  │   (Deno Runtime)     │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-│                                                              │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │  Storage    │  │  Realtime   │  │   Scheduled Jobs     │  │
-│  │  (Files)    │  │  (WebSocket)│  │   (pg_cron)          │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-│                                                              │
+│  Auth (Supabase)  │  Database (PostgreSQL)  │  Edge Fns     │
 └─────────────────────────────────────────────────────────────┘
                           │
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   EXTERNAL DATA SOURCES                      │
-├─────────────────────────────────────────────────────────────┤
-│  LinkedIn │ Indeed │ NewsAPI │ Google Trends │ Eventbrite   │
-└─────────────────────────────────────────────────────────────┘
+          ┌───────────────┼───────────────┐
+          ▼               ▼               ▼
+    Adzuna API       Apify API        EDGAR API
+  (job postings)  (Google Trends)  (Form D filings)
+                                        NewsAPI
 ```
-
-## 2. Database Schema
-
-### Core Tables
-
-```sql
--- Historical FWI scores
-CREATE TABLE fwi_scores (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  date DATE NOT NULL UNIQUE,
-  overall_score DECIMAL(4,1) NOT NULL,
-  demand_score DECIMAL(4,1) NOT NULL,
-  supply_score DECIMAL(4,1) NOT NULL,
-  culture_score DECIMAL(4,1) NOT NULL,
-  weights JSONB NOT NULL DEFAULT '{"demand": 0.4, "supply": 0.4, "culture": 0.2}',
-  confidence DECIMAL(3,2),
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Individual signals feeding the index
-CREATE TABLE signals (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  date DATE NOT NULL,
-  source VARCHAR(50) NOT NULL,
-  signal_type VARCHAR(20) NOT NULL CHECK (signal_type IN ('demand', 'supply', 'culture')),
-  category VARCHAR(100) NOT NULL,
-  value DECIMAL(10,2) NOT NULL,
-  normalized_value DECIMAL(4,1),
-  raw_data JSONB,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Top movers / market signals
-CREATE TABLE movers (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  date DATE NOT NULL,
-  skill VARCHAR(100) NOT NULL,
-  signal_type VARCHAR(20) NOT NULL CHECK (signal_type IN ('demand', 'supply', 'culture')),
-  change_pct DECIMAL(5,2) NOT NULL,
-  note TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- User profiles and preferences
-CREATE TABLE user_profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email VARCHAR(255) NOT NULL,
-  full_name VARCHAR(255),
-  company VARCHAR(255),
-  role VARCHAR(100),
-  tier VARCHAR(20) DEFAULT 'free' CHECK (tier IN ('free', 'pro', 'enterprise')),
-  preferences JSONB DEFAULT '{}',
-  stripe_customer_id VARCHAR(255),
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- API usage tracking
-CREATE TABLE api_usage (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES user_profiles(id) ON DELETE CASCADE,
-  endpoint VARCHAR(255) NOT NULL,
-  method VARCHAR(10) NOT NULL,
-  status_code INTEGER,
-  response_time_ms INTEGER,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Alert configurations
-CREATE TABLE alerts (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES user_profiles(id) ON DELETE CASCADE,
-  alert_type VARCHAR(50) NOT NULL,
-  threshold DECIMAL(4,1),
-  conditions JSONB,
-  is_active BOOLEAN DEFAULT true,
-  last_triggered TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Subscription management
-CREATE TABLE subscriptions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES user_profiles(id) ON DELETE CASCADE,
-  stripe_subscription_id VARCHAR(255) NOT NULL,
-  tier VARCHAR(20) NOT NULL CHECK (tier IN ('pro', 'enterprise')),
-  status VARCHAR(20) NOT NULL,
-  current_period_start TIMESTAMPTZ,
-  current_period_end TIMESTAMPTZ,
-  cancel_at_period_end BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Indexes
-CREATE INDEX idx_fwi_scores_date ON fwi_scores(date DESC);
-CREATE INDEX idx_signals_date_type ON signals(date DESC, signal_type);
-CREATE INDEX idx_movers_date ON movers(date DESC);
-CREATE INDEX idx_api_usage_user_date ON api_usage(user_id, created_at DESC);
-```
-
-### Row Level Security
-
-```sql
--- Users can only see their own profile
-ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view own profile" ON user_profiles
-  FOR SELECT USING (auth.uid() = id);
-
-CREATE POLICY "Users can update own profile" ON user_profiles
-  FOR UPDATE USING (auth.uid() = id);
-
--- FWI scores are public read
-ALTER TABLE fwi_scores ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Public read access" ON fwi_scores
-  FOR SELECT TO authenticated, anon USING (true);
-
--- Signals require Pro tier
-ALTER TABLE signals ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Pro users can view signals" ON signals
-  FOR SELECT TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM user_profiles 
-      WHERE id = auth.uid() 
-      AND tier IN ('pro', 'enterprise')
-    )
-  );
-
--- API usage visible to own user
-ALTER TABLE api_usage ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view own usage" ON api_usage
-  FOR SELECT USING (auth.uid() = user_id);
-```
-
-## 3. Edge Functions
-
-### Data Ingestion Pipeline
-
-```typescript
-// supabase/functions/ingest-signals/index.ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-interface SignalSource {
-  name: string;
-  type: 'demand' | 'supply' | 'culture';
-  fetch: () => Promise<number>;
-  normalize: (value: number) => number;
-}
-
-serve(async (req) => {
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  );
-
-  const sources: SignalSource[] = [
-    {
-      name: 'linkedin_job_postings',
-      type: 'demand',
-      fetch: async () => { /* LinkedIn API call */ },
-      normalize: (v) => Math.min(100, v / 1000 * 100)
-    },
-    {
-      name: 'google_trends',
-      type: 'culture',
-      fetch: async () => { /* Google Trends API */ },
-      normalize: (v) => v // Already 0-100
-    },
-    // ... more sources
-  ];
-
-  const today = new Date().toISOString().split('T')[0];
-  const signals = [];
-
-  for (const source of sources) {
-    try {
-      const rawValue = await source.fetch();
-      const normalized = source.normalize(rawValue);
-      
-      signals.push({
-        date: today,
-        source: source.name,
-        signal_type: source.type,
-        category: source.name,
-        value: rawValue,
-        normalized_value: normalized,
-        raw_data: { fetched_at: new Date().toISOString() }
-      });
-    } catch (error) {
-      console.error(`Failed to fetch ${source.name}:`, error);
-    }
-  }
-
-  const { error } = await supabase.from('signals').insert(signals);
-
-  if (error) throw error;
-
-  return new Response(JSON.stringify({ 
-    success: true, 
-    signals_ingested: signals.length 
-  }));
-});
-```
-
-### Calculate Daily Index
-
-```typescript
-// supabase/functions/calculate-fwi/index.ts
-serve(async (req) => {
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  );
-
-  const today = new Date().toISOString().split('T')[0];
-  
-  // Fetch today's signals
-  const { data: signals } = await supabase
-    .from('signals')
-    .select('*')
-    .eq('date', today);
-
-  if (!signals?.length) {
-    return new Response(JSON.stringify({ error: 'No signals for today' }), { 
-      status: 400 
-    });
-  }
-
-  // Calculate sub-scores
-  const demandSignals = signals.filter(s => s.signal_type === 'demand');
-  const supplySignals = signals.filter(s => s.signal_type === 'supply');
-  const cultureSignals = signals.filter(s => s.signal_type === 'culture');
-
-  const avgScore = (arr: any[]) => 
-    arr.reduce((sum, s) => sum + s.normalized_value, 0) / arr.length;
-
-  const demandScore = avgScore(demandSignals);
-  const supplyScore = avgScore(supplySignals);
-  const cultureScore = avgScore(cultureSignals);
-
-  const weights = { demand: 0.4, supply: 0.4, culture: 0.2 };
-  const overallScore = (demandScore * weights.demand) + 
-                       (supplyScore * weights.supply) + 
-                       (cultureScore * weights.culture);
-
-  // Calculate confidence based on signal coverage
-  const expectedSources = 10;
-  const confidence = Math.min(1, signals.length / expectedSources);
-
-  // Insert daily score
-  const { error } = await supabase.from('fwi_scores').upsert({
-    date: today,
-    overall_score: Math.round(overallScore * 10) / 10,
-    demand_score: Math.round(demandScore * 10) / 10,
-    supply_score: Math.round(supplyScore * 10) / 10,
-    culture_score: Math.round(cultureScore * 10) / 10,
-    weights,
-    confidence
-  });
-
-  if (error) throw error;
-
-  return new Response(JSON.stringify({ 
-    success: true,
-    score: overallScore,
-    confidence
-  }));
-});
-```
-
-### API Endpoints (Enterprise)
-
-```typescript
-// supabase/functions/api-v1/index.ts
-serve(async (req) => {
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  );
-
-  // Validate API key and check tier
-  const apiKey = req.headers.get('x-api-key');
-  const { data: user } = await supabase
-    .from('user_profiles')
-    .select('*')
-    .eq('api_key', apiKey)
-    .single();
-
-  if (!user || user.tier !== 'enterprise') {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
-      status: 401 
-    });
-  }
-
-  // Track API usage
-  const startTime = Date.now();
-
-  const url = new URL(req.url);
-  const path = url.pathname.replace('/api-v1', '');
-
-  let response;
-
-  switch (path) {
-    case '/index':
-      const { data: score } = await supabase
-        .from('fwi_scores')
-        .select('*')
-        .order('date', { ascending: false })
-        .limit(1)
-        .single();
-      response = score;
-      break;
-
-    case '/history':
-      const days = parseInt(url.searchParams.get('days') || '30');
-      const { data: history } = await supabase
-        .from('fwi_scores')
-        .select('*')
-        .order('date', { ascending: false })
-        .limit(days);
-      response = history;
-      break;
-
-    case '/signals':
-      const { data: signals } = await supabase
-        .from('signals')
-        .select('*')
-        .order('date', { ascending: false })
-        .limit(100);
-      response = signals;
-      break;
-
-    default:
-      return new Response(JSON.stringify({ error: 'Not found' }), { 
-        status: 404 
-      });
-  }
-
-  // Log API usage
-  await supabase.from('api_usage').insert({
-    user_id: user.id,
-    endpoint: path,
-    method: req.method,
-    status_code: 200,
-    response_time_ms: Date.now() - startTime
-  });
-
-  return new Response(JSON.stringify(response), {
-    headers: { 'Content-Type': 'application/json' }
-  });
-});
-```
-
-## 4. Scheduled Jobs
-
-```sql
--- Run data ingestion every hour
-SELECT cron.schedule(
-  'ingest-signals',
-  '0 * * * *',  -- Every hour
-  $$
-  SELECT net.http_post(
-    url := 'https://<project>.supabase.co/functions/v1/ingest-signals',
-    headers := '{"Authorization": "Bearer <service_role_key>"}'::jsonb
-  );
-  $$
-);
-
--- Calculate daily index at midnight UTC
-SELECT cron.schedule(
-  'calculate-fwi',
-  '5 0 * * *',  -- 00:05 UTC daily
-  $$
-  SELECT net.http_post(
-    url := 'https://<project>.supabase.co/functions/v1/calculate-fwi',
-    headers := '{"Authorization": "Bearer <service_role_key>"}'::jsonb
-  );
-  $$
-);
-
--- Send daily alerts at 9am UTC
-SELECT cron.schedule(
-  'send-alerts',
-  '0 9 * * *',
-  $$
-  SELECT net.http_post(
-    url := 'https://<project>.supabase.co/functions/v1/send-alerts',
-    headers := '{"Authorization": "Bearer <service_role_key>"}'::jsonb
-  );
-  $$
-);
-```
-
-## 5. Signal Normalization
-
-All signals are normalized to a 0-100 scale for composability:
-
-| Signal Source | Raw Unit | Normalization Formula |
-|---------------|----------|----------------------|
-| LinkedIn Jobs | Count | `min(100, count / baseline * 100)` |
-| Indeed Postings | Count | `min(100, count / baseline * 100)` |
-| Google Trends | 0-100 | Pass-through |
-| Twitter Mentions | Count | `min(100, log10(count) * 20)` |
-| Marketplace Listings | Count | `min(100, count / baseline * 100)` |
-| Media Articles | Count | `min(100, sqrt(count) * 10)` |
-
-**Baseline Calibration**:
-- Baselines are set from historical median values
-- Recalibrated quarterly to prevent drift
-- Anomaly detection for outlier handling
-
-## 6. Security Considerations
-
-### Authentication Flow
-1. Email/password via Supabase Auth
-2. OAuth (Google, LinkedIn) for enterprise
-3. API keys for programmatic access
-4. JWT tokens with 1-hour expiry
-
-### Rate Limiting
-| Tier | Requests/min | Requests/day |
-|------|--------------|--------------|
-| Free | 10 | 100 |
-| Pro | 60 | 5,000 |
-| Enterprise | 300 | Unlimited |
-
-### Data Protection
-- All data encrypted at rest (AES-256)
-- TLS 1.3 for transit
-- PII minimization (no full names required)
-- GDPR-compliant data deletion
-
-## 7. Monitoring & Observability
-
-### Metrics to Track
-- API response times (p50, p95, p99)
-- Data ingestion success rate
-- Signal freshness (time since last update)
-- Error rates by endpoint
-- Active user count by tier
-
-### Alerting Thresholds
-- Data staleness > 24 hours: Page on-call
-- API error rate > 5%: Alert channel
-- Index calculation failure: Immediate page
-- Unusual score movement > 10 points: Review
 
 ---
 
-*Last updated: 2026-01-12*
+## 2. Edge Functions
+
+| Function | Trigger | Purpose |
+|----------|---------|---------|
+| `ingest-signals` | Manual / weekly cron | Collect 4 data sources → write to `signals` table |
+| `calculate-fwi` | Called by ingest-signals | Composite signals → `fwi_scores` + `movers` |
+| `generate-pulse-insights` | On demand (frontend) | GPT-4o-mini AI cards → `cached_insights` |
+| `fwi-api` | Always-on HTTP | Public REST API for agents + developers |
+
+---
+
+## 3. Database Schema
+
+### signals
+Raw ingested data — one row per source + category + date.
+
+```sql
+CREATE TABLE signals (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  date date NOT NULL,
+  source text NOT NULL,              -- 'adzuna', 'google_trends', 'sec_edgar', 'newsapi'
+  signal_type text NOT NULL,         -- 'demand', 'supply', 'momentum'
+  category text NOT NULL,            -- role name or signal category
+  normalized_value numeric(5,2),     -- 0–100
+  raw_value numeric(10,2),           -- original value before normalisation
+  metadata jsonb DEFAULT '{}',       -- source-specific context
+  created_at timestamptz DEFAULT now()
+);
+```
+
+### fwi_scores
+Weekly composite scores.
+
+```sql
+CREATE TABLE fwi_scores (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  date date NOT NULL UNIQUE,
+  overall_score numeric(5,2) NOT NULL,
+  demand_score numeric(5,2) NOT NULL,
+  supply_score numeric(5,2) NOT NULL,
+  momentum_score numeric(5,2) NOT NULL,
+  weights jsonb DEFAULT '{"demand": 0.5, "supply": 0.2, "momentum": 0.3}',
+  confidence numeric(3,2) DEFAULT 1.0,  -- 0–1 based on sources that succeeded
+  notes text,
+  metadata jsonb DEFAULT '{}'
+);
+```
+
+### movers
+Top-moving roles per weekly run.
+
+```sql
+CREATE TABLE movers (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  date date NOT NULL,
+  skill text NOT NULL,               -- "Fractional CFO"
+  signal_type text NOT NULL,
+  change_pct numeric(6,2),           -- vs market average
+  note text,
+  rank integer
+);
+```
+
+### cached_insights
+AI-generated insight cards with TTL.
+
+```sql
+CREATE TABLE cached_insights (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  insights_json jsonb NOT NULL,
+  generated_at timestamptz DEFAULT now(),
+  valid_until timestamptz,           -- 12 hours from generation
+  model text DEFAULT 'gpt-4o-mini'
+);
+```
+
+### pipeline_runs
+Execution log for every data collection run.
+
+```sql
+CREATE TABLE pipeline_runs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  source text NOT NULL,
+  started_at timestamptz NOT NULL,
+  completed_at timestamptz,
+  status text NOT NULL,              -- 'running', 'success', 'error'
+  records_inserted integer,
+  confidence numeric(3,2),
+  error text,
+  metadata jsonb DEFAULT '{}'
+);
+```
+
+---
+
+## 4. Signal Collection
+
+### Adzuna (Demand)
+
+```
+GET https://api.adzuna.com/v1/api/jobs/us/search/1
+  ?app_id={ADZUNA_APP_ID}
+  &app_key={ADZUNA_APP_KEY}
+  &what_phrase={role_phrase}
+  &results_per_page=1
+```
+
+- Returns `count` — total jobs matching phrase
+- 6 roles tracked: fractional CFO, CMO, CTO, COO, CRO, interim CEO
+- Normalisation: `min(100, round(log10(count+1) / log10(200) * 100))`
+- Floor: 15 (inactive market, not zero)
+
+### Google Trends (Culture)
+
+```
+POST https://api.apify.com/v2/acts/apify~google-trends-scraper/runs
+Body: { searchTerms: [...], geo: "US", timeRange: "today 3-m" }
+```
+
+- Poll until SUCCEEDED (max 120s)
+- Extract `interestOverTime_timelineData` where `hasData[0] === true`
+- Average last 4 valid weekly values per term
+- Average across 4 terms = culture score (native 0–100)
+
+### SEC EDGAR Form D (Leading Indicator)
+
+```
+GET https://efts.sec.gov/LATEST/search-index
+  ?forms=D
+  &dateRange=custom
+  &startdt={90 days ago}
+  &enddt={today}
+  &q="software" OR "technology" OR "SaaS"
+User-Agent: FWI-Pulse/1.0 research@fractionl.ai
+```
+
+- Returns `hits.total.value` — count of Form D filings
+- Normalisation: `min(100, round((count / 800) * 50))`
+- 800 filings = score 50 (baseline normal market activity)
+- Stored as signal_type='demand', category='vc_pipeline'
+
+### NewsAPI (Culture)
+
+```
+GET https://newsapi.org/v2/everything
+  ?q="fractional CMO" OR "fractional CFO" OR "fractional CTO" OR "fractional executive"
+  &from={28 days ago}
+  &language=en
+  &apiKey={NEWS_API_KEY}
+```
+
+- 28-day window (free tier limit)
+- Exact phrase matching with quotes
+- Normalisation: `min(100, round(sqrt(count) * 15))`
+
+---
+
+## 5. FWI Composite Formula
+
+```
+FWI = (demand_score × 0.50) + (supply_score × 0.20) + (momentum_score × 0.30)
+
+demand_score  = average of all 'demand' signals (Adzuna per-role + SEC Form D)
+supply_score  = 50 (neutral baseline until Contra integration Q2 2026)
+momentum_score = average of all 'momentum' signals (Google Trends + NewsAPI)
+```
+
+**Confidence:** `unique_sources / 4` — if all 4 sources succeed, confidence = 1.0.
+
+---
+
+## 6. Agent API (`fwi-api`)
+
+Three routes, all via the `fwi-api` Supabase edge function:
+
+| Route | Auth | Response |
+|-------|------|---------|
+| `GET /fwi-api/current` | None | Latest FWI score + components + movers |
+| `GET /fwi-api/history?months=N` | None | Weekly history for N months (max 12) |
+| `POST /fwi-api/trigger` | Service role | Trigger fresh ingest-signals run |
+
+Response headers: `Cache-Control: public, max-age=3600`, `X-FWI-Score`, `X-FWI-Label`
+
+---
+
+## 7. Frontend Architecture
+
+- **Framework:** React 18 + TypeScript + Vite
+- **Styling:** Tailwind CSS + shadcn/ui
+- **Animation:** Framer Motion
+- **Charts:** Recharts
+- **State:** React hooks + Supabase JS client
+- **Auth:** Supabase Auth (email + magic link)
+
+### Key Components
+
+| Component | Purpose |
+|-----------|---------|
+| `HeroSection` | Headline FWI gauge + delta |
+| `SignalsTable` | Per-role signal breakdown |
+| `AIInsights` | Cached insight cards from generate-pulse-insights |
+| `FractionalReadiness` | Overall readiness gauge wired to live FWI |
+| `useFWIData` | Hook fetching `fwi_scores` + `movers` with stale detection |
+| `useUserPreferences` | Weight customisation (persisted to `fwi_scores.weights`) |
+
+---
+
+## 8. Environment Variables
+
+### Frontend (`.env.local`)
+```
+VITE_SUPABASE_URL
+VITE_SUPABASE_ANON_KEY
+```
+
+### Edge Functions (Supabase Dashboard → Secrets)
+```
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+ADZUNA_APP_ID
+ADZUNA_APP_KEY
+APIFY_API_KEY
+NEWS_API_KEY
+OPENAI_API_KEY
+```
+
+---
+
+## 9. Deployment
+
+- **Frontend:** Vercel — auto-deploys on push to `main` (`fractionl-pulse.vercel.app`)
+- **Edge functions:** Supabase — deploy via Supabase CLI: `supabase functions deploy <name>`
+- **Database:** Supabase Postgres — migrations in `supabase/migrations/`
