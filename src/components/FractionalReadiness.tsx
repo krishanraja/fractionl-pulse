@@ -50,7 +50,7 @@ const FractionalReadiness = ({ score, label }: FractionalReadinessProps) => {
       className="glass-card p-5 h-full flex flex-col"
     >
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-medium text-foreground">Market Readiness</h3>
+        <h3 className="font-medium text-foreground">Should you hire now?</h3>
         {label ? (
           <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full uppercase tracking-wide ${
             label.color.includes('emerald') ? 'bg-emerald-500/10 text-emerald-400' :
@@ -100,7 +100,7 @@ const FractionalReadiness = ({ score, label }: FractionalReadinessProps) => {
       </div>
 
       <p className="text-xs text-muted-foreground text-center mt-2">
-        Current market conditions for fractional executives
+        Based on hiring activity, talent availability, and market buzz right now
       </p>
     </motion.div>
   );

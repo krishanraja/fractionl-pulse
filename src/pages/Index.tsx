@@ -79,7 +79,7 @@ const Index = () => {
         ) : (
           <>
             <span className="text-amber-400 text-xs font-medium">Preview Mode</span>
-            <span className="text-amber-400/70 text-xs">Sample baseline data — live signals launching soon</span>
+            <span className="text-amber-400/70 text-xs">Showing sample data while the pipeline warms up — live signals coming soon</span>
           </>
         )}
       </motion.div>
@@ -96,13 +96,19 @@ const Index = () => {
       </section>
 
       <section className="glass-card p-5">
-        <h2 className="text-lg font-semibold mb-4 text-foreground">12-Month Trend</h2>
+        <div className="mb-4">
+            <h2 className="text-lg font-semibold text-foreground">How the market has moved</h2>
+            <p className="text-xs text-muted-foreground mt-1">Each point is one week's reading. More weeks = more reliable picture.</p>
+          </div>
         <TrendlineChart data={data.monthly} />
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <section className="lg:col-span-2 glass-card p-5">
-          <h2 className="text-lg font-semibold mb-4 text-foreground">Top Movers</h2>
+          <div className="mb-4">
+              <h2 className="text-lg font-semibold text-foreground">What's moving this week</h2>
+              <p className="text-xs text-muted-foreground mt-1">Roles and signals that are notably above or below the market average right now.</p>
+            </div>
           <SignalsTable movers={data.movers} />
         </section>
         <aside>
@@ -119,7 +125,10 @@ const Index = () => {
   const renderSignals = () => (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="container-width py-6">
       <div className="glass-card p-5">
-        <h2 className="text-lg font-semibold mb-4 text-foreground">All Market Signals</h2>
+        <div className="mb-4">
+            <h2 className="text-lg font-semibold text-foreground">All signals this week</h2>
+            <p className="text-xs text-muted-foreground mt-1">Every role and signal we tracked, compared to the market average.</p>
+          </div>
         <SignalsTable movers={data.movers} />
       </div>
     </motion.div>

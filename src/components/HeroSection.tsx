@@ -54,8 +54,8 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
             <span className="hero-title-accent"> Working Index</span>
           </h1>
           <div className="flex items-center gap-3 mt-2">
-            <p className="text-sm text-muted-foreground tracking-wide uppercase">
-              Real-time market intelligence
+            <p className="text-sm text-muted-foreground">
+              Is now a good time to hire a fractional executive?
             </p>
             {fwiLabel && (
               <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 ${fwiLabel.color}`}>
@@ -83,7 +83,7 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
               {animatedScore.toFixed(1)}
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-              Current FWI Score
+              Market health score (0 = dead, 100 = red hot)
             </div>
           </div>
 
@@ -123,7 +123,7 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
               className="hidden sm:flex"
             >
               <BookOpen size={14} className="mr-1.5" />
-              Methodology
+              How this works
             </Button>
             <Button
               size="sm"
@@ -140,15 +140,15 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
           <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-primary" />
-              Demand ({Math.round((data.weights.demand ?? 0.5) * 100)}%)
+              Hiring activity ({Math.round((data.weights.demand ?? 0.5) * 100)}% of score)
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-accent" />
-              Supply ({Math.round((data.weights.supply ?? 0.3) * 100)}%)
+              Talent availability ({Math.round((data.weights.supply ?? 0.3) * 100)}% of score)
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-secondary" />
-              Culture ({Math.round((data.weights.culture ?? data.weights.momentum ?? 0.2) * 100)}%)
+              Market buzz ({Math.round((data.weights.culture ?? data.weights.momentum ?? 0.2) * 100)}% of score)
             </span>
           </div>
         </div>

@@ -11,31 +11,31 @@ interface SubIndexCardsProps {
 const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
   const indices = [
     {
-      title: 'Demand',
+      title: 'Hiring activity',
       weight: data.weights.demand,
       score: data.today.demand.score,
       delta: data.today.demand.delta30d,
-      description: 'Job postings & employer activity',
+      description: 'How many companies are actively posting fractional roles right now, plus how many just raised funding (a leading indicator of upcoming hires)',
       sparklineData: data.monthly.demand,
       colorClass: 'bg-primary',
       colorName: 'primary'
     },
     {
-      title: 'Supply', 
+      title: 'Talent availability',
       weight: data.weights.supply,
       score: data.today.supply.score,
       delta: data.today.supply.delta30d,
-      description: 'Freelancer marketplace & talent activity',
+      description: 'How many fractional executives are currently available to hire. Direct marketplace data coming Q2 2026 — showing neutral baseline for now.',
       sparklineData: data.monthly.supply,
       colorClass: 'bg-accent',
       colorName: 'accent'
     },
     {
-      title: 'Culture',
+      title: 'Market buzz',
       weight: data.weights.culture,
       score: data.today.culture.score,
       delta: data.today.culture.delta30d,
-      description: 'Search trends, events, media coverage',
+      description: 'How much the world is talking about fractional work — Google searches, news coverage, and social mentions. High buzz often predicts a hiring surge.',
       sparklineData: data.monthly.culture,
       colorClass: 'bg-secondary',
       colorName: 'secondary'
@@ -60,7 +60,7 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
                 <h3 className="font-medium text-foreground">{index.title}</h3>
               </div>
               <span className="text-xs text-muted-foreground">
-                {Math.round(index.weight * 100)}%
+                {Math.round(index.weight * 100)}% of score
               </span>
             </div>
 
