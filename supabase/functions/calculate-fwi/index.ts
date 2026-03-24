@@ -113,10 +113,14 @@ serve(async (req) => {
     console.log(`[FWI] Component scores - Demand: ${demandScore}, Supply: ${finalSupplyScore}, Momentum: ${momentumScore}`);
     console.log(`[FWI] Overall FWI: ${overallScore} (${getFWILabel(overallScore)})`);
 
-    // Calculate confidence based on signal coverage
-    const expectedSources = 4; // Adzuna, Google Trends, SEC Edgar, NewsAPI
-    const uniqueSources = new Set(signals.map(s => s.source)).size;
-    const confidence = Math.round((uniqueSources / expectedSources) * 100) / 100;
+    // Weighted confidence — not all sources contribute equally
+    const SOURCE_CONFIDENCE_WEIGHTS: Record<string, number> = {
+      adzuna: 0.35, google_trends: 0.25, sec_edgar: 0.25, newsapi: 0.15,
+    };
+    const uniqueSources = [...new Set(signals.map(s => s.source))];
+    const totalWeight = Object.values(SOURCE_CONFIDENCE_WEIGHTS).reduce((a, b) => a + b, 0);
+    const achievedWeight = uniqueSources.reduce((sum, src) => sum + (SOURCE_CONFIDENCE_WEIGHTS[src] || 0), 0);
+    const confidence = Math.round((achievedWeight / totalWeight) * 100) / 100;
 
     // Upsert FWI score record
     const { error: fwiError } = await supabase.from('fwi_scores').upsert({

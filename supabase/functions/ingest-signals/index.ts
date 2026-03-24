@@ -18,7 +18,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 // 6 roles with verified job counts (excluded VP roles with 0 results)
 const FRACTIONAL_ROLES = [
   { phrase: 'fractional CFO', category: 'cfo', weight: 1.5 },     // 121 jobs
-  { phrase: 'fractional CMO', category: 'cmo', weight: 1.2 },     // 13 jobs  
+  { phrase: 'fractional CMO', category: 'cmo', weight: 1.2 },     // 13 jobs
   { phrase: 'fractional CTO', category: 'cto', weight: 1.2 },     // 19 jobs
   { phrase: 'fractional COO', category: 'coo', weight: 1.0 },     // 5 jobs
   { phrase: 'fractional CRO', category: 'cro', weight: 1.0 },     // 3 jobs
@@ -27,10 +27,18 @@ const FRACTIONAL_ROLES = [
 
 const GOOGLE_TRENDS_TERMS = [
   'fractional CMO',
-  'fractional CFO', 
+  'fractional CFO',
   'fractional CTO',
   'fractional executive'
 ];
+
+// Confidence weights per source (not all sources are equal)
+const SOURCE_CONFIDENCE_WEIGHTS: Record<string, number> = {
+  adzuna: 0.35,
+  google_trends: 0.25,
+  sec_edgar: 0.25,
+  newsapi: 0.15,
+};
 
 interface SignalResult {
   source: string;
@@ -43,23 +51,69 @@ interface SignalResult {
   error?: string;
 }
 
-// Normalization functions based on verified data ranges
+// Safe number validation — guards against NaN, Infinity, negatives
+function safeNumber(value: unknown, fallback: number): number {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num < 0) return fallback;
+  return num;
+}
+
+// Fetch with retry and exponential backoff for transient failures
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit = {},
+  maxRetries = 3,
+  timeoutMs = 10000
+): Promise<Response> {
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timeout);
+      if (response.ok || response.status < 500) return response;
+      lastError = new Error(`HTTP ${response.status}`);
+    } catch (error) {
+      lastError = error;
+    }
+    if (attempt < maxRetries) {
+      const delay = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+      console.log(`[Retry] Attempt ${attempt + 1} failed, waiting ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  throw lastError || new Error('fetchWithRetry exhausted');
+}
+
+// Normalization functions with input validation
 function normalizeJobCount(count: number): number {
-  if (count === 0) return 15;  // floor for inactive markets
-  return Math.min(100, Math.round(Math.log10(count + 1) / Math.log10(200) * 100));
+  const safe = safeNumber(count, 0);
+  if (safe === 0) return 15;  // floor for inactive markets
+  return Math.min(100, Math.round(Math.log10(safe + 1) / Math.log10(200) * 100));
 }
 
 function normalizeFormD(count: number): number {
+  const safe = safeNumber(count, 0);
   const baseline = 800;  // 800 filings = score 50
-  return Math.min(100, Math.round((count / baseline) * 50));
+  return Math.min(100, Math.round((safe / baseline) * 50));
 }
 
 function normalizeNews(articleCount: number): number {
-  return Math.min(100, Math.round(Math.sqrt(articleCount) * 15));
+  const safe = safeNumber(articleCount, 0);
+  return Math.min(100, Math.round(Math.sqrt(safe) * 15));
 }
 
 function normalizeTrends(avg: number): number {
-  return Math.max(5, Math.min(100, Math.round(avg)));
+  const safe = safeNumber(avg, 0);
+  return Math.max(5, Math.min(100, Math.round(safe)));
+}
+
+// Calculate weighted confidence based on which sources succeeded
+function calculateWeightedConfidence(successfulSources: string[]): number {
+  const total = Object.values(SOURCE_CONFIDENCE_WEIGHTS).reduce((a, b) => a + b, 0);
+  const achieved = successfulSources.reduce((sum, src) => sum + (SOURCE_CONFIDENCE_WEIGHTS[src] || 0), 0);
+  return Math.round((achieved / total) * 100) / 100;
 }
 
 async function collectAdzunaSignals(date: string): Promise<SignalResult[]> {
@@ -71,23 +125,17 @@ async function collectAdzunaSignals(date: string): Promise<SignalResult[]> {
   for (const role of FRACTIONAL_ROLES) {
     try {
       const url = `https://api.adzuna.com/v1/api/jobs/us/search/1?app_id=${ADZUNA_APP_ID}&app_key=${ADZUNA_APP_KEY}&what_phrase=${encodeURIComponent(role.phrase)}&results_per_page=1`;
-      
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-      
-      const response = await fetch(url, { 
-        signal: controller.signal,
+
+      const response = await fetchWithRetry(url, {
         headers: { 'User-Agent': 'FWI-Pulse/1.0 data@fractionl.ai' }
       });
-      
-      clearTimeout(timeout);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
-      
+
       const data = await response.json();
-      const count = data.count || 0;
+      const count = safeNumber(data.count, 0);
       jobCounts[role.category] = count;
       
       const normalized = normalizeJobCount(count);
@@ -146,7 +194,7 @@ async function collectGoogleTrendsSignal(date: string): Promise<SignalResult> {
   
   try {
     // Start Apify run
-    const runResponse = await fetch(`https://api.apify.com/v2/acts/apify~google-trends-scraper/runs?token=${APIFY_API_KEY}`, {
+    const runResponse = await fetchWithRetry(`https://api.apify.com/v2/acts/apify~google-trends-scraper/runs?token=${APIFY_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -251,23 +299,17 @@ async function collectSecEdgarSignal(date: string): Promise<SignalResult> {
     startDate.setDate(startDate.getDate() - 90);
     
     const url = `https://efts.sec.gov/LATEST/search-index?forms=D&dateRange=custom&startdt=${startDate.toISOString().slice(0, 10)}&enddt=${endDate.toISOString().slice(0, 10)}&q=%22software%22+OR+%22technology%22+OR+%22SaaS%22`;
-    
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-    
-    const response = await fetch(url, {
-      signal: controller.signal,
+
+    const response = await fetchWithRetry(url, {
       headers: { 'User-Agent': 'FWI-Pulse/1.0 research@fractionl.ai' }
-    });
-    
-    clearTimeout(timeout);
+    }, 3, 15000);
     
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
     
     const data = await response.json();
-    const count = data.hits?.total?.value || 0;
+    const count = safeNumber(data.hits?.total?.value, 0);
     const normalizedScore = normalizeFormD(count);
     
     console.log(`[SEC EDGAR] ${count} tech Form D filings (90 days) → score ${normalizedScore}`);
@@ -312,12 +354,8 @@ async function collectNewsApiSignal(date: string): Promise<SignalResult> {
     
     const query = encodeURIComponent('"fractional CMO" OR "fractional CFO" OR "fractional CTO" OR "fractional executive"');
     const url = `https://newsapi.org/v2/everything?q=${query}&from=${startDate.toISOString().slice(0, 10)}&language=en&apiKey=${NEWS_API_KEY}`;
-    
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
-    
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeout);
+
+    const response = await fetchWithRetry(url);
     
     if (!response.ok) {
       const errorData = await response.json();
@@ -325,7 +363,7 @@ async function collectNewsApiSignal(date: string): Promise<SignalResult> {
     }
     
     const data = await response.json();
-    const count = data.totalResults || 0;
+    const count = safeNumber(data.totalResults, 0);
     const normalizedScore = normalizeNews(count);
     
     console.log(`[NewsAPI] ${count} articles (28 days) → score ${normalizedScore}`);
@@ -360,7 +398,9 @@ async function collectNewsApiSignal(date: string): Promise<SignalResult> {
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Support explicit date parameter for backfill and scheduling
+  const urlParams = new URL(req.url).searchParams;
+  const today = urlParams.get('date') || new Date().toISOString().slice(0, 10);
   console.log(`[Pipeline] Starting signal collection for ${today}`);
 
   // Track pipeline execution
@@ -417,16 +457,16 @@ serve(async (req) => {
       metadata: signal.metadata || {}
     }));
 
-    // Upsert signals (replace any existing for today)
-    await supabase.from('signals').delete().eq('date', today);
-    const { error: insertError } = await supabase
+    // Atomic upsert — use ON CONFLICT to avoid delete+insert race condition
+    const { error: upsertError } = await supabase
       .from('signals')
-      .insert(signalRecords);
+      .upsert(signalRecords, { onConflict: 'date,source,signal_type,category' });
 
-    if (insertError) throw insertError;
+    if (upsertError) throw upsertError;
 
-    // Calculate confidence score
-    const confidence = successfulSignals.length / 4;
+    // Weighted confidence — not all sources are equally important
+    const successfulSources = [...new Set(successfulSignals.map(s => s.source))];
+    const confidence = calculateWeightedConfidence(successfulSources);
     
     // Update pipeline run status
     if (runData?.id) {
