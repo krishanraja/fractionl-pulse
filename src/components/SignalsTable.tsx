@@ -29,7 +29,7 @@ const SignalsTable = ({ movers }: SignalsTableProps) => {
       {/* Mobile Cards */}
       <div className="block md:hidden space-y-3">
         {movers.map((mover, index) => (
-          <div key={index} className="border border-border rounded-lg p-4 space-y-2 hover:border-primary/30 transition-colors">
+          <div key={index} className="border border-border rounded-lg p-3 sm:p-4 space-y-2 hover:border-primary/30 transition-colors">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${getTypeDot(mover.type)}`} />

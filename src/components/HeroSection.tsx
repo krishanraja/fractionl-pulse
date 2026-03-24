@@ -47,48 +47,63 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
   return (
     <motion.div variants={fadeInUp} className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="hero-title">
             <span className="hero-title-gradient">Fractional</span>
             <span className="hero-title-accent"> Working Index</span>
           </h1>
-          <div className="flex items-center gap-3 mt-2">
-            <p className="text-sm text-muted-foreground">
-              Is now a good time to hire a fractional executive?
-            </p>
-            {fwiLabel && (
-              <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 ${fwiLabel.color}`}>
-                {fwiLabel.emoji} {fwiLabel.label}
-              </span>
-            )}
-          </div>
+          <p className="text-sm text-muted-foreground mt-2">
+            Is now a good time to hire a fractional executive?
+          </p>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleRefresh}
-          className={`text-muted-foreground hover:text-primary transition-colors ${isRefreshing ? 'animate-spin' : ''}`}
-        >
-          <RefreshCw size={18} />
-        </Button>
+        <div className="flex items-center gap-1 shrink-0">
+          {fwiLabel && (
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full bg-primary/10 ${fwiLabel.color} hidden sm:inline-flex`}>
+              {fwiLabel.emoji} {fwiLabel.label}
+            </span>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleRefresh}
+            className={`text-muted-foreground hover:text-primary transition-colors ${isRefreshing ? 'animate-spin' : ''}`}
+          >
+            <RefreshCw size={18} />
+          </Button>
+        </div>
       </div>
 
       {/* Main Score Card */}
-      <div className="glass-card p-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 items-center">
+      <div className="glass-card p-4 sm:p-6">
+        {/* Mobile: vertical stack / Desktop: 4-col grid */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-6 md:grid md:grid-cols-4">
           {/* Main Score */}
-          <div className="col-span-2 md:col-span-1">
-            <div className="score-large count-up text-primary">
-              {animatedScore.toFixed(1)}
+          <div className="flex items-center gap-4 sm:block">
+            <div>
+              <div className="score-large count-up text-primary">
+                {animatedScore.toFixed(1)}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Market health (0–100)
+              </div>
             </div>
-            <div className="text-xs text-muted-foreground mt-1">
-              Market health score (0 = dead, 100 = red hot)
+            {/* Mobile-only: delta inline with score */}
+            <div className="sm:hidden">
+              <div className={`flex items-center gap-1.5 text-xl font-semibold ${
+                isPositive ? 'stat-up' : 'stat-down'
+              }`}>
+                {isPositive ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+                {isPositive ? '+' : ''}{delta.toFixed(1)}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                30-day change
+              </div>
             </div>
           </div>
 
-          {/* Delta */}
-          <div>
+          {/* Delta - desktop only */}
+          <div className="hidden sm:block">
             <div className={`flex items-center gap-1.5 text-xl font-semibold ${
               isPositive ? 'stat-up' : 'stat-down'
             }`}>
@@ -115,15 +130,14 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2 justify-end">
+          <div className="flex gap-2 sm:justify-end">
             <Button
               size="sm"
               variant="outline"
               onClick={onShowMethodology}
-              className="hidden sm:flex"
             >
               <BookOpen size={14} className="mr-1.5" />
-              How this works
+              <span className="sm:inline">How this works</span>
             </Button>
             <Button
               size="sm"
@@ -135,20 +149,29 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
           </div>
         </div>
 
+        {/* Mobile label badge */}
+        {fwiLabel && (
+          <div className="mt-3 sm:hidden">
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full bg-primary/10 ${fwiLabel.color}`}>
+              {fwiLabel.emoji} {fwiLabel.label}
+            </span>
+          </div>
+        )}
+
         {/* Weight indicators */}
-        <div className="mt-5 pt-4 border-t border-border">
-          <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+        <div className="mt-4 pt-4 border-t border-border">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-primary" />
-              Hiring activity ({Math.round((data.weights.demand ?? 0.5) * 100)}% of score)
+              <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
+              Hiring activity ({Math.round((data.weights.demand ?? 0.5) * 100)}%)
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-accent" />
-              Talent availability ({Math.round((data.weights.supply ?? 0.3) * 100)}% of score)
+              <span className="w-2 h-2 rounded-full bg-accent shrink-0" />
+              Talent availability ({Math.round((data.weights.supply ?? 0.3) * 100)}%)
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-secondary" />
-              Market buzz ({Math.round((data.weights.culture ?? data.weights.momentum ?? 0.2) * 100)}% of score)
+              <span className="w-2 h-2 rounded-full bg-secondary shrink-0" />
+              Market buzz ({Math.round((data.weights.culture ?? data.weights.momentum ?? 0.2) * 100)}%)
             </span>
           </div>
         </div>
