@@ -222,11 +222,17 @@
 
   /* Score displays */
   .score-large {
-    font-size: 3rem;
+    font-size: 2.5rem;
     font-weight: 600;
     line-height: 1;
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.02em;
+  }
+
+  @media (min-width: 640px) {
+    .score-large {
+      font-size: 3rem;
+    }
   }
   
   .score-medium {

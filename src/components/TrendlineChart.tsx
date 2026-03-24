@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Chart, registerables } from 'chart.js';
+import { useMediaQuery } from '@/hooks/use-mobile';
 
 Chart.register(...registerables);
 
@@ -16,6 +17,7 @@ interface TrendlineChartProps {
 const TrendlineChart = ({ data }: TrendlineChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
+  const isMobile = useMediaQuery("(max-width: 640px)");
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -26,6 +28,11 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
 
     const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
+
+    const mainPointRadius = isMobile ? 4 : 6;
+    const subPointRadius = isMobile ? 2 : 4;
+    const mainHoverRadius = isMobile ? 6 : 8;
+    const subHoverRadius = isMobile ? 4 : 6;
 
     chartRef.current = new Chart(ctx, {
       type: 'line',
@@ -40,28 +47,28 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
             data: data.overall,
             borderColor: '#6C40FF',
             backgroundColor: '#6C40FF20',
-            borderWidth: 3,
+            borderWidth: isMobile ? 2.5 : 3,
             fill: true,
             tension: 0.4,
             pointBackgroundColor: '#6C40FF',
             pointBorderColor: '#FFFFFF',
-            pointBorderWidth: 2,
-            pointRadius: 6,
-            pointHoverRadius: 8,
+            pointBorderWidth: isMobile ? 1.5 : 2,
+            pointRadius: mainPointRadius,
+            pointHoverRadius: mainHoverRadius,
           },
           {
             label: 'Demand',
             data: data.demand,
             borderColor: '#3B82F6',
             backgroundColor: 'transparent',
-            borderWidth: 2,
+            borderWidth: isMobile ? 1.5 : 2,
             fill: false,
             tension: 0.4,
             pointBackgroundColor: '#3B82F6',
             pointBorderColor: '#FFFFFF',
             pointBorderWidth: 1,
-            pointRadius: 4,
-            pointHoverRadius: 6,
+            pointRadius: subPointRadius,
+            pointHoverRadius: subHoverRadius,
             borderDash: [2, 2]
           },
           {
@@ -69,14 +76,14 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
             data: data.supply,
             borderColor: '#8B5CF6',
             backgroundColor: 'transparent',
-            borderWidth: 2,
+            borderWidth: isMobile ? 1.5 : 2,
             fill: false,
             tension: 0.4,
             pointBackgroundColor: '#8B5CF6',
             pointBorderColor: '#FFFFFF',
             pointBorderWidth: 1,
-            pointRadius: 4,
-            pointHoverRadius: 6,
+            pointRadius: subPointRadius,
+            pointHoverRadius: subHoverRadius,
             borderDash: [5, 5]
           },
           {
@@ -84,14 +91,14 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
             data: data.culture,
             borderColor: '#10B981',
             backgroundColor: 'transparent',
-            borderWidth: 2,
+            borderWidth: isMobile ? 1.5 : 2,
             fill: false,
             tension: 0.4,
             pointBackgroundColor: '#10B981',
             pointBorderColor: '#FFFFFF',
             pointBorderWidth: 1,
-            pointRadius: 4,
-            pointHoverRadius: 6,
+            pointRadius: subPointRadius,
+            pointHoverRadius: subHoverRadius,
             borderDash: [10, 5]
           }
         ]
@@ -104,11 +111,11 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
             display: true,
             position: 'bottom',
             labels: {
-              padding: 20,
+              padding: isMobile ? 12 : 20,
               usePointStyle: true,
               pointStyle: 'circle',
               font: {
-                size: 12,
+                size: isMobile ? 11 : 12,
                 family: 'Inter'
               }
             }
@@ -140,9 +147,10 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
             },
             ticks: {
               font: {
-                size: 12,
+                size: isMobile ? 10 : 12,
                 family: 'Inter'
-              }
+              },
+              maxRotation: isMobile ? 45 : 0,
             }
           },
           y: {
@@ -152,7 +160,7 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
             },
             ticks: {
               font: {
-                size: 12,
+                size: isMobile ? 10 : 12,
                 family: 'Inter'
               }
             },
@@ -173,10 +181,10 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
         chartRef.current.destroy();
       }
     };
-  }, [data]);
+  }, [data, isMobile]);
 
   return (
-    <div className="h-80">
+    <div className="h-60 sm:h-80">
       <canvas ref={canvasRef} />
     </div>
   );

@@ -48,10 +48,10 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
         const isPositive = index.delta >= 0;
         
         return (
-          <motion.div 
-            key={i} 
+          <motion.div
+            key={i}
             variants={fadeInUp}
-            className="glass-card index-card p-5 hover-lift cursor-pointer"
+            className="glass-card index-card p-4 sm:p-5 hover-lift cursor-pointer"
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-3">

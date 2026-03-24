@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import AppShell from '@/components/layout/AppShell';
 import HeroSection from '@/components/HeroSection';
 import SubIndexCards from '@/components/SubIndexCards';
+import MarketSnapshot from '@/components/MarketSnapshot';
 import TrendlineChart from '@/components/TrendlineChart';
 import SignalsTable from '@/components/SignalsTable';
 import FractionalReadiness from '@/components/FractionalReadiness';
@@ -95,20 +96,24 @@ const Index = () => {
         <SubIndexCards data={data} compact={preferences.compactMode} />
       </section>
 
-      <section className="glass-card p-5">
+      <section>
+        <MarketSnapshot />
+      </section>
+
+      <section className="glass-card p-4 sm:p-5">
         <div className="mb-4">
-            <h2 className="text-lg font-semibold text-foreground">How the market has moved</h2>
-            <p className="text-xs text-muted-foreground mt-1">Each point is one week's reading. More weeks = more reliable picture.</p>
-          </div>
+          <h2 className="text-base sm:text-lg font-semibold text-foreground">How the market has moved</h2>
+          <p className="text-xs text-muted-foreground mt-1">Each point is one week's reading. More weeks = more reliable picture.</p>
+        </div>
         <TrendlineChart data={data.monthly} />
       </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <section className="lg:col-span-2 glass-card p-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <section className="lg:col-span-2 glass-card p-4 sm:p-5">
           <div className="mb-4">
-              <h2 className="text-lg font-semibold text-foreground">What's moving this week</h2>
-              <p className="text-xs text-muted-foreground mt-1">Roles and signals that are notably above or below the market average right now.</p>
-            </div>
+            <h2 className="text-base sm:text-lg font-semibold text-foreground">What's moving this week</h2>
+            <p className="text-xs text-muted-foreground mt-1">Roles and signals that are notably above or below the market average right now.</p>
+          </div>
           <SignalsTable movers={data.movers} />
         </section>
         <aside>
@@ -116,7 +121,7 @@ const Index = () => {
         </aside>
       </div>
 
-      <section className="glass-card p-5">
+      <section className="glass-card p-4 sm:p-5">
         <AIInsights compact />
       </section>
     </motion.div>
@@ -124,11 +129,11 @@ const Index = () => {
 
   const renderSignals = () => (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="container-width py-6">
-      <div className="glass-card p-5">
+      <div className="glass-card p-4 sm:p-5">
         <div className="mb-4">
-            <h2 className="text-lg font-semibold text-foreground">All signals this week</h2>
-            <p className="text-xs text-muted-foreground mt-1">Every role and signal we tracked, compared to the market average.</p>
-          </div>
+          <h2 className="text-base sm:text-lg font-semibold text-foreground">All signals this week</h2>
+          <p className="text-xs text-muted-foreground mt-1">Every role and signal we tracked, compared to the market average.</p>
+        </div>
         <SignalsTable movers={data.movers} />
       </div>
     </motion.div>
@@ -136,7 +141,7 @@ const Index = () => {
 
   const renderInsights = () => (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="container-width py-6">
-      <div className="glass-card p-5">
+      <div className="glass-card p-4 sm:p-5">
         <AIInsights />
       </div>
     </motion.div>

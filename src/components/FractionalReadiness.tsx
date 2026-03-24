@@ -47,12 +47,12 @@ const FractionalReadiness = ({ score, label }: FractionalReadinessProps) => {
   return (
     <motion.div
       variants={fadeInUp}
-      className="glass-card p-5 h-full flex flex-col"
+      className="glass-card p-4 sm:p-5 h-full flex flex-col"
     >
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-medium text-foreground">Should you hire now?</h3>
         {label ? (
-          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full uppercase tracking-wide ${
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full uppercase tracking-wide ${
             label.color.includes('emerald') ? 'bg-emerald-500/10 text-emerald-400' :
             label.color.includes('green') ? 'bg-green-500/10 text-green-400' :
             label.color.includes('yellow') ? 'bg-yellow-500/10 text-yellow-400' :
@@ -62,15 +62,15 @@ const FractionalReadiness = ({ score, label }: FractionalReadinessProps) => {
             {label.emoji} {label.label}
           </span>
         ) : (
-          <span className="text-[10px] font-medium bg-warning/10 text-warning px-2 py-0.5 rounded-full uppercase tracking-wide">
+          <span className="text-xs font-medium bg-warning/10 text-warning px-2 py-0.5 rounded-full uppercase tracking-wide">
             Beta
           </span>
         )}
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center py-4">
-        <div className="relative w-28 h-28">
-          <svg className="w-28 h-28 transform -rotate-90" viewBox="0 0 100 100">
+        <div className="relative w-32 h-32 sm:w-28 sm:h-28">
+          <svg className="w-32 h-32 sm:w-28 sm:h-28 transform -rotate-90" viewBox="0 0 100 100">
             <circle
               cx="50" cy="50" r="42"
               stroke="hsl(var(--border))"
