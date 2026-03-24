@@ -131,7 +131,7 @@ serve(async (req) => {
       momentum_score: momentumScore,
       weights: WEIGHTS,
       confidence: confidence,
-      notes: `${getFWILabel(overallScore)} - ${uniqueSources}/${expectedSources} sources`,
+      notes: `${getFWILabel(overallScore)} - ${uniqueSources.length}/4 sources`,
       metadata: {
         signals_used: signals.length,
         sources: Array.from(new Set(signals.map(s => s.source))),
