@@ -50,6 +50,8 @@ interface UseFWIDataReturn {
   isStale: boolean;
   lastUpdated: string | null;
   hasPipelineData: boolean;
+  hasBackfilledData: boolean;
+  totalWeeks: number;
   refresh: () => void;
 }
 
@@ -59,15 +61,17 @@ export function useFWIData(): UseFWIDataReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [isStale, setIsStale] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [hasBackfilledData, setHasBackfilledData] = useState(false);
+  const [totalWeeks, setTotalWeeks] = useState(0);
 
   const load = useCallback(async () => {
     try {
-      // Fetch last 12 FWI scores (descending so limit grabs the *latest*, then reverse for chronological order)
+      // Fetch up to 26 FWI scores (6 months of weekly data) for historical depth
       const { data: scoresDesc, error: scoreError } = await supabase
         .from('fwi_scores')
-        .select('date, overall_score, demand_score, supply_score, momentum_score, weights')
+        .select('date, overall_score, demand_score, supply_score, momentum_score, weights, metadata')
         .order('date', { ascending: false })
-        .limit(12);
+        .limit(26);
 
       if (scoreError || !scoresDesc || scoresDesc.length === 0) {
         setIsLoading(false);
@@ -138,6 +142,8 @@ export function useFWIData(): UseFWIDataReturn {
       setData(liveData);
       setIsLive(true);
       setLastUpdated(latestDate);
+      setTotalWeeks(scores.length);
+      setHasBackfilledData(scores.some((s: any) => s.metadata?.backfilled));
     } catch (e) {
       console.error('FWI fetch error:', e);
       // Silently fall back to baseline
@@ -161,6 +167,8 @@ export function useFWIData(): UseFWIDataReturn {
     isStale,
     lastUpdated,
     hasPipelineData: isLive,
+    hasBackfilledData,
+    totalWeeks,
     refresh: load,
   };
 }
