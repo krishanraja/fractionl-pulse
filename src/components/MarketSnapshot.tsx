@@ -20,21 +20,21 @@ const stats = [
   {
     icon: Clock,
     label: 'Avg engagement',
-    value: '6–12 months',
+    value: '6-12 months',
     note: 'Typical fractional C-suite engagement length',
     color: 'text-accent bg-accent/10',
   },
   {
     icon: DollarSign,
     label: 'Cost vs full-time',
-    value: '40–60% less',
+    value: '40-60% less',
     note: 'Compared to a full-time C-suite hire (salary + equity + benefits)',
     color: 'text-warning bg-warning/10',
   },
   {
     icon: Briefcase,
     label: 'Demand driver',
-    value: 'Series A–C',
+    value: 'Series A-C',
     note: '68% of demand comes from venture-backed startups scaling fast',
     color: 'text-secondary bg-secondary/10',
   },
@@ -58,7 +58,7 @@ const MarketSnapshot = () => {
       <div className="mb-4">
         <h2 className="text-base sm:text-lg font-semibold text-foreground">Market snapshot</h2>
         <p className="text-xs text-muted-foreground mt-1">
-          Key benchmarks for the fractional executive economy — updated quarterly.
+          Key benchmarks for the fractional executive economy, updated quarterly.
         </p>
       </div>
 

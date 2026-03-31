@@ -74,13 +74,13 @@ const Index = () => {
             <span className="text-orange-400/70 text-xs">
               Last updated {lastUpdated
                 ? new Date(lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                : 'unknown'} — data may be outdated
+                : 'unknown'} - data may be outdated
             </span>
           </>
         ) : (
           <>
             <span className="text-amber-400 text-xs font-medium">Preview Mode</span>
-            <span className="text-amber-400/70 text-xs">Showing sample data while the pipeline warms up — live signals coming soon</span>
+            <span className="text-amber-400/70 text-xs">Showing sample data while the pipeline warms up. Live signals coming soon.</span>
           </>
         )}
       </motion.div>

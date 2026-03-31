@@ -113,7 +113,7 @@ serve(async (req) => {
     console.log(`[FWI] Component scores - Demand: ${demandScore}, Supply: ${finalSupplyScore}, Momentum: ${momentumScore}`);
     console.log(`[FWI] Overall FWI: ${overallScore} (${getFWILabel(overallScore)})`);
 
-    // Weighted confidence — not all sources contribute equally
+    // Weighted confidence: not all sources contribute equally
     const SOURCE_CONFIDENCE_WEIGHTS: Record<string, number> = {
       adzuna: 0.35, google_trends: 0.25, sec_edgar: 0.25, newsapi: 0.15,
     };

@@ -1,4 +1,4 @@
-# Data Sources Roadmap — Fractional Working Index
+# Data Sources Roadmap: Fractional Working Index
 
 ## Overview
 

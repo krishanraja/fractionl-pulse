@@ -35,7 +35,7 @@ function nextWeeklyUpdate(): string {
   return next.toISOString();
 }
 
-// GET /fwi-api/current — no auth required
+// GET /fwi-api/current - no auth required
 async function handleCurrentFWI(): Promise<Response> {
   const { data: latest, error } = await supabase
     .from('fwi_scores')
@@ -86,7 +86,7 @@ async function handleCurrentFWI(): Promise<Response> {
       version: '1.0',
       asOf: latest.date,
       methodology: `FWI = (Demand × ${weights.demand}) + (Supply × ${weights.supply}) + (Culture × ${weights.momentum})`,
-      scale: '0–100: <30 Contracting · 30–44 Cooling · 45–59 Stable · 60–74 Growing · 75+ Surging',
+      scale: '0-100: <30 Contracting · 30-44 Cooling · 45-59 Stable · 60-74 Growing · 75+ Surging',
       dataSource: latest.confidence >= 0.75 ? 'live' : 'partial',
       confidence: latest.confidence,
       nextUpdate: nextWeeklyUpdate(),
@@ -105,7 +105,7 @@ async function handleCurrentFWI(): Promise<Response> {
         supply: {
           score: latest.supply_score,
           weight: weights.supply,
-          sources: ['Baseline placeholder — Contra marketplace integration Q2 2026'],
+          sources: ['Baseline placeholder. Contra marketplace integration Q2 2026.'],
           note: latest.supply_score === 50 ? 'Using neutral baseline pending marketplace data' : null,
         },
         culture: {
@@ -125,11 +125,11 @@ async function handleCurrentFWI(): Promise<Response> {
       demand: {
         description: 'Job posting volume for fractional C-suite roles on Adzuna + VC funding pipeline via SEC Form D filings',
         roles: ['Fractional CFO', 'Fractional CMO', 'Fractional CTO', 'Fractional COO', 'Fractional CRO', 'Interim CEO'],
-        leadingIndicator: 'SEC Form D filings predict fractional demand 1–3 months ahead',
+        leadingIndicator: 'SEC Form D filings predict fractional demand 1-3 months ahead',
       },
       supply: {
         description: 'Availability of fractional executives on specialist platforms',
-        status: 'Roadmap Q2 2026 — Contra and Toptal marketplace integration',
+        status: 'Roadmap Q2 2026: Contra and Toptal marketplace integration',
       },
       culture: {
         description: 'Market awareness and momentum signals',
@@ -152,7 +152,7 @@ async function handleCurrentFWI(): Promise<Response> {
   });
 }
 
-// GET /fwi-api/history?months=3 — no auth required
+// GET /fwi-api/history?months=3 - no auth required
 async function handleHistory(months: number): Promise<Response> {
   const clampedMonths = Math.min(12, Math.max(1, months));
   const since = new Date();
@@ -192,7 +192,7 @@ async function handleHistory(months: number): Promise<Response> {
   });
 }
 
-// POST /fwi-api/trigger — service-role only, triggers fresh data collection
+// POST /fwi-api/trigger - service-role only, triggers fresh data collection
 async function handleTrigger(authHeader: string | null): Promise<Response> {
   const token = authHeader?.replace('Bearer ', '');
   if (token !== SUPABASE_SERVICE_KEY) {
@@ -242,7 +242,7 @@ serve(async (req) => {
       error: 'Not found',
       endpoints: {
         'GET /fwi-api/current': 'Current FWI score, components, and top movers',
-        'GET /fwi-api/history?months=3': 'Historical FWI scores (1–12 months)',
+        'GET /fwi-api/history?months=3': 'Historical FWI scores (1-12 months)',
         'POST /fwi-api/trigger': 'Trigger fresh data collection (service role only)',
       }
     }), {

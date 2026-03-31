@@ -21,7 +21,7 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
       <div className="bg-muted/30 p-4 rounded-lg">
         <h4 className="font-medium mb-2 text-foreground">How this works</h4>
         <p className="text-sm text-muted-foreground">
-          The Fractional Working Index is a single weekly score (0–100) that answers one question: is this a good time to hire a fractional executive? It combines three signals — how much companies are hiring, how many executives are available, and how much the market is talking about fractional work.
+          The Fractional Working Index is a single weekly score (0-100) that answers one question: is this a good time to hire a fractional executive? It combines three signals: how much companies are hiring, how many executives are available, and how much the market is talking about fractional work.
         </p>
       </div>
 
@@ -38,7 +38,7 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
               </div>
               <span className="text-sm text-muted-foreground">{(weights.demand * 100).toFixed(0)}% of score</span>
             </div>
-            <p className="text-xs text-muted-foreground pl-5">Live job postings for fractional CFO, CMO, CTO, COO, CRO, and interim CEO roles. Plus venture capital funding filings — companies that just raised tend to hire fractional executives 1–3 months later.</p>
+            <p className="text-xs text-muted-foreground pl-5">Live job postings for fractional CFO, CMO, CTO, COO, CRO, and interim CEO roles. Plus venture capital funding filings: companies that just raised tend to hire fractional executives 1-3 months later.</p>
           </div>
 
           <div className="p-3 bg-muted/20 rounded-lg space-y-1">
@@ -49,7 +49,7 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
               </div>
               <span className="text-sm text-muted-foreground">{(weights.supply * 100).toFixed(0)}% of score</span>
             </div>
-            <p className="text-xs text-muted-foreground pl-5">How many fractional executives are currently available to hire. We're integrating live marketplace data (Contra, Toptal) in Q2 2026 — using a neutral baseline until then.</p>
+            <p className="text-xs text-muted-foreground pl-5">How many fractional executives are currently available to hire. We are integrating live marketplace data (Contra, Toptal) in Q2 2026; using a neutral baseline until then.</p>
           </div>
 
           <div className="p-3 bg-muted/20 rounded-lg space-y-1">
@@ -69,11 +69,11 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
       <div className="border-t border-border pt-4">
         <h4 className="font-medium mb-2 text-foreground">How to read the score</h4>
         <div className="space-y-1.5 text-sm text-muted-foreground">
-          <p><span className="text-emerald-400 font-medium">75–100 Surging</span> — exceptional demand, great time to hire</p>
-          <p><span className="text-green-400 font-medium">60–74 Growing</span> — strong market, opportunities abundant</p>
-          <p><span className="text-yellow-400 font-medium">45–59 Stable</span> — balanced, normal conditions</p>
-          <p><span className="text-orange-400 font-medium">30–44 Cooling</span> — demand softening, more selectivity</p>
-          <p><span className="text-red-400 font-medium">0–29 Contracting</span> — market under pressure</p>
+          <p><span className="text-emerald-400 font-medium">75-100 Surging</span> - exceptional demand, great time to hire</p>
+          <p><span className="text-green-400 font-medium">60-74 Growing</span> - strong market, opportunities abundant</p>
+          <p><span className="text-yellow-400 font-medium">45-59 Stable</span> - balanced, normal conditions</p>
+          <p><span className="text-orange-400 font-medium">30-44 Cooling</span> - demand softening, more selectivity</p>
+          <p><span className="text-red-400 font-medium">0-29 Contracting</span> - market under pressure</p>
         </div>
       </div>
 

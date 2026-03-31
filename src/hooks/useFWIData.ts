@@ -40,7 +40,7 @@ const BASELINE: FWIData = {
   ]
 };
 
-/** Maximum age (in ms) before live data is considered stale — 48 hours */
+/** Maximum age (in ms) before live data is considered stale (48 hours) */
 const STALE_THRESHOLD_MS = 48 * 60 * 60 * 1000;
 
 interface UseFWIDataReturn {
@@ -135,7 +135,7 @@ export function useFWIData(): UseFWIDataReturn {
         })),
       };
 
-      // Detect staleness — data older than threshold (append T00:00:00Z to avoid local-timezone parsing)
+      // Detect staleness: data older than threshold (append T00:00:00Z to avoid local-timezone parsing)
       const dataAge = Date.now() - new Date(latestDate + 'T00:00:00Z').getTime();
       setIsStale(dataAge > STALE_THRESHOLD_MS);
 

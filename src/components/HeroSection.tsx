@@ -85,7 +85,7 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
                 {animatedScore.toFixed(1)}
               </div>
               <div className="text-xs text-muted-foreground mt-1">
-                Market health (0–100)
+                Market health (0-100)
               </div>
             </div>
             {/* Mobile-only: delta inline with score */}

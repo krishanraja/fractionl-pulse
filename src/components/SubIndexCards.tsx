@@ -25,7 +25,7 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
       weight: data.weights.supply,
       score: data.today.supply.score,
       delta: data.today.supply.delta30d,
-      description: 'How many fractional executives are currently available to hire. Direct marketplace data coming Q2 2026 — showing neutral baseline for now.',
+      description: 'How many fractional executives are currently available to hire. Direct marketplace data coming Q2 2026; showing neutral baseline for now.',
       sparklineData: data.monthly.supply,
       colorClass: 'bg-accent',
       colorName: 'accent'
@@ -35,7 +35,7 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
       weight: data.weights.culture,
       score: data.today.culture.score,
       delta: data.today.culture.delta30d,
-      description: 'How much the world is talking about fractional work — Google searches, news coverage, and social mentions. High buzz often predicts a hiring surge.',
+      description: 'How much the world is talking about fractional work: Google searches, news coverage, and social mentions. High buzz often predicts a hiring surge.',
       sparklineData: data.monthly.culture,
       colorClass: 'bg-secondary',
       colorName: 'secondary'

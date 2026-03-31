@@ -175,7 +175,7 @@ const Login = () => {
           {/* Stats preview */}
           <div className="grid grid-cols-3 gap-4 pt-4">
             <div className="text-center p-4 glass-card">
-              <div className="text-2xl font-bold text-primary">0–100</div>
+              <div className="text-2xl font-bold text-primary">0-100</div>
               <div className="text-xs text-muted-foreground mt-1">Index Scale</div>
             </div>
             <div className="text-center p-4 glass-card">

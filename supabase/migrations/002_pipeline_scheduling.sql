@@ -22,7 +22,7 @@ SELECT cron.schedule(
   $$
 );
 
--- Staleness alert function — checks if data is older than 48 hours
+-- Staleness alert function: checks if data is older than 48 hours
 CREATE OR REPLACE FUNCTION check_data_freshness()
 RETURNS TABLE(is_stale boolean, hours_since_update numeric, latest_date date) AS $$
 BEGIN
@@ -35,7 +35,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Data quality view — shows source health at a glance
+-- Data quality view: shows source health at a glance
 CREATE OR REPLACE VIEW data_quality_summary AS
 SELECT
   s.source,
@@ -51,7 +51,7 @@ FROM signals s
 GROUP BY s.source
 ORDER BY s.source;
 
--- Pipeline health view — recent run status
+-- Pipeline health view: recent run status
 CREATE OR REPLACE VIEW pipeline_health AS
 SELECT
   source,

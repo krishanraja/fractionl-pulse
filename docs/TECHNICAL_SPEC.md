@@ -1,6 +1,6 @@
-# Technical Specification — Fractionl Pulse
+# Technical Specification: Fractionl Pulse
 
-_Updated: 2026-03-21 — reflects defensible signal stack and agent-native architecture_
+_Updated: 2026-03-21. Reflects defensible signal stack and agent-native architecture._
 
 ---
 
@@ -43,7 +43,7 @@ _Updated: 2026-03-21 — reflects defensible signal stack and agent-native archi
 ## 3. Database Schema
 
 ### signals
-Raw ingested data — one row per source + category + date.
+Raw ingested data: one row per source + category + date.
 
 ```sql
 CREATE TABLE signals (
@@ -52,7 +52,7 @@ CREATE TABLE signals (
   source text NOT NULL,              -- 'adzuna', 'google_trends', 'sec_edgar', 'newsapi'
   signal_type text NOT NULL,         -- 'demand', 'supply', 'momentum'
   category text NOT NULL,            -- role name or signal category
-  normalized_value numeric(5,2),     -- 0–100
+  normalized_value numeric(5,2),     -- 0-100
   raw_value numeric(10,2),           -- original value before normalisation
   metadata jsonb DEFAULT '{}',       -- source-specific context
   created_at timestamptz DEFAULT now()
@@ -71,7 +71,7 @@ CREATE TABLE fwi_scores (
   supply_score numeric(5,2) NOT NULL,
   momentum_score numeric(5,2) NOT NULL,
   weights jsonb DEFAULT '{"demand": 0.5, "supply": 0.2, "momentum": 0.3}',
-  confidence numeric(3,2) DEFAULT 1.0,  -- 0–1 based on sources that succeeded
+  confidence numeric(3,2) DEFAULT 1.0,  -- 0-1 based on sources that succeeded
   notes text,
   metadata jsonb DEFAULT '{}'
 );
@@ -136,7 +136,7 @@ GET https://api.adzuna.com/v1/api/jobs/us/search/1
   &results_per_page=1
 ```
 
-- Returns `count` — total jobs matching phrase
+- Returns `count`: total jobs matching phrase
 - 6 roles tracked: fractional CFO, CMO, CTO, COO, CRO, interim CEO
 - Normalisation: `min(100, round(log10(count+1) / log10(200) * 100))`
 - Floor: 15 (inactive market, not zero)
@@ -151,7 +151,7 @@ Body: { searchTerms: [...], geo: "US", timeRange: "today 3-m" }
 - Poll until SUCCEEDED (max 120s)
 - Extract `interestOverTime_timelineData` where `hasData[0] === true`
 - Average last 4 valid weekly values per term
-- Average across 4 terms = culture score (native 0–100)
+- Average across 4 terms = culture score (native 0-100)
 
 ### SEC EDGAR Form D (Leading Indicator)
 
@@ -165,7 +165,7 @@ GET https://efts.sec.gov/LATEST/search-index
 User-Agent: FWI-Pulse/1.0 research@fractionl.ai
 ```
 
-- Returns `hits.total.value` — count of Form D filings
+- Returns `hits.total.value`: count of Form D filings
 - Normalisation: `min(100, round((count / 800) * 50))`
 - 800 filings = score 50 (baseline normal market activity)
 - Stored as signal_type='demand', category='vc_pipeline'
@@ -196,7 +196,7 @@ supply_score  = 50 (neutral baseline until Contra integration Q2 2026)
 momentum_score = average of all 'momentum' signals (Google Trends + NewsAPI)
 ```
 
-**Confidence:** `unique_sources / 4` — if all 4 sources succeed, confidence = 1.0.
+**Confidence:** `unique_sources / 4`. If all 4 sources succeed, confidence = 1.0.
 
 ---
 
@@ -259,6 +259,6 @@ OPENAI_API_KEY
 
 ## 9. Deployment
 
-- **Frontend:** Vercel — auto-deploys on push to `main` (`fractionl-pulse.vercel.app`)
-- **Edge functions:** Supabase — deploy via Supabase CLI: `supabase functions deploy <name>`
-- **Database:** Supabase Postgres — migrations in `supabase/migrations/`
+- **Frontend:** Vercel. Auto-deploys on push to `main` (`fractionl-pulse.vercel.app`).
+- **Edge functions:** Supabase. Deploy via Supabase CLI: `supabase functions deploy <name>`.
+- **Database:** Supabase Postgres. Migrations in `supabase/migrations/`.

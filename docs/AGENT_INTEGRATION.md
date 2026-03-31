@@ -1,12 +1,12 @@
 # Agent Integration Guide
 
-The FWI API is designed to be consumed by AI agents as a primary user — not as an afterthought. This guide covers everything a developer or AI system needs to integrate fractional market intelligence into any workflow.
+The FWI API is designed to be consumed by AI agents as a primary user, not as an afterthought. This guide covers everything a developer or AI system needs to integrate fractional market intelligence into any workflow.
 
 ---
 
 ## What the FWI Measures
 
-The **Fractional Working Index** is a weekly composite score (0–100) measuring the health of the fractional executive market across three dimensions:
+The **Fractional Working Index** is a weekly composite score (0-100) measuring the health of the fractional executive market across three dimensions:
 
 | Dimension | Weight | What it captures |
 |-----------|--------|-----------------|
@@ -15,11 +15,11 @@ The **Fractional Working Index** is a weekly composite score (0–100) measuring
 | **Culture** | 30% | Search intent + media velocity around fractional work |
 
 **Scale:**
-- **75–100**: Surging — exceptional demand, take rates high
-- **60–74**: Growing — strong market, opportunities abundant  
-- **45–59**: Stable — balanced, normal activity
-- **30–44**: Cooling — softening demand
-- **0–29**: Contracting — market under pressure
+- **75-100**: Surging. Exceptional demand, take rates high.
+- **60-74**: Growing. Strong market, opportunities abundant.
+- **45-59**: Stable. Balanced, normal activity.
+- **30-44**: Cooling. Softening demand.
+- **0-29**: Contracting. Market under pressure.
 
 ---
 
@@ -44,7 +44,7 @@ curl https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current
 GET https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/history?months=3
 ```
 
-Returns weekly data points for the requested period (1–12 months).
+Returns weekly data points for the requested period (1-12 months).
 
 **Example:**
 ```bash
@@ -96,15 +96,15 @@ interface FWICurrentResponse {
     description: string;
     publisher: string;       // "Fractionl"
     version: string;         // "1.0"
-    asOf: string;            // "2026-03-21" — date of last collection
+    asOf: string;            // "2026-03-21" - date of last collection
     methodology: string;     // weight formula
     scale: string;           // label guide
     dataSource: 'live' | 'partial' | 'baseline';
-    confidence: number;      // 0–1, based on sources that succeeded
+    confidence: number;      // 0-1, based on sources that succeeded
     nextUpdate: string;      // ISO timestamp of next scheduled run
   };
   score: {
-    overall: number;         // 0–100
+    overall: number;         // 0-100
     label: string;           // "Growing"
     emoji: string;           // "📈"
     delta30d: number;        // change vs previous reading
@@ -134,12 +134,12 @@ interface FWICurrentResponse {
 
 | Source | Signal | Update frequency | Why it's defensible |
 |--------|--------|-----------------|-------------------|
-| **Adzuna** | Fractional job postings, 6 C-suite roles | Weekly | Exact phrase matching ("fractional CFO") — genuine fractional listings, not general exec search |
+| **Adzuna** | Fractional job postings, 6 C-suite roles | Weekly | Exact phrase matching ("fractional CFO"). Genuine fractional listings, not general exec search. |
 | **SEC Form D** | VC funding filings, tech companies | Weekly | Government data, free API. Companies that raised Series A/B/C in last 90 days are the primary fractional buyer pool. No other index uses this as a leading indicator. |
-| **Google Trends** (Apify) | Search interest for fractional terms | Weekly | 0–100 native scale, 90-day rolling, US-geo. Early signal of hiring intent before postings appear. |
+| **Google Trends** (Apify) | Search interest for fractional terms | Weekly | 0-100 native scale, 90-day rolling, US-geo. Early signal of hiring intent before postings appear. |
 | **NewsAPI** | Media coverage, 28-day | Weekly | Article velocity for exact phrase mentions. Tracks cultural moment/mainstream awareness. |
 
-**Supply data (Q2 2026):** Direct marketplace listings from Contra and Toptal will replace the current neutral baseline. When live, this becomes the most unique signal — measuring actual fractional executive availability on specialist platforms.
+**Supply data (Q2 2026):** Direct marketplace listings from Contra and Toptal will replace the current neutral baseline. When live, this becomes the most unique signal, measuring actual fractional executive availability on specialist platforms.
 
 ---
 
@@ -149,7 +149,7 @@ The SEC Form D integration is the most novel piece of the methodology. Here is h
 
 1. Companies must file Form D with the SEC within 15 days of closing a funding round.
 2. We query filings for tech/software/SaaS companies across a rolling 90-day window.
-3. High filing volume in a period predicts fractional executive hiring volume 1–3 months later — companies raise, stabilise, then hire fractional leadership to execute before committing to full-time.
+3. High filing volume in a period predicts fractional executive hiring volume 1-3 months later. Companies raise, stabilise, then hire fractional leadership to execute before committing to full-time.
 4. This lag means the FWI demand component has a **predictive** element, not just a lagging measure.
 
 No competing fractional market index uses funding velocity as a demand predictor. It is the methodology differentiator.
