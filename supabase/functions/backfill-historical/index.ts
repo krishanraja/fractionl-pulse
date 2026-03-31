@@ -327,7 +327,7 @@ serve(async (req) => {
         await sleep(500);
       }
 
-      // 4. Adzuna (estimated — no historical API)
+      // 4. Adzuna (estimated, no historical API)
       const adzunaEstimate = generateEstimatedAdzuna(weekEnd, i, weeks.length);
       signals.push({
         date: weekEnd,

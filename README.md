@@ -1,6 +1,6 @@
 # Pulse by Fractionl
 
-**The Fractional Working Index (FWI)** — live market intelligence for the fractional executive economy. Built for human analysts and AI agents alike.
+**The Fractional Working Index (FWI)**: live market intelligence for the fractional executive economy. Built for human analysts and AI agents alike.
 
 [![Status](https://img.shields.io/badge/status-live-brightgreen)](https://fractionl-pulse.vercel.app)
 [![Version](https://img.shields.io/badge/version-1.0-blue)](https://github.com/krishanraja/fractionl-pulse)
@@ -10,7 +10,7 @@
 
 ## What It Is
 
-Pulse tracks the fractional executive market through a composite index called the Fractional Working Index — a weekly 0–100 score measuring demand, supply, and cultural momentum across C-suite fractional roles.
+Pulse tracks the fractional executive market through a composite index called the Fractional Working Index, a weekly 0-100 score measuring demand, supply, and cultural momentum across C-suite fractional roles.
 
 It is built to be consumed by AI agents as a primary interface, not as an afterthought. The API, data schema, and methodology are all designed for machine readability first, with a human dashboard layered on top.
 
@@ -32,7 +32,7 @@ Response:
     "index": "Fractional Working Index (FWI)",
     "asOf": "2026-03-21",
     "methodology": "FWI = (Demand × 0.5) + (Supply × 0.2) + (Culture × 0.3)",
-    "scale": "0–100: <30 Contracting · 30–44 Cooling · 45–59 Stable · 60–74 Growing · 75+ Surging",
+    "scale": "0-100: <30 Contracting · 30-44 Cooling · 45-59 Stable · 60-74 Growing · 75+ Surging",
     "dataSource": "live",
     "confidence": 1.0
   },
@@ -47,7 +47,7 @@ Response:
     }
   },
   "topMovers": [
-    { "role": "Fractional CFO", "changePct": 42, "insight": "121 jobs — well above market average" }
+    { "role": "Fractional CFO", "changePct": 42, "insight": "121 jobs, well above market average" }
   ]
 }
 ```
@@ -70,23 +70,23 @@ MCP tool definition: [docs/MCP_TOOL.md](docs/MCP_TOOL.md)
 
 | Signal | Source | What it measures | Unique angle |
 |--------|--------|-----------------|-------------|
-| **Fractional job postings** | Adzuna | Demand — active hiring for fractional C-suite roles | Exact phrase matching: only genuine fractional listings, not general exec search |
-| **VC funding pipeline** | SEC Form D (EDGAR) | Leading demand indicator | Companies that raised Series A/B/C in last 90 days enter the fractional buyer pool 1–3 months later. No other index uses this. |
-| **Search intent** | Google Trends (Apify) | Culture — hiring awareness | 90-day rolling, US-geo, 0–100 native scale. Precedes job postings by 4–6 weeks. |
-| **Media coverage** | NewsAPI | Culture — market momentum | Exact phrase mentions over 28 days. Tracks mainstream awareness velocity. |
-| **Marketplace listings** | Contra/Toptal *(Q2 2026)* | Supply — actual fractional exec availability | Only source measuring supply-side directly. No competitor tracks this. |
+| **Fractional job postings** | Adzuna | Demand: active hiring for fractional C-suite roles | Exact phrase matching: only genuine fractional listings, not general exec search |
+| **VC funding pipeline** | SEC Form D (EDGAR) | Leading demand indicator | Companies that raised Series A/B/C in last 90 days enter the fractional buyer pool 1-3 months later. No other index uses this. |
+| **Search intent** | Google Trends (Apify) | Culture: hiring awareness | 90-day rolling, US-geo, 0-100 native scale. Precedes job postings by 4-6 weeks. |
+| **Media coverage** | NewsAPI | Culture: market momentum | Exact phrase mentions over 28 days. Tracks mainstream awareness velocity. |
+| **Marketplace listings** | Contra/Toptal *(Q2 2026)* | Supply: actual fractional exec availability | Only source measuring supply-side directly. No competitor tracks this. |
 
-**The defensible combination:** VC funding as a leading demand indicator + supply-side marketplace availability = a signal stack no competitor currently replicates. Twelve months of weekly data creates a historical moat that cannot be bought — only accumulated.
+**The defensible combination:** VC funding as a leading demand indicator + supply-side marketplace availability = a signal stack no competitor currently replicates. Twelve months of weekly data creates a historical moat that cannot be bought, only accumulated.
 
 ### FWI Scale
 
 | Range | Label | What it means |
 |-------|-------|--------------|
-| 75–100 | Surging | Exceptional demand. Fractional executives have pricing power. |
-| 60–74 | Growing | Strong market. Opportunities abundant for qualified operators. |
-| 45–59 | Stable | Balanced conditions. Normal hiring cadence. |
-| 30–44 | Cooling | Softening demand. Selectivity increasing. |
-| 0–29 | Contracting | Market under pressure. Supply exceeds demand. |
+| 75-100 | Surging | Exceptional demand. Fractional executives have pricing power. |
+| 60-74 | Growing | Strong market. Opportunities abundant for qualified operators. |
+| 45-59 | Stable | Balanced conditions. Normal hiring cadence. |
+| 30-44 | Cooling | Softening demand. Selectivity increasing. |
+| 0-29 | Contracting | Market under pressure. Supply exceeds demand. |
 
 ---
 
@@ -142,16 +142,16 @@ NewsAPI (articles) ─────────┘                               
 
 | Function | Purpose | Schedule |
 |----------|---------|----------|
-| `ingest-signals` | Collects 4 data sources, normalises to 0–100, writes to `signals` | Weekly (manual until cron configured) |
+| `ingest-signals` | Collects 4 data sources, normalises to 0-100, writes to `signals` | Weekly (manual until cron configured) |
 | `calculate-fwi` | Composites signals into FWI score + movers, writes to `fwi_scores` | After every ingest |
 | `generate-pulse-insights` | GPT-4o-mini AI insight cards, 12h cache in `cached_insights` | On demand |
-| `fwi-api` | Public REST endpoint — `/current`, `/history`, `/trigger` | Always-on |
+| `fwi-api` | Public REST endpoint: `/current`, `/history`, `/trigger` | Always-on |
 
 ### Database Tables
 
 | Table | Purpose |
 |-------|---------|
-| `signals` | Raw ingested data — one row per source/category/date |
+| `signals` | Raw ingested data: one row per source/category/date |
 | `fwi_scores` | Weekly composite scores with weights and confidence |
 | `movers` | Top-moving roles per weekly run |
 | `cached_insights` | AI insight cards, cached for 12 hours |
@@ -165,33 +165,33 @@ NewsAPI (articles) ─────────┘                               
 
 The fractional executive market is information-asymmetric. Companies don't know when to hire. Executives don't know when to offer. Staffing platforms don't know how to price.
 
-The FWI exists to fix this — and the way people consume market intelligence is changing. The primary consumers of structured market data in the next two years will be AI agents, not humans reading dashboards. A talent scout agent, a VC portfolio tool, a staffing platform's pricing engine — these will all need clean, queryable, well-documented market data.
+The FWI exists to fix this, and the way people consume market intelligence is changing. The primary consumers of structured market data in the next two years will be AI agents, not humans reading dashboards. A talent scout agent, a VC portfolio tool, a staffing platform's pricing engine: these will all need clean, queryable, well-documented market data.
 
 Pulse is built for that world:
-- **API first** — the dashboard is a skin on the API, not the other way around
-- **Structured schema** — every field is typed, named for human legibility, and consistent
-- **MCP-ready** — tool definition ships with the repo (see `docs/MCP_TOOL.md`)
-- **Agent-friendly caching** — `Cache-Control` headers and `X-FWI-Score` shortcut header for lightweight polling
+- **API first:** the dashboard is a skin on the API, not the other way around
+- **Structured schema:** every field is typed, named for human legibility, and consistent
+- **MCP-ready:** tool definition ships with the repo (see `docs/MCP_TOOL.md`)
+- **Agent-friendly caching:** `Cache-Control` headers and `X-FWI-Score` shortcut header for lightweight polling
 
 ---
 
 ## Roadmap
 
-### Phase 1 — Live Data (Now)
+### Phase 1: Live Data (Now)
 Four-source signal stack live. Dashboard + agent API deployed. Historical data accumulating weekly.
 
-### Phase 2 — Supply Signal + Webhooks (Q2 2026)
+### Phase 2: Supply Signal + Webhooks (Q2 2026)
 - Contra + Toptal marketplace listing scraping (supply-side)
 - Webhook threshold alerts (`score_above_75`, `score_below_30`, `weekly_update`)
 - Pro API tier with 10k req/day
 
-### Phase 3 — Paid Tiers + Embeds (Q3 2026)
+### Phase 3: Paid Tiers + Embeds (Q3 2026)
 - Stripe billing for Pro/Enterprise API keys
 - White-label embed widget for staffing platforms
 - CSV/JSON data exports
 - Rate index: median fractional rates by role from marketplace listings
 
-### Phase 4 — Expanded Sources (Q4 2026)
+### Phase 4: Expanded Sources (Q4 2026)
 - Crunchbase funding rounds (paid API)
 - Google Jobs aggregation for non-Adzuna listings
 - LinkedIn post velocity (PhantomBuster)
@@ -202,10 +202,10 @@ Four-source signal stack live. Dashboard + agent API deployed. Historical data a
 ## Data Sources
 
 **Current:**
-- [Adzuna](https://api.adzuna.com) — Job postings API
-- [Google Trends via Apify](https://apify.com/apify/google-trends-scraper) — Search interest scraper
-- [SEC EDGAR](https://efts.sec.gov/LATEST/search-index) — Form D filing search
-- [NewsAPI](https://newsapi.org) — News article search
+- [Adzuna](https://api.adzuna.com): Job postings API
+- [Google Trends via Apify](https://apify.com/apify/google-trends-scraper): Search interest scraper
+- [SEC EDGAR](https://efts.sec.gov/LATEST/search-index): Form D filing search
+- [NewsAPI](https://newsapi.org): News article search
 
 **Planned:**
 - Contra marketplace listings (supply)

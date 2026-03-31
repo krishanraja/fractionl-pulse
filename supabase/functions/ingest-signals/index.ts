@@ -51,7 +51,7 @@ interface SignalResult {
   error?: string;
 }
 
-// Safe number validation — guards against NaN, Infinity, negatives
+// Safe number validation: guards against NaN, Infinity, negatives
 function safeNumber(value: unknown, fallback: number): number {
   const num = Number(value);
   if (!Number.isFinite(num) || num < 0) return fallback;
@@ -457,14 +457,14 @@ serve(async (req) => {
       metadata: signal.metadata || {}
     }));
 
-    // Atomic upsert — use ON CONFLICT to avoid delete+insert race condition
+    // Atomic upsert: use ON CONFLICT to avoid delete+insert race condition
     const { error: upsertError } = await supabase
       .from('signals')
       .upsert(signalRecords, { onConflict: 'date,source,signal_type,category' });
 
     if (upsertError) throw upsertError;
 
-    // Weighted confidence — not all sources are equally important
+    // Weighted confidence: not all sources are equally important
     const successfulSources = [...new Set(successfulSignals.map(s => s.source))];
     const confidence = calculateWeightedConfidence(successfulSources);
     

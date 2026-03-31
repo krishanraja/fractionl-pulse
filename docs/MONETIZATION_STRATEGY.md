@@ -1,4 +1,4 @@
-# Monetization Strategy — Fractional Working Index
+# Monetization Strategy: Fractional Working Index
 
 ## Executive Summary
 
@@ -51,7 +51,7 @@ The Fractional Working Index (FWI) has multiple revenue streams available, from 
 - Limited-time trial of Pro features
 - Exit-intent upsell prompts
 
-### Pro Tier — $99/month ($79/month annual)
+### Pro Tier: $99/month ($79/month annual)
 
 **Purpose**: Core revenue driver for individuals and small teams
 
@@ -87,7 +87,7 @@ The Fractional Working Index (FWI) has multiple revenue streams available, from 
 | LTV:CAC | > 5:1 |
 | Gross margin | 85% |
 
-### Enterprise Tier — Custom Pricing ($500-5,000/month)
+### Enterprise Tier: Custom Pricing ($500-5,000/month)
 
 **Purpose**: High-value accounts with custom needs
 

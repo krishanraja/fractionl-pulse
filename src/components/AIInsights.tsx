@@ -74,7 +74,7 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
         .limit(1)
         .maybeSingle();
 
-      // Skip expired cached insights — treat as stale and fall back to defaults
+      // Skip expired cached insights: treat as stale and fall back to defaults
       const isExpired = data?.valid_until && new Date(data.valid_until).getTime() < Date.now();
 
       if (data?.insights_json && Array.isArray(data.insights_json) && data.insights_json.length > 0 && !isExpired) {

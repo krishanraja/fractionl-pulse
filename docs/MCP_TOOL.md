@@ -53,7 +53,7 @@ curl "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/history?mont
     "description": "Composite score measuring the health and momentum of the fractional executive market.",
     "asOf": "2026-03-21",
     "methodology": "FWI = (Demand × 0.5) + (Supply × 0.2) + (Culture × 0.3)",
-    "scale": "0–100: <30 Contracting · 30–44 Cooling · 45–59 Stable · 60–74 Growing · 75+ Surging",
+    "scale": "0-100: <30 Contracting · 30-44 Cooling · 45-59 Stable · 60-74 Growing · 75+ Surging",
     "dataSource": "live",
     "confidence": 1.0,
     "nextUpdate": "2026-03-28T00:00:00Z"
@@ -72,7 +72,7 @@ curl "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/history?mont
       "supply": {
         "score": 50.0,
         "weight": 0.2,
-        "sources": ["Baseline placeholder — Contra marketplace integration Q2 2026"]
+        "sources": ["Baseline placeholder. Contra marketplace integration Q2 2026."]
       },
       "culture": {
         "score": 54.0,
@@ -82,9 +82,9 @@ curl "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/history?mont
     }
   },
   "topMovers": [
-    { "role": "Fractional CFO", "signalType": "demand", "changePct": 42, "insight": "121 jobs — well above market average" },
-    { "role": "Fractional CTO", "signalType": "demand", "changePct": 11, "insight": "19 jobs — above market average" },
-    { "role": "Fractional CMO", "signalType": "demand", "changePct": -3, "insight": "13 jobs — below market average" }
+    { "role": "Fractional CFO", "signalType": "demand", "changePct": 42, "insight": "121 jobs, well above market average" },
+    { "role": "Fractional CTO", "signalType": "demand", "changePct": 11, "insight": "19 jobs, above market average" },
+    { "role": "Fractional CMO", "signalType": "demand", "changePct": -3, "insight": "13 jobs, below market average" }
   ]
 }
 ```
@@ -182,4 +182,4 @@ X-FWI-Score: 62.4
 X-FWI-Label: Growing
 ```
 
-Cache aggressively — the score changes at most once per week.
+Cache aggressively. The score changes at most once per week.
