@@ -12,6 +12,7 @@ const ADZUNA_APP_ID = Deno.env.get('ADZUNA_APP_ID') || '';
 const ADZUNA_APP_KEY = Deno.env.get('ADZUNA_APP_KEY') || '';
 const APIFY_API_KEY = Deno.env.get('APIFY_API_KEY') || '';
 const NEWS_API_KEY = Deno.env.get('NEWS_API_KEY') || '';
+const PDL_API_KEY = Deno.env.get('PDL_API_KEY') || '';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
@@ -32,12 +33,13 @@ const GOOGLE_TRENDS_TERMS = [
   'fractional executive'
 ];
 
-// Confidence weights per source (not all sources are equal)
+// Data completeness weights per source (not all sources are equal)
 const SOURCE_CONFIDENCE_WEIGHTS: Record<string, number> = {
-  adzuna: 0.35,
-  google_trends: 0.25,
-  sec_edgar: 0.25,
-  newsapi: 0.15,
+  adzuna: 0.30,
+  google_trends: 0.20,
+  sec_edgar: 0.20,
+  newsapi: 0.10,
+  people_data_labs: 0.20,
 };
 
 interface SignalResult {
@@ -118,6 +120,14 @@ function normalizeTrends(avg: number): number {
   // We pass through directly, with a floor of 5 to distinguish "some interest" from "zero data."
   const safe = safeNumber(avg, 0);
   return Math.max(5, Math.min(100, Math.round(safe)));
+}
+
+function normalizeSupplyCount(count: number): number {
+  // Log scale similar to job counts. 5000 profiles with "fractional" in title = score 50.
+  // This is calibrated to initial PDL test queries (March 2026).
+  const safe = safeNumber(count, 0);
+  if (safe === 0) return 10; // floor
+  return Math.min(100, Math.round(Math.log10(safe + 1) / Math.log10(10000) * 100));
 }
 
 // Calculate weighted confidence based on which sources succeeded
@@ -406,6 +416,102 @@ async function collectNewsApiSignal(date: string): Promise<SignalResult> {
   }
 }
 
+async function collectPDLSupplySignals(date: string): Promise<SignalResult[]> {
+  if (!PDL_API_KEY) {
+    console.log('[PDL] No API key configured, skipping supply signal collection');
+    return [];
+  }
+
+  console.log('[PDL] Starting supply signal collection...');
+  const results: SignalResult[] = [];
+
+  // Query PDL for each fractional role to count professionals with that title
+  const PDL_ROLES = [
+    { title: 'fractional CFO', category: 'cfo' },
+    { title: 'fractional CMO', category: 'cmo' },
+    { title: 'fractional CTO', category: 'cto' },
+    { title: 'fractional COO', category: 'coo' },
+    { title: 'fractional CRO', category: 'cro' },
+    { title: 'fractional CEO', category: 'ceo' },
+  ];
+
+  let totalProfiles = 0;
+
+  for (const role of PDL_ROLES) {
+    try {
+      const response = await fetchWithRetry(
+        'https://api.peopledatalabs.com/v5/person/search',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Api-Key': PDL_API_KEY,
+          },
+          body: JSON.stringify({
+            sql: `SELECT * FROM person WHERE job_title LIKE '%${role.title}%' AND location_country='us'`,
+            size: 0, // We only need the count, not actual records
+          }),
+        },
+        2, // fewer retries to conserve API credits
+        15000
+      );
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errText.slice(0, 200)}`);
+      }
+
+      const data = await response.json();
+      const count = safeNumber(data.total, 0);
+      totalProfiles += count;
+      const normalized = normalizeSupplyCount(count);
+
+      results.push({
+        source: 'people_data_labs',
+        signal_type: 'supply',
+        category: role.category,
+        raw_value: count,
+        normalized_value: normalized,
+        metadata: { query_title: role.title, geo: 'us' },
+        success: true,
+      });
+
+      console.log(`[PDL] ${role.title}: ${count} profiles → score ${normalized}`);
+    } catch (error) {
+      console.error(`[PDL] ${role.title} failed:`, error.message);
+      results.push({
+        source: 'people_data_labs',
+        signal_type: 'supply',
+        category: role.category,
+        raw_value: 0,
+        normalized_value: 10,
+        success: false,
+        error: error.message,
+      });
+    }
+  }
+
+  // Aggregate supply signal
+  if (results.some(r => r.success)) {
+    const successfulScores = results.filter(r => r.success).map(r => r.normalized_value);
+    const avgScore = Math.round(successfulScores.reduce((a, b) => a + b, 0) / successfulScores.length);
+
+    results.push({
+      source: 'people_data_labs',
+      signal_type: 'supply',
+      category: 'aggregate',
+      raw_value: totalProfiles,
+      normalized_value: avgScore,
+      metadata: { role_count: PDL_ROLES.length, total_profiles: totalProfiles },
+      success: true,
+    });
+
+    console.log(`[PDL] Aggregate: ${totalProfiles} total profiles → score ${avgScore}`);
+  }
+
+  return results;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -430,22 +536,25 @@ serve(async (req) => {
     // Collect all signals in parallel for speed
     const [
       adzunaResults,
-      trendsResult, 
+      trendsResult,
       edgarResult,
-      newsResult
+      newsResult,
+      pdlResults
     ] = await Promise.all([
       collectAdzunaSignals(today),
       collectGoogleTrendsSignal(today),
       collectSecEdgarSignal(today),
-      collectNewsApiSignal(today)
+      collectNewsApiSignal(today),
+      collectPDLSupplySignals(today)
     ]);
 
     // Flatten all results
     const allSignals = [
       ...adzunaResults,
       trendsResult,
-      edgarResult, 
-      newsResult
+      edgarResult,
+      newsResult,
+      ...pdlResults
     ];
 
     const successfulSignals = allSignals.filter(s => s.success);

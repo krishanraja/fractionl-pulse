@@ -106,8 +106,10 @@ async function handleCurrentFWI(): Promise<Response> {
         supply: {
           score: latest.supply_score,
           weight: weights.supply,
-          sources: ['Baseline placeholder. Contra marketplace integration Q2 2026.'],
-          note: latest.supply_score === 50 ? 'Using neutral baseline pending marketplace data' : null,
+          sources: latest.supply_score === 50
+            ? ['Neutral baseline (no supply data source configured)']
+            : ['People Data Labs professional profile counts'],
+          note: latest.supply_score === 50 ? 'Using neutral baseline pending supply data integration' : null,
         },
         culture: {
           score: latest.momentum_score,
