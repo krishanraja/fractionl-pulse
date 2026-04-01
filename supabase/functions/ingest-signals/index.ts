@@ -86,25 +86,36 @@ async function fetchWithRetry(
   throw lastError || new Error('fetchWithRetry exhausted');
 }
 
-// Normalization functions with input validation
+// Normalization functions with input validation.
+// Each maps a raw API value to a 0-100 scale. Constants are calibrated to
+// historical data ranges observed during development (March 2026).
+
 function normalizeJobCount(count: number): number {
+  // Log scale: 200 jobs = score 100. Chosen because the highest-volume role
+  // (Fractional CFO) peaks at ~150-200 live listings in the US.
   const safe = safeNumber(count, 0);
   if (safe === 0) return 15;  // floor for inactive markets
   return Math.min(100, Math.round(Math.log10(safe + 1) / Math.log10(200) * 100));
 }
 
 function normalizeFormD(count: number): number {
+  // Linear scale: 800 tech Form D filings per 90-day window = score 50.
+  // 800 is the approximate historical median for "software OR technology OR SaaS" filings.
   const safe = safeNumber(count, 0);
-  const baseline = 800;  // 800 filings = score 50
+  const baseline = 800;
   return Math.min(100, Math.round((safe / baseline) * 50));
 }
 
 function normalizeNews(articleCount: number): number {
+  // Square-root scale: dampens spikes from viral articles.
+  // ~44 articles → score ~100. Typical quiet week is 5-10 articles (~34-47 score).
   const safe = safeNumber(articleCount, 0);
   return Math.min(100, Math.round(Math.sqrt(safe) * 15));
 }
 
 function normalizeTrends(avg: number): number {
+  // Google Trends already returns 0-100 natively (relative search interest).
+  // We pass through directly, with a floor of 5 to distinguish "some interest" from "zero data."
   const safe = safeNumber(avg, 0);
   return Math.max(5, Math.min(100, Math.round(safe)));
 }

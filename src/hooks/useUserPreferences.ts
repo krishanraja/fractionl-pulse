@@ -9,7 +9,7 @@ export interface UserPreferences {
 }
 
 const defaultPreferences: UserPreferences = {
-  weights: { demand: 0.5, supply: 0.3, culture: 0.2 },
+  weights: { demand: 0.5, supply: 0.2, culture: 0.3 },
   watchedRoles: ['Fractional CMO', 'Fractional CFO', 'AI Strategy Consultant'],
   alerts: { enabled: true, threshold: 5 },
   defaultTimeRange: '12m',

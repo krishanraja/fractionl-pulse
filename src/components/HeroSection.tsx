@@ -97,7 +97,7 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
                 {isPositive ? '+' : ''}{delta.toFixed(1)}
               </div>
               <div className="text-xs text-muted-foreground mt-1">
-                30-day change
+                vs 4 weeks ago
               </div>
             </div>
           </div>
@@ -167,11 +167,11 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-accent shrink-0" />
-              Talent availability ({Math.round((data.weights.supply ?? 0.3) * 100)}%)
+              Talent availability ({Math.round((data.weights.supply ?? 0.2) * 100)}%)
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-secondary shrink-0" />
-              Market buzz ({Math.round((data.weights.culture ?? data.weights.momentum ?? 0.2) * 100)}%)
+              Market buzz ({Math.round((data.weights.culture ?? data.weights.momentum ?? 0.3) * 100)}%)
             </span>
           </div>
         </div>

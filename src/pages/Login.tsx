@@ -165,7 +165,7 @@ const Login = () => {
           
           <div className="space-y-4">
             <h2 className="text-3xl font-semibold text-foreground leading-tight">
-              Real-time intelligence on the fractional economy
+              Weekly intelligence on the fractional economy
             </h2>
             <p className="text-muted-foreground leading-relaxed">
               Track demand, supply, and cultural adoption signals across the fractional executive market. Make informed decisions with data-driven insights.
@@ -183,7 +183,7 @@ const Login = () => {
               <div className="text-xs text-muted-foreground mt-1">Sub-Indices</div>
             </div>
             <div className="text-center p-4 glass-card">
-              <div className="text-2xl font-bold text-accent">Live</div>
+              <div className="text-2xl font-bold text-accent">Weekly</div>
               <div className="text-xs text-muted-foreground mt-1">Data Pipeline</div>
             </div>
           </div>

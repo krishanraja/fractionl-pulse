@@ -9,6 +9,8 @@ interface SubIndexCardsProps {
 }
 
 const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
+  const supplyIsPlaceholder = data.today.supply.score === 50 && data.today.supply.delta30d === 0;
+
   const indices = [
     {
       title: 'Hiring activity',
@@ -18,17 +20,21 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
       description: 'How many companies are actively posting fractional roles right now, plus how many just raised funding (a leading indicator of upcoming hires)',
       sparklineData: data.monthly.demand,
       colorClass: 'bg-primary',
-      colorName: 'primary'
+      colorName: 'primary',
+      isPlaceholder: false,
     },
     {
       title: 'Talent availability',
       weight: data.weights.supply,
       score: data.today.supply.score,
       delta: data.today.supply.delta30d,
-      description: 'How many fractional executives are currently available to hire. Direct marketplace data coming Q2 2026; showing neutral baseline for now.',
+      description: supplyIsPlaceholder
+        ? 'This index uses a neutral placeholder (50) until marketplace data integration launches. No real supply data is being collected yet.'
+        : 'How many fractional executives are currently available to hire, based on marketplace data.',
       sparklineData: data.monthly.supply,
-      colorClass: 'bg-accent',
-      colorName: 'accent'
+      colorClass: supplyIsPlaceholder ? 'bg-muted-foreground/40' : 'bg-accent',
+      colorName: supplyIsPlaceholder ? 'muted' : 'accent',
+      isPlaceholder: supplyIsPlaceholder,
     },
     {
       title: 'Market buzz',
@@ -38,7 +44,8 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
       description: 'How much the world is talking about fractional work: Google searches, news coverage, and social mentions. High buzz often predicts a hiring surge.',
       sparklineData: data.monthly.culture,
       colorClass: 'bg-secondary',
-      colorName: 'secondary'
+      colorName: 'secondary',
+      isPlaceholder: false,
     }
   ];
 
@@ -66,15 +73,21 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
 
             {/* Score and Delta */}
             <div className="flex items-end justify-between mb-4">
-              <div className="score-medium text-foreground">
+              <div className={`score-medium ${index.isPlaceholder ? 'text-muted-foreground/50' : 'text-foreground'}`}>
                 {index.score}
               </div>
-              <div className={`flex items-center gap-1 text-sm font-medium ${
-                isPositive ? 'stat-up' : 'stat-down'
-              }`}>
-                {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                {isPositive ? '+' : ''}{index.delta.toFixed(1)}
-              </div>
+              {index.isPlaceholder ? (
+                <span className="text-xs text-muted-foreground/60 font-medium px-2 py-0.5 bg-muted/50 rounded">
+                  Awaiting data
+                </span>
+              ) : (
+                <div className={`flex items-center gap-1 text-sm font-medium ${
+                  isPositive ? 'stat-up' : 'stat-down'
+                }`}>
+                  {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                  {isPositive ? '+' : ''}{index.delta.toFixed(1)}
+                </div>
+              )}
             </div>
 
             {/* Sparkline */}

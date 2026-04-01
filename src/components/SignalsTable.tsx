@@ -54,7 +54,7 @@ const SignalsTable = ({ movers }: SignalsTableProps) => {
           <tr className="border-b border-border">
             <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Role</th>
             <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Signal type</th>
-            <th className="text-right py-3 px-4 font-medium text-muted-foreground text-sm">vs. market avg</th>
+            <th className="text-right py-3 px-4 font-medium text-muted-foreground text-sm">vs. index avg</th>
             <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">What this means</th>
           </tr>
         </thead>

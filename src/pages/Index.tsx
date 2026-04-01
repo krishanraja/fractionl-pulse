@@ -27,11 +27,10 @@ const Index = () => {
   const { preferences } = useUserPreferences();
   const { data: fwiData, isLive, isLoading, isStale, lastUpdated, refresh } = useFWIData();
 
-  // Only use preferences weights if user has explicitly changed them from default (50/30/20)
-  const defaultWeights = { demand: 0.5, supply: 0.3, culture: 0.2 };
+  // Only use preferences weights if user has explicitly changed them from default (50/20/30)
   const userHasCustomWeights = preferences.weights &&
     (Math.abs(preferences.weights.demand - 0.5) > 0.01 ||
-     Math.abs(preferences.weights.supply - 0.3) > 0.01);
+     Math.abs(preferences.weights.supply - 0.2) > 0.01);
 
   const data = {
     ...fwiData,
@@ -79,8 +78,8 @@ const Index = () => {
           </>
         ) : (
           <>
-            <span className="text-amber-400 text-xs font-medium">Preview Mode</span>
-            <span className="text-amber-400/70 text-xs">Showing sample data while the pipeline warms up. Live signals coming soon.</span>
+            <span className="text-amber-400 text-xs font-medium">Awaiting First Run</span>
+            <span className="text-amber-400/70 text-xs">The data pipeline has not run yet. No real data is displayed. Scores will appear after the first weekly pipeline run.</span>
           </>
         )}
       </motion.div>
@@ -112,7 +111,7 @@ const Index = () => {
         <section className="lg:col-span-2 glass-card p-4 sm:p-5">
           <div className="mb-4">
             <h2 className="text-base sm:text-lg font-semibold text-foreground">What's moving this week</h2>
-            <p className="text-xs text-muted-foreground mt-1">Roles and signals that are notably above or below the market average right now.</p>
+            <p className="text-xs text-muted-foreground mt-1">Roles and signals that are notably above or below the index average of all tracked roles this week.</p>
           </div>
           <SignalsTable movers={data.movers} />
         </section>
