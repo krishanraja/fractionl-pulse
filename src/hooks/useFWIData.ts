@@ -13,31 +13,26 @@ function trailingMonths(count: number): string[] {
   return result;
 }
 
-// Fallback baseline data shown before real pipeline runs
+// Placeholder baseline shown before the pipeline has ever run.
+// All values are zero/empty to avoid presenting fabricated data as real.
 const BASELINE: FWIData = {
   asOf: new Date().toISOString().slice(0, 10),
-  weights: { demand: 0.5, supply: 0.3, culture: 0.2 },
+  weights: { demand: 0.5, supply: 0.2, culture: 0.3 },
   monthly: {
     months: trailingMonths(12),
-    overall: [56,57,59,61,62,63,65,66,67,68,69,71],
-    demand:  [58,60,62,64,64,66,68,70,71,72,74,75],
-    supply:  [54,55,57,58,60,61,63,64,64,65,66,67],
-    culture: [47,49,50,53,54,54,56,56,57,58,59,61]
+    overall: [0,0,0,0,0,0,0,0,0,0,0,0],
+    demand:  [0,0,0,0,0,0,0,0,0,0,0,0],
+    supply:  [0,0,0,0,0,0,0,0,0,0,0,0],
+    culture: [0,0,0,0,0,0,0,0,0,0,0,0]
   },
   today: {
-    overall: 71.0,
-    delta30d: 2.0,
-    demand: { score: 75, delta30d: 3.0 },
-    supply: { score: 67, delta30d: 2.0 },
-    culture: { score: 61, delta30d: 3.0 }
+    overall: 0,
+    delta30d: 0,
+    demand: { score: 0, delta30d: 0 },
+    supply: { score: 50, delta30d: 0 },
+    culture: { score: 0, delta30d: 0 }
   },
-  movers: [
-    { skill: "Fractional CMO", type: "demand", change_pct: 12, note: "Enterprise RFP surge" },
-    { skill: "AI Strategy Consultant", type: "supply", change_pct: 9, note: "Marketplace listings up" },
-    { skill: "Fractional CFO", type: "demand", change_pct: 8, note: "Series A/B hiring cycle" },
-    { skill: "Fractional CRO", type: "culture", change_pct: 7, note: "Search interest rising" },
-    { skill: "Interim Ops Director", type: "demand", change_pct: 6, note: "Project-based hiring up" }
-  ]
+  movers: []
 };
 
 /** Maximum age (in ms) before live data is considered stale (48 hours) */
@@ -90,19 +85,26 @@ export function useFWIData(): UseFWIDataReturn {
         .limit(5);
 
       const latest = scores[scores.length - 1];
-      // Use the second-to-last score as the 30-day comparison (each record ≈ 1 month)
-      const prev = scores.length >= 2 ? scores[scores.length - 2] : null;
+      // Find the score closest to 30 days ago for an accurate 4-week delta
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const prev = scores.length >= 2
+        ? (scores.find(s => s.date <= thirtyDaysAgo) || scores[0])
+        : null;
+      const prevIsRecent = prev && prev.date === latest.date; // same record = no real comparison
 
-      const delta30d = prev
-        ? Math.round((latest.overall_score - prev.overall_score) * 10) / 10
+      const roundDelta = (a: number, b: number) =>
+        Math.round((a - b) * 10) / 10;
+
+      const delta30d = prev && !prevIsRecent
+        ? roundDelta(latest.overall_score, prev.overall_score)
         : 0;
 
       const liveData: FWIData = {
         asOf: latestDate,
         weights: {
           demand: (latest.weights as any)?.demand ?? 0.5,
-          supply: (latest.weights as any)?.supply ?? 0.3,
-          culture: (latest.weights as any)?.culture ?? (latest.weights as any)?.momentum ?? 0.2,
+          supply: (latest.weights as any)?.supply ?? 0.2,
+          culture: (latest.weights as any)?.culture ?? (latest.weights as any)?.momentum ?? 0.3,
         },
         monthly: {
           months: scores.map(s => s.date.slice(0, 7)),
@@ -116,15 +118,15 @@ export function useFWIData(): UseFWIDataReturn {
           delta30d,
           demand: {
             score: Math.round(latest.demand_score * 10) / 10,
-            delta30d: prev ? Math.round((latest.demand_score - prev.demand_score) * 10) / 10 : 0,
+            delta30d: prev && !prevIsRecent ? roundDelta(latest.demand_score, prev.demand_score) : 0,
           },
           supply: {
             score: Math.round(latest.supply_score * 10) / 10,
-            delta30d: prev ? Math.round((latest.supply_score - prev.supply_score) * 10) / 10 : 0,
+            delta30d: prev && !prevIsRecent ? roundDelta(latest.supply_score, prev.supply_score) : 0,
           },
           culture: {
             score: Math.round(latest.momentum_score * 10) / 10,
-            delta30d: prev ? Math.round((latest.momentum_score - prev.momentum_score) * 10) / 10 : 0,
+            delta30d: prev && !prevIsRecent ? roundDelta(latest.momentum_score, prev.momentum_score) : 0,
           },
         },
         movers: (moversRaw || []).map(m => ({

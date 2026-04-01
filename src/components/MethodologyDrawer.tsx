@@ -65,6 +65,20 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
         </div>
       </div>
 
+      {/* Normalization */}
+      <div className="border-t border-border pt-4">
+        <h4 className="font-medium mb-2 text-foreground text-sm uppercase tracking-wide">How we normalize raw data</h4>
+        <p className="text-xs text-muted-foreground mb-3">
+          Each data source returns different units (job counts, filing counts, search interest 0-100, article counts). We convert each to a 0-100 score using these calibrations:
+        </p>
+        <div className="space-y-2 text-xs text-muted-foreground">
+          <p><span className="font-medium text-foreground">Job postings:</span> Log scale where 200 live listings = 100. Chosen because the highest-volume role (Fractional CFO) peaks around 150-200 listings.</p>
+          <p><span className="font-medium text-foreground">SEC Form D filings:</span> Linear scale where 800 tech filings per 90 days = 50. This is the approximate historical median.</p>
+          <p><span className="font-medium text-foreground">News articles:</span> Square-root scale (dampens viral spikes) where ~44 articles per 28 days = 100.</p>
+          <p><span className="font-medium text-foreground">Google Trends:</span> Passed through directly — Google already returns a 0-100 relative interest score.</p>
+        </div>
+      </div>
+
       {/* Data Quality */}
       <div className="border-t border-border pt-4">
         <h4 className="font-medium mb-2 text-foreground">How to read the score</h4>

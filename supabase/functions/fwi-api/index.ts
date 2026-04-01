@@ -88,7 +88,8 @@ async function handleCurrentFWI(): Promise<Response> {
       methodology: `FWI = (Demand × ${weights.demand}) + (Supply × ${weights.supply}) + (Culture × ${weights.momentum})`,
       scale: '0-100: <30 Contracting · 30-44 Cooling · 45-59 Stable · 60-74 Growing · 75+ Surging',
       dataSource: latest.confidence >= 0.75 ? 'live' : 'partial',
-      confidence: latest.confidence,
+      dataCompleteness: latest.confidence,
+      dataCompletenessNote: 'Measures what fraction of data sources returned data this week. Does not measure prediction accuracy.',
       nextUpdate: nextWeeklyUpdate(),
     },
     score: {

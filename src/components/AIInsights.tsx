@@ -14,27 +14,8 @@ function normalizeConfidence(value: number | undefined): number {
   return Math.round(Math.min(100, Math.max(0, value)));
 }
 
-// Fallback insights shown before pipeline generates real ones
-const FALLBACK_INSIGHTS: AIInsight[] = [
-  {
-    id: 'f1',
-    type: 'summary',
-    title: 'Weekly Market Summary',
-    body: 'Fractional executive demand has been climbing steadily. Fractional CMO and CFO roles lead growth driven by Series A/B activity. Live AI analysis launches with the first full data pipeline run.',
-    confidence: 85,
-    generatedAt: new Date().toISOString(),
-    relatedSignals: ['Fractional CMO', 'Series A/B'],
-  },
-  {
-    id: 'f2',
-    type: 'opportunity',
-    title: 'Emerging: Fractional CRO',
-    body: 'Revenue leadership demand is outpacing supply. Companies scaling from $1M to $10M ARR are the primary driver. Specialists with a SaaS background are particularly sought after.',
-    confidence: 80,
-    generatedAt: new Date().toISOString(),
-    relatedSignals: ['Fractional CRO', 'Supply Index'],
-  },
-];
+// Empty fallback — no fabricated insights before the pipeline has run
+const FALLBACK_INSIGHTS: AIInsight[] = [];
 
 const getInsightIcon = (type: AIInsight['type']) => {
   switch (type) {
@@ -167,6 +148,15 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
         </div>
       </div>
 
+      {displayInsights.length === 0 && (
+        <div className="glass-card p-6 text-center space-y-2">
+          <Sparkles size={24} className="mx-auto text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">
+            AI insights will appear after the first data pipeline run. They are generated from real FWI scores and market signals — not pre-written.
+          </p>
+        </div>
+      )}
+
       <div className={compact ? "space-y-3" : "grid gap-4 md:grid-cols-2"}>
         {displayInsights.map((insight) => {
           const Icon = getInsightIcon(insight.type);
@@ -187,8 +177,8 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
                     {insight.type}
                   </span>
                 </div>
-                <span className="text-xs text-muted-foreground">
-                  {insight.confidence}% confidence
+                <span className="text-xs text-muted-foreground" title="How complete the underlying data was when this insight was generated">
+                  {insight.confidence}% data completeness
                 </span>
               </div>
 
