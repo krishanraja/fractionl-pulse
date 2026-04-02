@@ -12,9 +12,10 @@ interface TrendlineChartProps {
     supply: number[];
     culture: number[];
   };
+  hasLiveSupply?: boolean;
 }
 
-const TrendlineChart = ({ data }: TrendlineChartProps) => {
+const TrendlineChart = ({ data, hasLiveSupply = false }: TrendlineChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
   const isMobile = useMediaQuery("(max-width: 640px)");
@@ -71,7 +72,7 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
             pointHoverRadius: subHoverRadius,
             borderDash: [2, 2]
           },
-          {
+          ...(hasLiveSupply ? [{
             label: 'Supply',
             data: data.supply,
             borderColor: '#8B5CF6',
@@ -85,7 +86,7 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
             pointRadius: subPointRadius,
             pointHoverRadius: subHoverRadius,
             borderDash: [5, 5]
-          },
+          }] : []),
           {
             label: 'Culture',
             data: data.culture,

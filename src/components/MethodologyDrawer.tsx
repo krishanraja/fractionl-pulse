@@ -1,7 +1,7 @@
-import { Download } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
+import { Download } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/use-mobile';
 
 interface MethodologyDrawerProps {
@@ -15,6 +15,8 @@ interface MethodologyDrawerProps {
 }
 
 const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weights'] }) => {
+  const supplyIsActive = weights.supply > 0;
+
   return (
     <div className="space-y-6 py-4">
       {/* Overview */}
@@ -25,7 +27,7 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
         </p>
       </div>
 
-      {/* Components - High level only */}
+      {/* Components */}
       <div className="space-y-4">
         <h4 className="font-medium text-foreground text-sm uppercase tracking-wide">What we measure</h4>
 
@@ -41,15 +43,23 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
             <p className="text-xs text-muted-foreground pl-5">Live job postings for fractional CFO, CMO, CTO, COO, CRO, and interim CEO roles. Plus venture capital funding filings: companies that just raised tend to hire fractional executives 1-3 months later.</p>
           </div>
 
-          <div className="p-3 bg-muted/20 rounded-lg space-y-1">
+          <div className={`p-3 bg-muted/20 rounded-lg space-y-1 ${!supplyIsActive ? 'opacity-50' : ''}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-accent" />
                 <span className="font-medium text-foreground">Talent availability</span>
               </div>
-              <span className="text-sm text-muted-foreground">{(weights.supply * 100).toFixed(0)}% of score</span>
+              {supplyIsActive ? (
+                <span className="text-sm text-muted-foreground">{(weights.supply * 100).toFixed(0)}% of score</span>
+              ) : (
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-accent/10 text-accent">Coming Soon</span>
+              )}
             </div>
-            <p className="text-xs text-muted-foreground pl-5">How many fractional executives are currently available to hire. We are integrating live marketplace data (Contra, Toptal) in Q2 2026; using a neutral baseline until then.</p>
+            <p className="text-xs text-muted-foreground pl-5">
+              {supplyIsActive
+                ? 'How many fractional executives are currently available to hire, based on marketplace data.'
+                : 'Will track fractional talent availability via People Data Labs profiles. We are integrating live marketplace data in Q2 2026; currently excluded from the composite score.'}
+            </p>
           </div>
 
           <div className="p-3 bg-muted/20 rounded-lg space-y-1">
@@ -99,7 +109,7 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
       </div>
 
       {/* CTA */}
-      <Button 
+      <Button
         className="w-full"
         onClick={() => window.open('https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current', '_blank')}
       >

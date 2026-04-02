@@ -8,12 +8,12 @@ import { useSignalContext } from '@/hooks/useSignalContext';
 interface SubIndexCardsProps {
   data: any;
   compact?: boolean;
+  hasLiveSupply?: boolean;
 }
 
-const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
-  const supplyIsPlaceholder = data.today.supply.score === 50 && data.today.supply.delta30d === 0;
+const SubIndexCards = ({ data, compact = false, hasLiveSupply = false }: SubIndexCardsProps) => {
+  const supplyIsPlaceholder = !hasLiveSupply;
   const signalContext = useSignalContext();
-
   const indices = [
     {
       key: 'demand',
@@ -23,10 +23,12 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
       delta: data.today.demand.delta30d,
       description: 'How many companies are actively posting fractional roles right now, plus how many just raised funding (a leading indicator of upcoming hires)',
       rawContext: signalContext.demand,
+      context: data.context?.demandContext,
       sparklineData: data.monthly.demand,
       colorClass: 'bg-primary',
       colorName: 'primary',
       isPlaceholder: false,
+      comingSoon: false,
       showRoleBreakdown: true,
     },
     {
@@ -36,13 +38,15 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
       score: data.today.supply.score,
       delta: data.today.supply.delta30d,
       description: supplyIsPlaceholder
-        ? 'This index uses a neutral placeholder (50) until marketplace data integration launches. No real supply data is being collected yet.'
+        ? 'Will track fractional talent availability via People Data Labs profiles. Currently excluded from the composite score.'
         : 'How many fractional executives are currently available to hire, based on marketplace data.',
       rawContext: signalContext.supply,
+      context: undefined,
       sparklineData: data.monthly.supply,
       colorClass: supplyIsPlaceholder ? 'bg-muted-foreground/40' : 'bg-accent',
       colorName: supplyIsPlaceholder ? 'muted' : 'accent',
       isPlaceholder: supplyIsPlaceholder,
+      comingSoon: !hasLiveSupply,
       showRoleBreakdown: false,
     },
     {
@@ -53,10 +57,12 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
       delta: data.today.culture.delta30d,
       description: 'How much the world is talking about fractional work: Google searches, news coverage, and social mentions. High buzz often predicts a hiring surge.',
       rawContext: signalContext.culture,
+      context: data.context?.cultureContext,
       sparklineData: data.monthly.culture,
       colorClass: 'bg-secondary',
       colorName: 'secondary',
       isPlaceholder: false,
+      comingSoon: false,
       showRoleBreakdown: false,
     }
   ];
@@ -65,6 +71,37 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {indices.map((index, i) => {
         const isPositive = index.delta >= 0;
+
+        if (index.comingSoon) {
+          return (
+            <motion.div
+              key={i}
+              variants={fadeInUp}
+              className="glass-card index-card p-5 relative overflow-hidden opacity-60"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className={`w-2.5 h-2.5 rounded-full ${index.colorClass} opacity-50`} />
+                  <h3 className="font-medium text-foreground">{index.title}</h3>
+                </div>
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-accent/10 text-accent">
+                  Coming Soon
+                </span>
+              </div>
+
+              {/* Placeholder score */}
+              <div className="flex items-end justify-between mb-4">
+                <div className="score-medium text-muted-foreground/40">--</div>
+              </div>
+
+              {/* Description */}
+              <div className="text-xs text-muted-foreground pt-3 border-t border-border">
+                {index.description}
+              </div>
+            </motion.div>
+          );
+        }
 
         return (
           <motion.div
@@ -128,10 +165,13 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
               </div>
             )}
 
-            {/* Description */}
+            {/* Description + Context */}
             {!compact && !index.showRoleBreakdown && (
-              <div className="text-xs text-muted-foreground pt-3 border-t border-border">
-                {index.description}
+              <div className="text-xs pt-3 border-t border-border space-y-1">
+                {index.context && (
+                  <div className="text-foreground/70 font-medium">{index.context}</div>
+                )}
+                <div className="text-muted-foreground">{index.description}</div>
               </div>
             )}
           </motion.div>

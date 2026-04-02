@@ -12,28 +12,21 @@ import { RotateCcw } from 'lucide-react';
 interface SettingsSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  hasLiveSupply?: boolean;
 }
 
 const SettingsContent = () => {
   const { preferences, updatePreferences, updateWeights, resetPreferences } = useUserPreferences();
 
-  const handleWeightChange = (key: 'demand' | 'supply' | 'culture', value: number[]) => {
+  const handleWeightChange = (key: 'demand' | 'culture', value: number[]) => {
     const newValue = value[0] / 100;
-    const oldValue = preferences.weights[key];
-    const delta = newValue - oldValue;
-    
-    // Distribute the delta among other weights proportionally
-    const otherKeys = (['demand', 'supply', 'culture'] as const).filter(k => k !== key);
-    const otherTotal = otherKeys.reduce((sum, k) => sum + preferences.weights[k], 0);
-    
-    const newWeights = { ...preferences.weights, [key]: newValue };
-    
-    if (otherTotal > 0) {
-      otherKeys.forEach(k => {
-        newWeights[k] = Math.max(0, preferences.weights[k] - (delta * (preferences.weights[k] / otherTotal)));
-      });
-    }
-    
+    // Only two active weights: demand + culture must sum to 1.0 (supply is 0 until live)
+    const otherKey = key === 'demand' ? 'culture' : 'demand';
+    const newWeights = {
+      demand: key === 'demand' ? newValue : 1 - newValue,
+      supply: 0,
+      culture: key === 'culture' ? newValue : 1 - newValue,
+    };
     updateWeights(newWeights);
   };
 
@@ -56,27 +49,30 @@ const SettingsContent = () => {
             <Slider
               value={[preferences.weights.demand * 100]}
               onValueChange={(v) => handleWeightChange('demand', v)}
-              max={80}
-              min={10}
+              max={90}
+              min={50}
               step={5}
               className="w-full"
             />
           </div>
 
           {/* Supply Weight */}
-          <div className="space-y-3">
+          <div className="space-y-3 opacity-40 pointer-events-none">
             <div className="flex items-center justify-between">
               <Label className="text-sm">Supply</Label>
-              <span className="text-sm font-medium text-accent">{Math.round(preferences.weights.supply * 100)}%</span>
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-accent/10 text-accent">
+                Coming Soon
+              </span>
             </div>
             <Slider
-              value={[preferences.weights.supply * 100]}
-              onValueChange={(v) => handleWeightChange('supply', v)}
+              value={[0]}
               max={80}
-              min={10}
+              min={0}
               step={5}
               className="w-full"
+              disabled
             />
+            <p className="text-xs text-muted-foreground">Supply data sources launching soon</p>
           </div>
 
           {/* Culture Weight */}
@@ -89,7 +85,7 @@ const SettingsContent = () => {
               value={[preferences.weights.culture * 100]}
               onValueChange={(v) => handleWeightChange('culture', v)}
               max={50}
-              min={5}
+              min={10}
               step={5}
               className="w-full"
             />

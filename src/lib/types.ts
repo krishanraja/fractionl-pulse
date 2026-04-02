@@ -1,11 +1,19 @@
 // Core types for the Fractional Working Index application
 
+export interface FWIContext {
+  overallContext: string;
+  demandContext: string;
+  cultureContext: string;
+  trendSummary: string;
+}
+
 export interface FWIData {
   asOf: string;
   weights: { demand: number; supply: number; culture: number };
   monthly: MonthlyData;
   today: TodayData;
   movers: Mover[];
+  context?: FWIContext;
 }
 
 export interface MonthlyData {

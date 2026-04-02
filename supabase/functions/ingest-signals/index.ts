@@ -158,9 +158,9 @@ async function collectAdzunaSignals(date: string): Promise<SignalResult[]> {
       const data = await response.json();
       const count = safeNumber(data.count, 0);
       jobCounts[role.category] = count;
-      
+
       const normalized = normalizeJobCount(count);
-      
+
       results.push({
         source: 'adzuna',
         signal_type: 'demand',
@@ -170,14 +170,14 @@ async function collectAdzunaSignals(date: string): Promise<SignalResult[]> {
         metadata: { role_phrase: role.phrase, weight: role.weight },
         success: true
       });
-      
+
       console.log(`[Adzuna] ${role.phrase}: ${count} jobs → score ${normalized}`);
-      
+
     } catch (error) {
       console.error(`[Adzuna] ${role.phrase} failed:`, error.message);
       results.push({
         source: 'adzuna',
-        signal_type: 'demand', 
+        signal_type: 'demand',
         category: role.category,
         raw_value: 0,
         normalized_value: 15, // floor score

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Download, BookOpen, RefreshCw } from 'lucide-react';
+import { TrendingUp, TrendingDown, BookOpen, RefreshCw } from 'lucide-react';
 import { fadeInUp } from '@/lib/motion';
 import { calcComposite } from '@/lib/types';
 
@@ -100,6 +100,11 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
                 vs 4 weeks ago
               </div>
             </div>
+            {data.context?.overallContext && (
+              <div className="text-[11px] text-muted-foreground/70 mt-1.5">
+                {data.context.overallContext}
+              </div>
+            )}
           </div>
 
           {/* Delta - desktop only */}
@@ -141,10 +146,12 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
             </Button>
             <Button
               size="sm"
-              onClick={() => window.open('/assets/fwi_sample_report.pdf', '_blank')}
+              variant="outline"
+              onClick={onShowMethodology}
+              className="sm:hidden"
             >
-              <Download size={14} className="mr-1.5" />
-              Report
+              <BookOpen size={14} className="mr-1.5" />
+              Methodology
             </Button>
           </div>
         </div>
@@ -165,10 +172,17 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
               <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
               Hiring activity ({Math.round((data.weights.demand ?? 0.5) * 100)}%)
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-accent shrink-0" />
-              Talent availability ({Math.round((data.weights.supply ?? 0.2) * 100)}%)
-            </span>
+            {(data.weights.supply ?? 0) > 0 ? (
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-accent shrink-0" />
+                Talent availability ({Math.round(data.weights.supply * 100)}%)
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 opacity-40">
+                <span className="w-2 h-2 rounded-full bg-accent shrink-0" />
+                Talent availability (coming soon)
+              </span>
+            )}
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-secondary shrink-0" />
               Market buzz ({Math.round((data.weights.culture ?? data.weights.momentum ?? 0.3) * 100)}%)

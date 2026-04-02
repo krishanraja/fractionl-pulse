@@ -27,16 +27,21 @@ const Index = () => {
   const [showMethodology, setShowMethodology] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const { preferences } = useUserPreferences();
-  const { data: fwiData, isLive, isLoading, isStale, lastUpdated, refresh } = useFWIData();
+  const { data: fwiData, isLive, isLoading, isStale, lastUpdated, hasLiveSupply, refresh } = useFWIData();
 
-  // Only use preferences weights if user has explicitly changed them from default (50/20/30)
-  const userHasCustomWeights = preferences.weights &&
+  // When supply has no real data, reweight to Demand 70% / Culture 30%
+  const effectiveDefaultWeights = hasLiveSupply
+    ? { demand: 0.5, supply: 0.2, culture: 0.3 }
+    : { demand: 0.7, supply: 0, culture: 0.3 };
+
+  // Only use preferences weights if user has explicitly changed them AND supply is live
+  const userHasCustomWeights = hasLiveSupply && preferences.weights &&
     (Math.abs(preferences.weights.demand - 0.5) > 0.01 ||
      Math.abs(preferences.weights.supply - 0.2) > 0.01);
 
   const data = {
     ...fwiData,
-    weights: userHasCustomWeights ? preferences.weights : fwiData.weights,
+    weights: userHasCustomWeights ? preferences.weights : effectiveDefaultWeights,
   };
 
   const fwiLabel = getFWILabel(data.today.overall);
@@ -123,7 +128,7 @@ const Index = () => {
       />
 
       <section>
-        <SubIndexCards data={data} compact={preferences.compactMode} />
+        <SubIndexCards data={data} compact={preferences.compactMode} hasLiveSupply={hasLiveSupply} />
       </section>
 
       <section>
@@ -131,11 +136,16 @@ const Index = () => {
       </section>
 
       <section className="glass-card p-4 sm:p-5">
-        <div className="mb-4">
-          <h2 className="text-base sm:text-lg font-semibold text-foreground">How the market has moved</h2>
-          <p className="text-xs text-muted-foreground mt-1">Each point is one week's reading. More weeks = more reliable picture.</p>
+        <div className="flex items-baseline justify-between mb-4">
+          <div>
+            <h2 className="text-base sm:text-lg font-semibold text-foreground">How the market has moved</h2>
+            <p className="text-xs text-muted-foreground mt-1">Each point is one week's reading. More weeks = more reliable picture.</p>
+          </div>
+          {data.context?.trendSummary && (
+            <span className="text-xs text-muted-foreground hidden sm:inline">{data.context.trendSummary}</span>
+          )}
         </div>
-        <TrendlineChart data={data.monthly} />
+        <TrendlineChart data={data.monthly} hasLiveSupply={hasLiveSupply} />
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
