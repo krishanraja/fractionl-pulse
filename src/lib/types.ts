@@ -48,6 +48,13 @@ export interface DataSourceStatus {
   status: 'active' | 'stale' | 'error';
 }
 
+export interface AlertItem {
+  label: string;
+  score: number;
+  delta: number;
+  direction: 'up' | 'down';
+}
+
 // Composite calculator
 export function calcComposite(
   data: TodayData, 

@@ -12,6 +12,8 @@ import MethodologyDrawer from '@/components/MethodologyDrawer';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useFWIData } from '@/hooks/useFWIData';
 import { staggerContainer } from '@/lib/motion';
+import { checkAlerts } from '@/lib/alerts';
+import type { AlertItem } from '@/lib/types';
 
 export const getFWILabel = (score: number): { label: string; emoji: string; color: string } => {
   if (score >= 75) return { label: 'Surging', emoji: '🚀', color: 'text-emerald-400' };
@@ -38,6 +40,11 @@ const Index = () => {
   };
 
   const fwiLabel = getFWILabel(data.today.overall);
+
+  // Check user alert threshold against current deltas
+  const alerts: AlertItem[] = isLive && preferences.alerts.enabled
+    ? checkAlerts(data, preferences.alerts.threshold)
+    : [];
 
   const renderDashboard = () => (
     <motion.div
@@ -83,6 +90,30 @@ const Index = () => {
           </>
         )}
       </motion.div>
+
+      {/* Alert banners */}
+      {alerts.length > 0 && (
+        <div className="space-y-2">
+          {alerts.map((alert, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.1 }}
+              className={`rounded-lg px-4 py-2.5 flex items-center gap-2 text-xs ${
+                alert.direction === 'up'
+                  ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                  : 'bg-red-500/10 border border-red-500/20 text-red-400'
+              }`}
+            >
+              <span className="font-medium">{alert.label}</span>
+              <span className="opacity-70">
+                moved {alert.direction === 'up' ? '+' : ''}{alert.delta.toFixed(1)} pts to {alert.score} (exceeds your {preferences.alerts.threshold}-pt alert threshold)
+              </span>
+            </motion.div>
+          ))}
+        </div>
+      )}
 
       <HeroSection
         data={data}

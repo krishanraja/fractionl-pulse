@@ -115,7 +115,7 @@ serve(async (req) => {
 
     // Data completeness: measures what fraction of data sources returned data (not prediction accuracy)
     const SOURCE_COMPLETENESS_WEIGHTS: Record<string, number> = {
-      adzuna: 0.35, google_trends: 0.25, sec_edgar: 0.25, newsapi: 0.15,
+      adzuna: 0.30, google_trends: 0.20, sec_edgar: 0.20, newsapi: 0.10, people_data_labs: 0.20,
     };
     const uniqueSources = [...new Set(signals.map(s => s.source))];
     const totalWeight = Object.values(SOURCE_COMPLETENESS_WEIGHTS).reduce((a, b) => a + b, 0);
