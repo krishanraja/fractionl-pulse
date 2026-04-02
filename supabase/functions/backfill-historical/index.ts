@@ -253,7 +253,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   const urlParams = new URL(req.url).searchParams;
-  const weeksBack = Math.min(26, Math.max(1, parseInt(urlParams.get('weeks') || '26', 10)));
+  const weeksBack = Math.min(52, Math.max(1, parseInt(urlParams.get('weeks') || '26', 10)));
   const skipTrends = urlParams.get('skip_trends') === 'true'; // Trends is slow, allow skipping
   const dryRun = urlParams.get('dry_run') === 'true';
 
