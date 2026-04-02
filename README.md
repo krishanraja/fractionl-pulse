@@ -123,6 +123,8 @@ NewsAPI (articles) ─────────┘                               
 | NewsAPI culture signal | ✅ Live |
 | Agent API (`/fwi-api`) | ✅ Live |
 | AI insight cards | ✅ Live (GPT-4o-mini) |
+| Waitlist + Auth | ✅ Live |
+| Supply "Coming Soon" UI | ✅ Live |
 | Supply signal (Contra/Toptal) | 🔜 Q2 2026 |
 | Webhook threshold alerts | 🔜 Q2 2026 |
 | Paid API tiers + Stripe | 🔜 Q3 2026 |
@@ -158,6 +160,7 @@ NewsAPI (articles) ─────────┘                               
 | `pipeline_runs` | Execution log for every ingest and calculate run |
 | `data_source_health` | Per-source health monitoring |
 | `api_keys` | API key registry for Pro/Enterprise tier |
+| `waitlist` | Email capture for Pro early access |
 
 ---
 
