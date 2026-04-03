@@ -29,7 +29,7 @@ const BASELINE: FWIData = {
     overall: 0,
     delta30d: 0,
     demand: { score: 0, delta30d: 0 },
-    supply: { score: 50, delta30d: 0 },
+    supply: { score: 0, delta30d: 0 },
     culture: { score: 0, delta30d: 0 }
   },
   movers: []
@@ -137,10 +137,9 @@ export function useFWIData(): UseFWIDataReturn {
         .order('change_pct', { ascending: false })
         .limit(5);
 
-      // Check if supply signals actually exist (supply_score of exactly 50 with no variance = no real data)
-      const supplyScores = scores.map(s => s.supply_score);
-      const supplyHasVariance = supplyScores.some(s => s !== 50 && s !== 0);
-      setHasLiveSupply(supplyHasVariance);
+      // Check if supply signals actually exist using backend metadata flag
+      const hasRealSupply = scores.some(s => (s.metadata as any)?.has_supply_data === true);
+      setHasLiveSupply(hasRealSupply);
 
       const latest = scores[scores.length - 1];
       // Find the score closest to 30 days ago for an accurate 4-week delta
@@ -162,7 +161,7 @@ export function useFWIData(): UseFWIDataReturn {
         weights: {
           demand: (latest.weights as any)?.demand ?? 0.5,
           supply: (latest.weights as any)?.supply ?? 0.2,
-          culture: (latest.weights as any)?.culture ?? (latest.weights as any)?.momentum ?? 0.3,
+          culture: (latest.weights as any)?.culture ?? (latest.weights as any)?.momentum ?? 0.3, // fallback for pre-migration records
         },
         monthly: {
           months: scores.map(s => s.date.slice(0, 7)),

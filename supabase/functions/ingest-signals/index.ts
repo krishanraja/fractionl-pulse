@@ -711,6 +711,23 @@ serve(async (req) => {
       }).eq('id', runData.id);
     }
 
+    // Update data_source_health for each source
+    const allSourceNames = ['adzuna', 'google_trends', 'sec_edgar', 'newsapi', 'people_data_labs', 'supply_trends'];
+    const now = new Date().toISOString();
+    for (const src of allSourceNames) {
+      const srcSignals = allSignals.filter(s => s.source === src);
+      if (srcSignals.length === 0) continue; // source wasn't attempted
+      const anySuccess = srcSignals.some(s => s.success);
+      const errors = srcSignals.filter(s => !s.success);
+      await supabase.from('data_source_health').upsert({
+        source: src,
+        last_checked: now,
+        ...(anySuccess ? { last_success: now, status: 'healthy', error_count: 0 } : { status: errors.length > 0 ? 'failed' : 'unknown', error_count: errors.length }),
+        metadata: { last_error: errors[0]?.error || null },
+        updated_at: now,
+      }, { onConflict: 'source' });
+    }
+
     // Trigger FWI calculation
     console.log('[Pipeline] Triggering FWI calculation...');
     const fwiResponse = await fetch(`${SUPABASE_URL}/functions/v1/calculate-fwi?date=${today}`, {
