@@ -100,14 +100,26 @@ serve(async (req) => {
     const supplyScore = Math.round(avgScore(signalsByType.supply) * 10) / 10;
     const momentumScore = Math.round(avgScore(signalsByType.momentum) * 10) / 10;
 
-    // Apply supply baseline if no supply signals collected
-    const finalSupplyScore = signalsByType.supply.length > 0 ? supplyScore : 50.0; // neutral baseline
+    // If no supply signals exist, redistribute supply weight proportionally to demand and momentum
+    const hasSupplyData = signalsByType.supply.length > 0;
+    const finalSupplyScore = hasSupplyData ? supplyScore : 0;
+
+    let effectiveWeights = { ...WEIGHTS };
+    if (!hasSupplyData) {
+      const remainingWeight = WEIGHTS.demand + WEIGHTS.momentum;
+      effectiveWeights = {
+        demand: WEIGHTS.demand / remainingWeight,
+        supply: 0,
+        momentum: WEIGHTS.momentum / remainingWeight,
+      };
+      console.log(`[FWI] No supply data — redistributing weight: demand=${effectiveWeights.demand.toFixed(2)}, momentum=${effectiveWeights.momentum.toFixed(2)}`);
+    }
 
     // Calculate composite FWI score
     const overallScore = Math.round(
-      (demandScore * WEIGHTS.demand + 
-       finalSupplyScore * WEIGHTS.supply + 
-       momentumScore * WEIGHTS.momentum) * 10
+      (demandScore * effectiveWeights.demand +
+       finalSupplyScore * effectiveWeights.supply +
+       momentumScore * effectiveWeights.momentum) * 10
     ) / 10;
 
     console.log(`[FWI] Component scores - Demand: ${demandScore}, Supply: ${finalSupplyScore}, Momentum: ${momentumScore}`);
@@ -115,7 +127,7 @@ serve(async (req) => {
 
     // Data completeness: measures what fraction of data sources returned data (not prediction accuracy)
     const SOURCE_COMPLETENESS_WEIGHTS: Record<string, number> = {
-      adzuna: 0.30, google_trends: 0.20, sec_edgar: 0.20, newsapi: 0.10, people_data_labs: 0.20,
+      adzuna: 0.25, google_trends: 0.20, sec_edgar: 0.15, newsapi: 0.10, people_data_labs: 0.20, supply_trends: 0.10,
     };
     const uniqueSources = [...new Set(signals.map(s => s.source))];
     const totalWeight = Object.values(SOURCE_COMPLETENESS_WEIGHTS).reduce((a, b) => a + b, 0);
@@ -129,12 +141,13 @@ serve(async (req) => {
       demand_score: demandScore,
       supply_score: finalSupplyScore,
       momentum_score: momentumScore,
-      weights: WEIGHTS,
+      weights: effectiveWeights,
       confidence: confidence,
-      notes: `${getFWILabel(overallScore)} - ${uniqueSources.length}/4 sources`,
+      notes: `${getFWILabel(overallScore)} - ${uniqueSources.length} sources${hasSupplyData ? '' : ' (supply excluded)'}`,
       metadata: {
         signals_used: signals.length,
         sources: Array.from(new Set(signals.map(s => s.source))),
+        has_supply_data: hasSupplyData,
         methodology: 'Adzuna jobs + SEC Form D + Google Trends + NewsAPI'
       }
     }, { onConflict: 'date' });

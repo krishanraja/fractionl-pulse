@@ -38,8 +38,8 @@ const SubIndexCards = ({ data, compact = false, hasLiveSupply = false }: SubInde
       score: data.today.supply.score,
       delta: data.today.supply.delta30d,
       description: supplyIsPlaceholder
-        ? 'Will track fractional talent availability via People Data Labs profiles. Currently excluded from the composite score.'
-        : 'How many fractional executives are currently available to hire, based on marketplace data.',
+        ? 'Will track fractional talent pool growth via People Data Labs profiles and supply-side search interest. Currently excluded from the composite score.'
+        : 'How many fractional executives are in the talent pool, based on PDL profile counts and supply-side search interest trends.',
       rawContext: signalContext.supply,
       context: undefined,
       sparklineData: data.monthly.supply,

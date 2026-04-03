@@ -106,10 +106,13 @@ async function handleCurrentFWI(): Promise<Response> {
         supply: {
           score: latest.supply_score,
           weight: weights.supply,
-          sources: latest.supply_score === 50
-            ? ['Neutral baseline (no supply data source configured)']
-            : ['People Data Labs professional profile counts'],
-          note: latest.supply_score === 50 ? 'Using neutral baseline pending supply data integration' : null,
+          sources: weights.supply === 0
+            ? []
+            : ['People Data Labs professional profile counts', 'Google Trends supply-side search intent'],
+          status: weights.supply === 0 ? 'excluded' : 'live',
+          note: weights.supply === 0
+            ? 'No supply data available this week — weight redistributed to demand and culture'
+            : null,
         },
         culture: {
           score: latest.momentum_score,
@@ -131,8 +134,12 @@ async function handleCurrentFWI(): Promise<Response> {
         leadingIndicator: 'SEC Form D filings predict fractional demand 1-3 months ahead',
       },
       supply: {
-        description: 'Availability of fractional executives on specialist platforms',
-        status: 'Roadmap Q2 2026: Contra and Toptal marketplace integration',
+        description: 'Availability and growth of fractional executive talent pool',
+        sources: [
+          'People Data Labs: US professional profile counts with "fractional" job titles',
+          'Google Trends: Supply-side search intent (e.g. "become fractional executive")',
+        ],
+        upcoming: 'Contra and Toptal marketplace integration (roadmap)',
       },
       culture: {
         description: 'Market awareness and momentum signals',

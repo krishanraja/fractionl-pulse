@@ -58,12 +58,21 @@ export function useSignalContext() {
         }
 
         // Build supply context
-        const supplySignals = signals.filter(s => s.signal_type === 'supply');
-        let supplyCtx: string | null = null;
-        if (supplySignals.length > 0 && supplySignals.some(s => s.source !== 'baseline')) {
-          const total = supplySignals.reduce((sum, s) => sum + (s.raw_value || 0), 0);
-          supplyCtx = `${Math.round(total)} active profiles found`;
+        const pdlAggregate = signals.find(
+          s => s.source === 'people_data_labs' && s.category === 'aggregate'
+        );
+        const supplyTrends = signals.find(
+          s => s.source === 'supply_trends'
+        );
+
+        let supplyParts: string[] = [];
+        if (pdlAggregate?.raw_value) {
+          supplyParts.push(`${Math.round(pdlAggregate.raw_value).toLocaleString()} profiles`);
         }
+        if (supplyTrends?.raw_value != null) {
+          supplyParts.push(`Supply intent: ${Math.round(supplyTrends.raw_value)}/100`);
+        }
+        const supplyCtx = supplyParts.length > 0 ? supplyParts.join(', ') : null;
 
         // Build culture/momentum context
         const trends = signals.find(s => s.source === 'google_trends');
