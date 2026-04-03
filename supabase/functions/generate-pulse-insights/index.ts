@@ -34,7 +34,7 @@ serve(async (req) => {
     const [{ data: latestScore }, { data: moversData }, { data: signals }] = await Promise.all([
       supabase.from('fwi_scores').select('*').order('date', { ascending: false }).limit(3),
       supabase.from('movers').select('*').eq('date', today).order('rank', { ascending: true }).limit(5),
-      supabase.from('signals').select('signal_type, category, normalized_value, raw_data').eq('date', today).limit(20),
+      supabase.from('signals').select('signal_type, category, normalized_value, raw_value').eq('date', today).limit(20),
     ]);
 
     if (!latestScore || latestScore.length === 0) {
