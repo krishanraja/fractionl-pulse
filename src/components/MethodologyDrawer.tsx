@@ -85,7 +85,7 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
           <p><span className="font-medium text-foreground">Job postings:</span> Log scale where 200 live listings = 100. Chosen because the highest-volume role (Fractional CFO) peaks around 150-200 listings.</p>
           <p><span className="font-medium text-foreground">SEC Form D filings:</span> Linear scale where 800 tech filings per 90 days = 50. This is the approximate historical median.</p>
           <p><span className="font-medium text-foreground">News articles:</span> Square-root scale (dampens viral spikes) where ~44 articles per 28 days = 100.</p>
-          <p><span className="font-medium text-foreground">Google Trends:</span> Passed through directly — Google already returns a 0-100 relative interest score.</p>
+          <p><span className="font-medium text-foreground">Google Trends:</span> Passed through directly. Google already returns a 0-100 relative interest score.</p>
         </div>
       </div>
 

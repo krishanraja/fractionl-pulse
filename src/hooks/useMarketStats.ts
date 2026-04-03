@@ -137,7 +137,7 @@ function getDefaultStats(): MarketStat[] {
     {
       label: 'Hottest roles',
       value: 'CFO, CMO, CTO',
-      note: 'Default ranking — will update when pipeline data is available',
+      note: 'Default ranking - will update when pipeline data is available',
       source: 'industry-estimate',
     },
   ];

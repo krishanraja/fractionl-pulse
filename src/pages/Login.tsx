@@ -73,7 +73,7 @@ const Login = () => {
                 <>
                   <h1 className="text-xl font-semibold text-foreground">Get early access</h1>
                   <p className="text-muted-foreground text-sm mt-1">
-                    Join the waitlist for Pulse Pro — weekly insights, alerts, and full historical data.
+                    Join the waitlist for Pulse Pro: weekly insights, alerts, and full historical data.
                   </p>
                 </>
               ) : mode === 'login' ? (

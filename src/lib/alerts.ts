@@ -2,7 +2,7 @@ import type { FWIData, AlertItem } from './types';
 
 /**
  * Checks FWI data against user alert threshold and returns any triggered alerts.
- * Pure function — no side effects, no storage.
+ * Pure function - no side effects, no storage.
  */
 export function checkAlerts(data: FWIData, threshold: number): AlertItem[] {
   if (threshold <= 0) return [];
