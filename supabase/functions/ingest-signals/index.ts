@@ -33,13 +33,23 @@ const GOOGLE_TRENDS_TERMS = [
   'fractional executive'
 ];
 
+// Supply-side search terms: measures intent to BECOME a fractional executive.
+// Leading indicator — search interest precedes actual supply changes by 4-8 weeks.
+const SUPPLY_TRENDS_TERMS = [
+  'become fractional executive',
+  'fractional consulting business',
+  'how to be a fractional CFO',
+  'fractional executive career',
+];
+
 // Data completeness weights per source (not all sources are equal)
 const SOURCE_CONFIDENCE_WEIGHTS: Record<string, number> = {
-  adzuna: 0.30,
+  adzuna: 0.25,
   google_trends: 0.20,
-  sec_edgar: 0.20,
+  sec_edgar: 0.15,
   newsapi: 0.10,
   people_data_labs: 0.20,
+  supply_trends: 0.10,
 };
 
 interface SignalResult {
@@ -310,6 +320,102 @@ async function collectGoogleTrendsSignal(date: string): Promise<SignalResult> {
   }
 }
 
+async function collectSupplyTrendsSignal(date: string): Promise<SignalResult> {
+  console.log('[Supply Trends] Starting supply-side search interest collection...');
+
+  try {
+    const runResponse = await fetchWithRetry(`https://api.apify.com/v2/acts/apify~google-trends-scraper/runs?token=${APIFY_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        searchTerms: SUPPLY_TRENDS_TERMS,
+        geo: 'US',
+        timeRange: 'today 3-m',
+        outputMode: 'complete'
+      })
+    });
+
+    if (!runResponse.ok) {
+      throw new Error(`Apify run failed: HTTP ${runResponse.status}`);
+    }
+
+    const runData = await runResponse.json();
+    const runId = runData.data.id;
+    const datasetId = runData.data.defaultDatasetId;
+
+    console.log(`[Supply Trends] Started run ${runId}, polling...`);
+
+    let status = 'READY';
+    let pollCount = 0;
+    const maxPolls = 24;
+
+    while (status !== 'SUCCEEDED' && status !== 'FAILED' && pollCount < maxPolls) {
+      await new Promise(resolve => setTimeout(resolve, 5000));
+
+      const statusResponse = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${APIFY_API_KEY}`);
+      const statusData = await statusResponse.json();
+      status = statusData.data.status;
+      pollCount++;
+
+      console.log(`[Supply Trends] Poll ${pollCount}: ${status}`);
+    }
+
+    if (status !== 'SUCCEEDED') {
+      throw new Error(`Supply trends run ${status} after ${pollCount * 5}s`);
+    }
+
+    const resultsResponse = await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_KEY}`);
+    const results = await resultsResponse.json();
+
+    if (!Array.isArray(results) || results.length === 0) {
+      throw new Error('No supply trends data returned');
+    }
+
+    const termAverages = results.map(item => {
+      const timeline = item.interestOverTime_timelineData || [];
+      const validPoints = timeline.filter((t: any) => t.hasData && t.hasData[0]);
+      const recent4Weeks = validPoints.slice(-4);
+      const avg = recent4Weeks.length > 0
+        ? recent4Weeks.reduce((sum: number, t: any) => sum + (t.value[0] || 0), 0) / recent4Weeks.length
+        : 0;
+
+      console.log(`[Supply Trends] ${item.searchTerm}: 4-week avg = ${avg.toFixed(1)}`);
+      return avg;
+    });
+
+    const overallAvg = termAverages.reduce((a, b) => a + b, 0) / termAverages.length;
+    const normalizedScore = normalizeTrends(overallAvg);
+
+    console.log(`[Supply Trends] Overall average: ${overallAvg.toFixed(1)} → score ${normalizedScore}`);
+
+    return {
+      source: 'supply_trends',
+      signal_type: 'supply',
+      category: 'supply_intent',
+      raw_value: Math.round(overallAvg * 10) / 10,
+      normalized_value: normalizedScore,
+      metadata: {
+        terms: SUPPLY_TRENDS_TERMS,
+        term_averages: termAverages.map(a => Math.round(a * 10) / 10),
+        valid_data_points: results.length
+      },
+      success: true
+    };
+
+  } catch (error) {
+    console.error('[Supply Trends] Failed:', error.message);
+    return {
+      source: 'supply_trends',
+      signal_type: 'supply',
+      category: 'supply_intent',
+      raw_value: 0,
+      normalized_value: 25,
+      success: false,
+      error: error.message
+    };
+  }
+}
+
 async function collectSecEdgarSignal(date: string): Promise<SignalResult> {
   console.log('[SEC EDGAR] Collecting Form D filings...');
   
@@ -449,7 +555,7 @@ async function collectPDLSupplySignals(date: string): Promise<SignalResult[]> {
           },
           body: JSON.stringify({
             sql: `SELECT * FROM person WHERE job_title LIKE '%${role.title}%' AND location_country='us'`,
-            size: 0, // We only need the count, not actual records
+            size: 1, // Minimum allowed by PDL API; we only use the total count
           }),
         },
         2, // fewer retries to conserve API credits
@@ -539,13 +645,15 @@ serve(async (req) => {
       trendsResult,
       edgarResult,
       newsResult,
-      pdlResults
+      pdlResults,
+      supplyTrendsResult
     ] = await Promise.all([
       collectAdzunaSignals(today),
       collectGoogleTrendsSignal(today),
       collectSecEdgarSignal(today),
       collectNewsApiSignal(today),
-      collectPDLSupplySignals(today)
+      collectPDLSupplySignals(today),
+      collectSupplyTrendsSignal(today)
     ]);
 
     // Flatten all results
@@ -554,7 +662,8 @@ serve(async (req) => {
       trendsResult,
       edgarResult,
       newsResult,
-      ...pdlResults
+      ...pdlResults,
+      supplyTrendsResult
     ];
 
     const successfulSignals = allSignals.filter(s => s.success);
