@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { Bell, ChevronDown, X } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import HeroSection from '@/components/HeroSection';
 import SubIndexCards from '@/components/SubIndexCards';
@@ -26,6 +28,8 @@ export const getFWILabel = (score: number): { label: string; emoji: string; colo
 const Index = () => {
   const [showMethodology, setShowMethodology] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [alertsDismissed, setAlertsDismissed] = useState(false);
+  const [alertsExpanded, setAlertsExpanded] = useState(false);
   const { preferences } = useUserPreferences();
   const { data: fwiData, isLive, isLoading, isStale, lastUpdated, hasLiveSupply, refresh } = useFWIData();
 
@@ -96,29 +100,59 @@ const Index = () => {
         )}
       </motion.div>
 
-      {/* Alert banners */}
-      {alerts.length > 0 && (
-        <div className="space-y-2">
-          {alerts.map((alert, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className={`rounded-lg px-4 py-2.5 flex items-center gap-2 text-xs ${
-                alert.direction === 'up'
-                  ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
-                  : 'bg-red-500/10 border border-red-500/20 text-red-400'
-              }`}
-            >
-              <span className="font-medium">{alert.label}</span>
-              <span className="opacity-70">
-                moved {alert.direction === 'up' ? '+' : ''}{alert.delta.toFixed(1)} pts to {alert.score} (exceeds your {preferences.alerts.threshold}-pt alert threshold)
-              </span>
-            </motion.div>
-          ))}
-        </div>
-      )}
+      {/* Collapsible alert summary */}
+      <AnimatePresence>
+        {alerts.length > 0 && !alertsDismissed && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+          >
+            <Collapsible open={alertsExpanded} onOpenChange={setAlertsExpanded}>
+              <div className="rounded-lg border border-orange-500/20 bg-orange-500/5">
+                <CollapsibleTrigger asChild>
+                  <button className="w-full px-4 py-2 flex items-center justify-between text-xs cursor-pointer">
+                    <span className="flex items-center gap-2">
+                      <Bell size={14} className="text-orange-400" />
+                      <span className="text-orange-400 font-medium">
+                        {alerts.length} alert{alerts.length > 1 ? 's' : ''}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {alerts.map(a => a.label).join(', ')}
+                      </span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <ChevronDown size={14} className={`text-muted-foreground transition-transform ${alertsExpanded ? 'rotate-180' : ''}`} />
+                      <X
+                        size={14}
+                        onClick={(e) => { e.stopPropagation(); setAlertsDismissed(true); }}
+                        className="text-muted-foreground hover:text-foreground ml-1"
+                      />
+                    </span>
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="px-4 pb-2.5 space-y-1.5 border-t border-orange-500/10 pt-2">
+                    {alerts.map((alert, i) => (
+                      <div
+                        key={i}
+                        className={`flex items-center gap-2 text-xs ${
+                          alert.direction === 'up' ? 'text-emerald-400' : 'text-red-400'
+                        }`}
+                      >
+                        <span className="font-medium">{alert.label}</span>
+                        <span className="opacity-70">
+                          {alert.direction === 'up' ? '+' : ''}{alert.delta.toFixed(1)} pts to {alert.score}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <HeroSection
         data={data}

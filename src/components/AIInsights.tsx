@@ -14,7 +14,7 @@ function normalizeConfidence(value: number | undefined): number {
   return Math.round(Math.min(100, Math.max(0, value)));
 }
 
-// Empty fallback — no fabricated insights before the pipeline has run
+// Empty fallback - no fabricated insights before the pipeline has run
 const FALLBACK_INSIGHTS: AIInsight[] = [];
 
 const getInsightIcon = (type: AIInsight['type']) => {
@@ -152,7 +152,7 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
         <div className="glass-card p-6 text-center space-y-2">
           <Sparkles size={24} className="mx-auto text-muted-foreground/40" />
           <p className="text-sm text-muted-foreground">
-            AI insights will appear after the first data pipeline run. They are generated from real FWI scores and market signals — not pre-written.
+            AI insights will appear after the first data pipeline run. They are generated from real FWI scores and market signals, not pre-written.
           </p>
         </div>
       )}

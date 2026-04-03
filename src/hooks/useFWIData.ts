@@ -55,17 +55,17 @@ function buildContext(monthly: FWIData['monthly'], today: FWIData['today']): FWI
     : isAtLow
     ? `Lowest reading in the last ${monthsTracked} months`
     : today.delta30d > 0
-    ? `Up ${today.delta30d.toFixed(1)} pts in 30 days — peak was ${maxScore} in ${highLabel}`
-    : `Down ${Math.abs(today.delta30d).toFixed(1)} pts in 30 days — peak was ${maxScore} in ${highLabel}`;
+    ? `Up ${today.delta30d.toFixed(1)} pts in 30 days. Peak was ${maxScore} in ${highLabel}`
+    : `Down ${Math.abs(today.delta30d).toFixed(1)} pts in 30 days. Peak was ${maxScore} in ${highLabel}`;
 
   const demandDelta = today.demand.delta30d;
   const demandContext = demandDelta > 3
-    ? 'Strong upward momentum — hiring activity accelerating'
+    ? 'Strong upward momentum; hiring activity accelerating'
     : demandDelta > 0
     ? 'Modest growth in fractional job postings'
     : demandDelta > -3
     ? 'Demand holding steady with slight softening'
-    : 'Demand cooling — fewer new fractional postings';
+    : 'Demand cooling. Fewer new fractional postings';
 
   const cultureDelta = today.culture.delta30d;
   const cultureContext = cultureDelta > 3
@@ -84,7 +84,7 @@ function buildContext(monthly: FWIData['monthly'], today: FWIData['today']): FWI
     ? `${streak} consecutive months of growth`
     : streak > 0
     ? `Trending up over the last ${streak} month${streak > 1 ? 's' : ''}`
-    : 'Growth has stalled — watch for recovery signals';
+    : 'Growth has stalled. Watch for recovery signals';
 
   return { overallContext, demandContext, cultureContext, trendSummary };
 }
