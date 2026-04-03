@@ -11,10 +11,10 @@ const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 // Updated weights based on verified defensible signal methodology
-const WEIGHTS = { 
+const WEIGHTS = {
   demand: 0.50,    // Adzuna fractional jobs + SEC Form D leading indicator
-  supply: 0.20,    // Placeholder (neutral baseline until Contra integration)
-  momentum: 0.30   // Google Trends + NewsAPI culture signals
+  supply: 0.20,    // People Data Labs + supply-side search interest
+  culture: 0.30    // Google Trends + NewsAPI culture signals
 };
 
 const ROLE_NAMES: Record<string, string> = {
@@ -100,26 +100,26 @@ serve(async (req) => {
     const supplyScore = Math.round(avgScore(signalsByType.supply) * 10) / 10;
     const momentumScore = Math.round(avgScore(signalsByType.momentum) * 10) / 10;
 
-    // If no supply signals exist, redistribute supply weight proportionally to demand and momentum
+    // If no supply signals exist, redistribute supply weight proportionally to demand and culture
     const hasSupplyData = signalsByType.supply.length > 0;
     const finalSupplyScore = hasSupplyData ? supplyScore : 0;
 
     let effectiveWeights = { ...WEIGHTS };
     if (!hasSupplyData) {
-      const remainingWeight = WEIGHTS.demand + WEIGHTS.momentum;
+      const remainingWeight = WEIGHTS.demand + WEIGHTS.culture;
       effectiveWeights = {
         demand: WEIGHTS.demand / remainingWeight,
         supply: 0,
-        momentum: WEIGHTS.momentum / remainingWeight,
+        culture: WEIGHTS.culture / remainingWeight,
       };
-      console.log(`[FWI] No supply data — redistributing weight: demand=${effectiveWeights.demand.toFixed(2)}, momentum=${effectiveWeights.momentum.toFixed(2)}`);
+      console.log(`[FWI] No supply data — redistributing weight: demand=${effectiveWeights.demand.toFixed(2)}, culture=${effectiveWeights.culture.toFixed(2)}`);
     }
 
     // Calculate composite FWI score
     const overallScore = Math.round(
       (demandScore * effectiveWeights.demand +
        finalSupplyScore * effectiveWeights.supply +
-       momentumScore * effectiveWeights.momentum) * 10
+       momentumScore * effectiveWeights.culture) * 10
     ) / 10;
 
     console.log(`[FWI] Component scores - Demand: ${demandScore}, Supply: ${finalSupplyScore}, Momentum: ${momentumScore}`);
@@ -269,7 +269,7 @@ serve(async (req) => {
           average: finalSupplyScore,
           note: finalSupplyScore === 50 ? 'Using baseline - direct supply data pending' : null
         },
-        momentum: {
+        culture: {
           sources: signals.filter(s => s.signal_type === 'momentum').map(s => `${s.source}/${s.category}`),
           average: momentumScore
         }

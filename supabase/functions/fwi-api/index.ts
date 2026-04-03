@@ -76,7 +76,7 @@ async function handleCurrentFWI(): Promise<Response> {
     ? Math.round((latest.overall_score - previous.overall_score) * 10) / 10
     : 0;
 
-  const weights = latest.weights || { demand: 0.5, supply: 0.2, momentum: 0.3 };
+  const weights = latest.weights || { demand: 0.5, supply: 0.2, culture: 0.3 };
 
   const response = {
     meta: {
@@ -85,7 +85,7 @@ async function handleCurrentFWI(): Promise<Response> {
       publisher: 'Fractionl',
       version: '1.0',
       asOf: latest.date,
-      methodology: `FWI = (Demand × ${weights.demand}) + (Supply × ${weights.supply}) + (Culture × ${weights.momentum})`,
+      methodology: `FWI = (Demand × ${weights.demand}) + (Supply × ${weights.supply}) + (Culture × ${weights.culture})`,
       scale: '0-100: <30 Contracting · 30-44 Cooling · 45-59 Stable · 60-74 Growing · 75+ Surging',
       dataSource: latest.confidence >= 0.75 ? 'live' : 'partial',
       dataCompleteness: latest.confidence,
@@ -116,7 +116,7 @@ async function handleCurrentFWI(): Promise<Response> {
         },
         culture: {
           score: latest.momentum_score,
-          weight: weights.momentum,
+          weight: weights.culture,
           sources: ['Google Trends search interest', 'NewsAPI media coverage (28-day)'],
         },
       },

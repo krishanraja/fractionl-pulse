@@ -33,19 +33,15 @@ const Index = () => {
   const { preferences } = useUserPreferences();
   const { data: fwiData, isLive, isLoading, isStale, lastUpdated, hasLiveSupply, refresh } = useFWIData();
 
-  // When supply has no real data, reweight to Demand 70% / Culture 30%
-  const effectiveDefaultWeights = hasLiveSupply
-    ? { demand: 0.5, supply: 0.2, culture: 0.3 }
-    : { demand: 0.7, supply: 0, culture: 0.3 };
-
-  // Only use preferences weights if user has explicitly changed them AND supply is live
+  // Use backend-computed weights (which already handle supply redistribution)
+  // Only override if user has explicitly customized weights AND supply is live
   const userHasCustomWeights = hasLiveSupply && preferences.weights &&
     (Math.abs(preferences.weights.demand - 0.5) > 0.01 ||
      Math.abs(preferences.weights.supply - 0.2) > 0.01);
 
   const data = {
     ...fwiData,
-    weights: userHasCustomWeights ? preferences.weights : effectiveDefaultWeights,
+    weights: userHasCustomWeights ? preferences.weights : fwiData.weights,
   };
 
   const fwiLabel = getFWILabel(data.today.overall);
