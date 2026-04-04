@@ -25,3 +25,10 @@ supabase/.temp/
 *.njsproj
 *.sln
 *.sw?
+
+# Screenshots from testing
+*.png
+*.jpeg
+
+# Playwright MCP
+.playwright-mcp/
