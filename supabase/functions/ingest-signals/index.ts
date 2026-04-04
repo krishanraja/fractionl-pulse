@@ -13,6 +13,7 @@ const ADZUNA_APP_KEY = Deno.env.get('ADZUNA_APP_KEY') || '';
 const APIFY_API_KEY = Deno.env.get('APIFY_API_KEY') || '';
 const NEWS_API_KEY = Deno.env.get('NEWS_API_KEY') || '';
 const PDL_API_KEY = Deno.env.get('PDL_API_KEY') || '';
+const BRAVE_API_KEY = Deno.env.get('BRAVE_API_KEY') || '';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
@@ -42,12 +43,22 @@ const SUPPLY_TRENDS_TERMS = [
   'fractional executive career',
 ];
 
+// Brave Web Search terms for broader web discourse (blogs, forums, LinkedIn)
+const BRAVE_WEB_SEARCH_TERMS = [
+  'fractional executive',
+  'fractional CFO hiring',
+  'fractional CMO experience',
+  'fractional CTO startup',
+];
+
 // Data completeness weights per source (not all sources are equal)
 const SOURCE_CONFIDENCE_WEIGHTS: Record<string, number> = {
   adzuna: 0.25,
   google_trends: 0.20,
   sec_edgar: 0.15,
-  newsapi: 0.10,
+  newsapi: 0.08,
+  brave_news: 0.08,
+  brave_web: 0.06,
   people_data_labs: 0.20,
   supply_trends: 0.10,
 };
@@ -138,6 +149,14 @@ function normalizeSupplyCount(count: number): number {
   const safe = safeNumber(count, 0);
   if (safe === 0) return 10; // floor
   return Math.min(100, Math.round(Math.log10(safe + 1) / Math.log10(10000) * 100));
+}
+
+function normalizeWebMentions(count: number): number {
+  // Log scale for web search result counts. 50,000 estimated results = score ~100.
+  // Calibration constant may need tuning after initial runs.
+  const safe = safeNumber(count, 0);
+  if (safe === 0) return 10; // floor
+  return Math.min(100, Math.max(10, Math.round(Math.log10(safe + 1) / Math.log10(50000) * 100)));
 }
 
 // Calculate weighted confidence based on which sources succeeded
@@ -522,6 +541,162 @@ async function collectNewsApiSignal(date: string): Promise<SignalResult> {
   }
 }
 
+async function collectBraveNewsSignal(date: string): Promise<SignalResult> {
+  if (!BRAVE_API_KEY) {
+    console.log('[Brave News] No API key configured, skipping');
+    return {
+      source: 'brave_news',
+      signal_type: 'momentum',
+      category: 'media_coverage',
+      raw_value: 0,
+      normalized_value: 20,
+      success: false,
+      error: 'No BRAVE_API_KEY configured'
+    };
+  }
+
+  console.log('[Brave News] Collecting fractional executive news coverage...');
+
+  try {
+    const query = encodeURIComponent('"fractional CFO" OR "fractional CMO" OR "fractional CTO" OR "fractional executive"');
+    let totalArticles = 0;
+
+    // Paginate up to 3 pages (Brave News returns max 20 per page, no totalResults field)
+    for (let offset = 0; offset < 60; offset += 20) {
+      const url = `https://api.search.brave.com/res/v1/news/search?q=${query}&count=20&offset=${offset}&freshness=pm`;
+
+      const response = await fetchWithRetry(url, {
+        headers: { 'X-Subscription-Token': BRAVE_API_KEY }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText.slice(0, 200)}`);
+      }
+
+      const data = await response.json();
+      const results = data.results || [];
+      totalArticles += results.length;
+
+      // Stop paginating if fewer than 20 results (no more pages)
+      if (results.length < 20) break;
+
+      // Rate limit: 1 request/second on free tier
+      if (offset + 20 < 60) {
+        await new Promise(resolve => setTimeout(resolve, 1100));
+      }
+    }
+
+    const normalizedScore = normalizeNews(totalArticles);
+    console.log(`[Brave News] ${totalArticles} articles (past month) → score ${normalizedScore}`);
+
+    return {
+      source: 'brave_news',
+      signal_type: 'momentum',
+      category: 'media_coverage',
+      raw_value: totalArticles,
+      normalized_value: normalizedScore,
+      metadata: {
+        window: 'past_month',
+        search_phrases: ['fractional CFO', 'fractional CMO', 'fractional CTO', 'fractional executive']
+      },
+      success: true
+    };
+
+  } catch (error) {
+    console.error('[Brave News] Failed:', error.message);
+    return {
+      source: 'brave_news',
+      signal_type: 'momentum',
+      category: 'media_coverage',
+      raw_value: 0,
+      normalized_value: 20,
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+async function collectBraveWebMentionsSignal(date: string): Promise<SignalResult> {
+  if (!BRAVE_API_KEY) {
+    console.log('[Brave Web] No API key configured, skipping');
+    return {
+      source: 'brave_web',
+      signal_type: 'momentum',
+      category: 'web_discourse',
+      raw_value: 0,
+      normalized_value: 15,
+      success: false,
+      error: 'No BRAVE_API_KEY configured'
+    };
+  }
+
+  console.log('[Brave Web] Collecting web discourse signals...');
+
+  try {
+    const resultCounts: number[] = [];
+
+    for (let i = 0; i < BRAVE_WEB_SEARCH_TERMS.length; i++) {
+      const term = BRAVE_WEB_SEARCH_TERMS[i];
+      const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(term)}&count=20&freshness=pm&result_filter=web`;
+
+      const response = await fetchWithRetry(url, {
+        headers: { 'X-Subscription-Token': BRAVE_API_KEY }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText.slice(0, 200)}`);
+      }
+
+      const data = await response.json();
+      // Brave Web Search provides an estimated total result count
+      const estimatedTotal = safeNumber(data.web?.totalResults ?? data.query?.total_count ?? data.web?.results?.length, 0);
+      resultCounts.push(estimatedTotal);
+
+      console.log(`[Brave Web] "${term}": ~${estimatedTotal} results`);
+
+      // Rate limit: 1 request/second on free tier
+      if (i < BRAVE_WEB_SEARCH_TERMS.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1100));
+      }
+    }
+
+    const avgCount = resultCounts.length > 0
+      ? resultCounts.reduce((a, b) => a + b, 0) / resultCounts.length
+      : 0;
+    const normalizedScore = normalizeWebMentions(avgCount);
+
+    console.log(`[Brave Web] Average estimated results: ${Math.round(avgCount)} → score ${normalizedScore}`);
+
+    return {
+      source: 'brave_web',
+      signal_type: 'momentum',
+      category: 'web_discourse',
+      raw_value: Math.round(avgCount),
+      normalized_value: normalizedScore,
+      metadata: {
+        terms: BRAVE_WEB_SEARCH_TERMS,
+        term_counts: resultCounts,
+        window: 'past_month'
+      },
+      success: true
+    };
+
+  } catch (error) {
+    console.error('[Brave Web] Failed:', error.message);
+    return {
+      source: 'brave_web',
+      signal_type: 'momentum',
+      category: 'web_discourse',
+      raw_value: 0,
+      normalized_value: 15,
+      success: false,
+      error: error.message
+    };
+  }
+}
+
 async function collectPDLSupplySignals(date: string): Promise<SignalResult[]> {
   if (!PDL_API_KEY) {
     console.log('[PDL] No API key configured, skipping supply signal collection');
@@ -645,6 +820,8 @@ serve(async (req) => {
       trendsResult,
       edgarResult,
       newsResult,
+      braveNewsResult,
+      braveWebResult,
       pdlResults,
       supplyTrendsResult
     ] = await Promise.all([
@@ -652,6 +829,8 @@ serve(async (req) => {
       collectGoogleTrendsSignal(today),
       collectSecEdgarSignal(today),
       collectNewsApiSignal(today),
+      collectBraveNewsSignal(today),
+      collectBraveWebMentionsSignal(today),
       collectPDLSupplySignals(today),
       collectSupplyTrendsSignal(today)
     ]);
@@ -662,6 +841,8 @@ serve(async (req) => {
       trendsResult,
       edgarResult,
       newsResult,
+      braveNewsResult,
+      braveWebResult,
       ...pdlResults,
       supplyTrendsResult
     ];
@@ -712,7 +893,7 @@ serve(async (req) => {
     }
 
     // Update data_source_health for each source
-    const allSourceNames = ['adzuna', 'google_trends', 'sec_edgar', 'newsapi', 'people_data_labs', 'supply_trends'];
+    const allSourceNames = ['adzuna', 'google_trends', 'sec_edgar', 'newsapi', 'brave_news', 'brave_web', 'people_data_labs', 'supply_trends'];
     const now = new Date().toISOString();
     for (const src of allSourceNames) {
       const srcSignals = allSignals.filter(s => s.source === src);
