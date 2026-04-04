@@ -799,6 +799,7 @@ serve(async (req) => {
   // Support explicit date parameter for backfill and scheduling
   const urlParams = new URL(req.url).searchParams;
   const today = urlParams.get('date') || new Date().toISOString().slice(0, 10);
+  const callerAuth = req.headers.get('Authorization') || '';
   console.log(`[Pipeline] Starting signal collection for ${today}`);
 
   // Track pipeline execution
@@ -909,13 +910,33 @@ serve(async (req) => {
       }, { onConflict: 'source' });
     }
 
-    // Trigger FWI calculation
+    // Trigger FWI calculation (with retry for cold-start latency)
     console.log('[Pipeline] Triggering FWI calculation...');
-    const fwiResponse = await fetch(`${SUPABASE_URL}/functions/v1/calculate-fwi?date=${today}`, {
-      headers: { 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}` }
-    });
-
-    const fwiResult = fwiResponse.ok ? await fwiResponse.json() : { error: 'FWI calculation failed' };
+    let fwiResult: any = { error: 'FWI calculation not attempted' };
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        if (attempt > 0) {
+          console.log('[Pipeline] Retrying FWI calculation...');
+          await new Promise(r => setTimeout(r, 2000));
+        }
+        const fwiAuthHeader = callerAuth || `Bearer ${SUPABASE_SERVICE_KEY}`;
+        const fwiResponse = await fetch(`${SUPABASE_URL}/functions/v1/calculate-fwi?date=${today}`, {
+          headers: { 'Authorization': fwiAuthHeader }
+        });
+        if (fwiResponse.ok) {
+          fwiResult = await fwiResponse.json();
+          console.log(`[Pipeline] FWI calculation succeeded: ${fwiResult.overall_score}`);
+          break;
+        } else {
+          const errText = await fwiResponse.text();
+          console.error(`[Pipeline] FWI attempt ${attempt + 1} failed (${fwiResponse.status}): ${errText.slice(0, 200)}`);
+          fwiResult = { error: `FWI HTTP ${fwiResponse.status}`, details: errText.slice(0, 200) };
+        }
+      } catch (fwiErr) {
+        console.error(`[Pipeline] FWI attempt ${attempt + 1} error:`, fwiErr.message);
+        fwiResult = { error: fwiErr.message };
+      }
+    }
 
     return new Response(JSON.stringify({
       success: true,

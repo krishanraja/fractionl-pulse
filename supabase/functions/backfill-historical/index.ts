@@ -252,6 +252,7 @@ function generateEstimatedAdzuna(weekEnd: string, weekIndex: number, totalWeeks:
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
+  const callerAuth = req.headers.get('Authorization') || '';
   const urlParams = new URL(req.url).searchParams;
   const weeksBack = Math.min(52, Math.max(1, parseInt(urlParams.get('weeks') || '26', 10)));
   const skipTrends = urlParams.get('skip_trends') === 'true'; // Trends is slow, allow skipping
@@ -352,9 +353,10 @@ serve(async (req) => {
         }
 
         // Trigger FWI calculation for this date
+        const fwiAuthHeader = callerAuth || `Bearer ${SUPABASE_SERVICE_KEY}`;
         const fwiResponse = await fetch(
           `${SUPABASE_URL}/functions/v1/calculate-fwi?date=${weekEnd}`,
-          { headers: { 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}` } }
+          { headers: { 'Authorization': fwiAuthHeader } }
         );
         if (!fwiResponse.ok) {
           console.error(`[Backfill] FWI calc failed for ${weekEnd}`);
