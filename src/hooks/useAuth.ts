@@ -66,7 +66,7 @@ export function AuthProvider(props: { children: React.ReactNode }) {
   const joinWaitlist = async (email: string) => {
     const { error } = await supabase
       .from('waitlist')
-      .upsert({ email, joined_at: new Date().toISOString() }, { onConflict: 'email' });
+      .upsert({ email, created_at: new Date().toISOString() }, { onConflict: 'email' });
     return { error: error?.message ?? null };
   };
 
