@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Settings, User, LogIn } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Settings, User, LogIn, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu,
@@ -13,6 +14,7 @@ import fractionlLogo from '@/assets/fractionl-logo.png';
 
 const Navbar = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <>
@@ -49,12 +51,13 @@ const Navbar = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem className="cursor-pointer">
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/login')}>
                     <LogIn size={16} className="mr-2" />
                     Sign In
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="cursor-pointer text-muted-foreground text-sm">
+                  <DropdownMenuItem className="cursor-pointer text-muted-foreground text-sm" onClick={() => navigate('/login')}>
+                    <UserPlus size={16} className="mr-2" />
                     Create Account
                   </DropdownMenuItem>
                 </DropdownMenuContent>
