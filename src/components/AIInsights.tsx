@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, TrendingUp, AlertTriangle, Lightbulb, ChevronRight, RefreshCw } from 'lucide-react';
-import { supabase, SUPABASE_FUNCTIONS_URL } from '@/lib/supabase';
+import { supabase, SUPABASE_FUNCTIONS_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 import { staggerContainer, fadeInUp } from '@/lib/motion';
 import type { AIInsight } from '@/lib/types';
 
@@ -81,14 +81,15 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
     setIsGenerating(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      const token = session?.access_token || SUPABASE_ANON_KEY;
       const res = await fetch(
         `${SUPABASE_FUNCTIONS_URL}/generate-pulse-insights`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token ?? ''}`,
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
           },
         }
       );
