@@ -117,7 +117,7 @@ async function handleCurrentFWI(): Promise<Response> {
         culture: {
           score: latest.momentum_score,
           weight: weights.culture,
-          sources: ['Google Trends search interest', 'NewsAPI media coverage (28-day)', 'Brave News media coverage', 'Brave Web discourse'],
+          sources: ['Search interest trends', 'News media coverage (28-day)', 'Online discourse monitoring'],
         },
       },
     },
@@ -129,25 +129,25 @@ async function handleCurrentFWI(): Promise<Response> {
     })),
     signals: {
       demand: {
-        description: 'Job posting volume for fractional C-suite roles on Adzuna + VC funding pipeline via SEC Form D filings',
+        description: 'Job posting volume for fractional C-suite roles + VC funding pipeline via SEC filings',
         roles: ['Fractional CFO', 'Fractional CMO', 'Fractional CTO', 'Fractional COO', 'Fractional CRO', 'Interim CEO'],
         leadingIndicator: 'SEC Form D filings predict fractional demand 1-3 months ahead',
       },
       supply: {
         description: 'Availability and growth of fractional executive talent pool',
         sources: [
-          'People Data Labs: US professional profile counts with "fractional" job titles',
-          'Google Trends: Supply-side search intent (e.g. "become fractional executive")',
+          'Professional profile counts with "fractional" job titles',
+          'Supply-side search intent (e.g. "become fractional executive")',
         ],
-        upcoming: 'Contra and Toptal marketplace integration (roadmap)',
+        upcoming: 'Marketplace integration (roadmap)',
       },
       culture: {
         description: 'Market awareness and momentum signals',
         sources: [
-          'Google Trends: 90-day rolling search interest for fractional C-suite terms, geo=US',
-          'NewsAPI: Article volume for exact phrase mentions over 28 days',
-          'Brave News: Supplementary news coverage via Brave Search (past month)',
-          'Brave Web: Web discourse volume across blogs, forums, and broader web',
+          '90-day rolling search interest for fractional C-suite terms, geo=US',
+          'Article volume for exact phrase mentions over 28 days',
+          'Supplementary news coverage (past month)',
+          'Online discourse volume across blogs, forums, and broader web',
         ],
       },
     },

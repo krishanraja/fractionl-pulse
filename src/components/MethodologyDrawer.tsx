@@ -58,7 +58,7 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
             <p className="text-xs text-muted-foreground pl-5">
               {supplyIsActive
                 ? 'How many fractional executives are currently available to hire, based on marketplace data.'
-                : 'Will track fractional talent availability via People Data Labs profiles. We are integrating live marketplace data in Q2 2026; currently excluded from the composite score.'}
+                : 'Will track fractional talent availability via marketplace profiles and supply-side data. We are integrating live data sources in Q2 2026; currently excluded from the composite score.'}
             </p>
           </div>
 

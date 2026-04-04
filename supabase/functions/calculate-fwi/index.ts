@@ -27,7 +27,7 @@ const ROLE_NAMES: Record<string, string> = {
   vc_pipeline: 'VC Funding Pipeline',
   search_interest: 'Search Interest',
   media_coverage: 'Media Coverage',
-  web_discourse: 'Web Discourse'
+  web_discourse: 'Online Discourse'
 };
 
 const getFWILabel = (score: number) => {
@@ -149,7 +149,7 @@ serve(async (req) => {
         signals_used: signals.length,
         sources: Array.from(new Set(signals.map(s => s.source))),
         has_supply_data: hasSupplyData,
-        methodology: 'Adzuna jobs + SEC Form D + Google Trends + NewsAPI + Brave Search'
+        methodology: 'Job postings + SEC filings + search trends + news coverage'
       }
     }, { onConflict: 'date' });
 
@@ -189,11 +189,17 @@ serve(async (req) => {
     }
 
     // Add non-role signals as movers if significant
+    // Consolidate media coverage: keep the stronger of newsapi vs brave_news
+    const newsapiMedia = detailedSignals['newsapi_media_coverage'];
+    const braveMedia = detailedSignals['brave_news_media_coverage'];
+    const bestMedia = newsapiMedia && braveMedia
+      ? (braveMedia.score >= newsapiMedia.score ? braveMedia : newsapiMedia)
+      : (newsapiMedia || braveMedia);
+
     const nonRoleSignals = [
       detailedSignals['sec_edgar_vc_pipeline'],
       detailedSignals['google_trends_search_interest'],
-      detailedSignals['newsapi_media_coverage'],
-      detailedSignals['brave_news_media_coverage'],
+      bestMedia,
       detailedSignals['brave_web_web_discourse']
     ].filter(Boolean);
 
@@ -208,14 +214,17 @@ serve(async (req) => {
         changePct = signal.score > 40 ? Math.round((signal.score - 40) / 40 * 100) : Math.round((signal.score - 40) / 40 * 100);
         note = `Search interest trending ${signal.score > 45 ? 'up' : signal.score > 35 ? 'steady' : 'down'}`;
       } else if (signal.category === 'media_coverage') {
+        const articleCount = bestMedia === braveMedia && newsapiMedia
+          ? Math.round((braveMedia.raw_value || 0) + (newsapiMedia.raw_value || 0))
+          : signal.raw_value;
         changePct = signal.score > 30 ? Math.round((signal.score - 30) / 30 * 100) : Math.round((signal.score - 30) / 30 * 100);
-        note = `${signal.raw_value} articles - ${signal.score > 35 ? 'high' : 'low'} media attention (${signal.source === 'brave_news' ? 'Brave' : 'NewsAPI'})`;
+        note = `${articleCount} news results - ${signal.score > 35 ? 'strong' : 'low'} coverage via multiple sources`;
       } else if (signal.category === 'web_discourse') {
         changePct = signal.score > 30 ? Math.round((signal.score - 30) / 30 * 100) : Math.round((signal.score - 30) / 30 * 100);
-        note = `Web discourse ${signal.score > 40 ? 'elevated' : signal.score > 25 ? 'moderate' : 'low'} across blogs and forums`;
+        note = `Online discourse ${signal.score > 40 ? 'elevated' : signal.score > 25 ? 'moderate' : 'low'} across blogs and forums`;
       }
 
-      if (Math.abs(changePct) >= 10) { // Only include significant movers
+      if (Math.abs(changePct) >= 10) {
         moversList.push({
           date: targetDate,
           skill: ROLE_NAMES[signal.category] || signal.category,

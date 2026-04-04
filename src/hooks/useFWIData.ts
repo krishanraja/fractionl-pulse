@@ -126,7 +126,16 @@ export function useFWIData(): UseFWIDataReturn {
         return; // Use baseline
       }
 
-      const scores = [...scoresDesc].reverse(); // chronological order
+      const allScores = [...scoresDesc].reverse(); // chronological order
+      // Filter out entries where all scores are zero (no pipeline data)
+      const scores = allScores.filter(s =>
+        s.overall_score > 0 || s.demand_score > 0 || s.momentum_score > 0
+      );
+
+      if (scores.length === 0) {
+        setIsLoading(false);
+        return;
+      }
 
       // Fetch today's movers
       const latestDate = scores[scores.length - 1].date;

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, TrendingUp, AlertTriangle, Lightbulb, ChevronRight, RefreshCw } from 'lucide-react';
+import { BrainCircuit, TrendingUp, AlertTriangle, Lightbulb, ChevronRight, RefreshCw } from 'lucide-react';
 import { supabase, SUPABASE_FUNCTIONS_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 import { staggerContainer, fadeInUp } from '@/lib/motion';
 import type { AIInsight } from '@/lib/types';
@@ -19,7 +19,7 @@ const FALLBACK_INSIGHTS: AIInsight[] = [];
 
 const getInsightIcon = (type: AIInsight['type']) => {
   switch (type) {
-    case 'summary': return Sparkles;
+    case 'summary': return BrainCircuit;
     case 'prediction': return TrendingUp;
     case 'alert': return AlertTriangle;
     case 'opportunity': return Lightbulb;
@@ -44,40 +44,9 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
   const [isLive, setIsLive] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const autoGenerateAttempted = useRef(false);
 
-  useEffect(() => {
-    const load = async () => {
-      // Try cached insights first
-      const { data } = await supabase
-        .from('cached_insights')
-        .select('insights_json, generated_at, valid_until')
-        .order('generated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      // Skip expired cached insights: treat as stale and fall back to defaults
-      const isExpired = data?.valid_until && new Date(data.valid_until).getTime() < Date.now();
-
-      if (data?.insights_json && Array.isArray(data.insights_json) && data.insights_json.length > 0 && !isExpired) {
-        const mapped: AIInsight[] = (data.insights_json as any[]).map((ins: any, i: number) => ({
-          id: String(i + 1),
-          type: ins.type || 'summary',
-          title: ins.title || 'Insight',
-          body: ins.body || '',
-          confidence: normalizeConfidence(ins.confidence),
-          generatedAt: data.generated_at,
-          relatedSignals: ins.relatedSignals || [],
-        }));
-        setInsights(mapped);
-        setIsLive(true);
-        setLastUpdated(data.generated_at);
-      }
-    };
-
-    load();
-  }, []);
-
-  const handleRefresh = async () => {
+  const generate = useCallback(async () => {
     setIsGenerating(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -109,11 +78,44 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
         setLastUpdated(new Date().toISOString());
       }
     } catch (e) {
-      console.error('Insights refresh failed:', e);
+      console.error('Insights generation failed:', e);
     } finally {
       setIsGenerating(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from('cached_insights')
+        .select('insights_json, generated_at, valid_until')
+        .order('generated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const isExpired = data?.valid_until && new Date(data.valid_until).getTime() < Date.now();
+
+      if (data?.insights_json && Array.isArray(data.insights_json) && data.insights_json.length > 0 && !isExpired) {
+        const mapped: AIInsight[] = (data.insights_json as any[]).map((ins: any, i: number) => ({
+          id: String(i + 1),
+          type: ins.type || 'summary',
+          title: ins.title || 'Insight',
+          body: ins.body || '',
+          confidence: normalizeConfidence(ins.confidence),
+          generatedAt: data.generated_at,
+          relatedSignals: ins.relatedSignals || [],
+        }));
+        setInsights(mapped);
+        setIsLive(true);
+        setLastUpdated(data.generated_at);
+      } else if (!autoGenerateAttempted.current) {
+        autoGenerateAttempted.current = true;
+        generate();
+      }
+    };
+
+    load();
+  }, [generate]);
 
   const displayInsights = compact ? insights.slice(0, 2) : insights;
 
@@ -126,7 +128,7 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles size={20} className="text-primary" />
+          <BrainCircuit size={20} className="text-primary" />
           <h2 className="text-xl font-semibold">AI Insights</h2>
           {isLive && (
             <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">Live</span>
@@ -139,7 +141,7 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
               : 'Sample data'}
           </span>
           <button
-            onClick={handleRefresh}
+            onClick={generate}
             disabled={isGenerating}
             className="p-1.5 rounded-lg hover:bg-muted transition-colors"
             title="Refresh insights"
@@ -151,10 +153,21 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
 
       {displayInsights.length === 0 && (
         <div className="glass-card p-6 text-center space-y-2">
-          <Sparkles size={24} className="mx-auto text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">
-            AI insights will appear after the first data pipeline run. They are generated from real FWI scores and market signals, not pre-written.
-          </p>
+          {isGenerating ? (
+            <>
+              <RefreshCw size={24} className="mx-auto text-primary animate-spin" />
+              <p className="text-sm text-muted-foreground">
+                Generating insights from live market data...
+              </p>
+            </>
+          ) : (
+            <>
+              <BrainCircuit size={24} className="mx-auto text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">
+                No insights available yet. Tap refresh to generate from the latest FWI scores and market signals.
+              </p>
+            </>
+          )}
         </div>
       )}
 

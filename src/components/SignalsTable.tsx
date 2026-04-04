@@ -5,6 +5,17 @@ interface SignalsTableProps {
   movers: Mover[];
 }
 
+const sanitizeSkillName = (skill: string) => {
+  const nameMap: Record<string, string> = {
+    'Brave News Coverage': 'News Coverage',
+    'Web Discourse': 'Online Discourse',
+  };
+  return nameMap[skill] || skill;
+};
+
+const sanitizeNote = (note: string) =>
+  note.replace(/\s*\(Brave\)/gi, '').replace(/\s*\(NewsAPI\)/gi, '');
+
 const SignalsTable = ({ movers }: SignalsTableProps) => {
   const getTypeDot = (type: string) => {
     const colors: Record<string, string> = {
@@ -33,7 +44,7 @@ const SignalsTable = ({ movers }: SignalsTableProps) => {
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${getTypeDot(mover.type)}`} />
-                <span className="font-medium text-foreground">{mover.skill}</span>
+                <span className="font-medium text-foreground">{sanitizeSkillName(mover.skill)}</span>
               </div>
               <div className={`flex items-center gap-1 font-semibold text-sm ${
                 mover.change_pct >= 0 ? 'stat-up' : 'stat-down'
@@ -43,7 +54,7 @@ const SignalsTable = ({ movers }: SignalsTableProps) => {
               </div>
             </div>
             <p className="text-xs text-muted-foreground/70 mb-0.5">{getTypeLabel(mover.type)}</p>
-            <p className="text-sm text-muted-foreground">{mover.note}</p>
+            <p className="text-sm text-muted-foreground">{sanitizeNote(mover.note)}</p>
           </div>
         ))}
       </div>
@@ -62,7 +73,7 @@ const SignalsTable = ({ movers }: SignalsTableProps) => {
           {movers.map((mover, index) => (
             <tr key={index} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
               <td className="py-3.5 px-4">
-                <span className="font-medium text-foreground">{mover.skill}</span>
+                <span className="font-medium text-foreground">{sanitizeSkillName(mover.skill)}</span>
               </td>
               <td className="py-3.5 px-4">
                 <div className="flex items-center gap-2">
@@ -79,7 +90,7 @@ const SignalsTable = ({ movers }: SignalsTableProps) => {
                 </div>
               </td>
               <td className="py-3.5 px-4 text-muted-foreground text-sm">
-                {mover.note}
+                {sanitizeNote(mover.note)}
               </td>
             </tr>
           ))}

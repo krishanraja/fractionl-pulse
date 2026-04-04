@@ -93,7 +93,9 @@ const FractionalReadiness = ({ score, label }: FractionalReadinessProps) => {
               <div className="text-2xl font-semibold" style={{ color: gaugeColor }}>
                 {animatedValue}
               </div>
-              <div className="text-[10px] text-muted-foreground">/100</div>
+              <div className="text-[10px] text-muted-foreground">
+                {label ? label.label : 'out of 100'}
+              </div>
             </div>
           </div>
         </div>

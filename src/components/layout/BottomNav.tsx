@@ -1,4 +1,4 @@
-import { LayoutDashboard, Zap, Sparkles, Settings } from 'lucide-react';
+import { LayoutDashboard, Zap, BarChart3, Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -12,7 +12,7 @@ const BottomNav = ({ activeTab, onTabChange, onSettingsClick }: BottomNavProps) 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'signals', label: 'Signals', icon: Zap },
-    { id: 'insights', label: 'Insights', icon: Sparkles },
+    { id: 'insights', label: 'Insights', icon: BarChart3 },
   ];
 
   return (

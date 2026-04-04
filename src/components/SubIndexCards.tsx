@@ -12,7 +12,8 @@ interface SubIndexCardsProps {
 }
 
 const SubIndexCards = ({ data, compact = false, hasLiveSupply = false }: SubIndexCardsProps) => {
-  const supplyIsPlaceholder = !hasLiveSupply;
+  const supplyHasData = hasLiveSupply || data.today.supply.score > 0;
+  const supplyIsPlaceholder = !supplyHasData;
   const signalContext = useSignalContext();
   const indices = [
     {
@@ -38,15 +39,15 @@ const SubIndexCards = ({ data, compact = false, hasLiveSupply = false }: SubInde
       score: data.today.supply.score,
       delta: data.today.supply.delta30d,
       description: supplyIsPlaceholder
-        ? 'Will track fractional talent pool growth via People Data Labs profiles and supply-side search interest. Currently excluded from the composite score.'
-        : 'How many fractional executives are in the talent pool, based on PDL profile counts and supply-side search interest trends.',
+        ? 'Will track fractional talent pool growth via marketplace data and supply-side search interest. Currently excluded from the composite score.'
+        : 'How many fractional executives are in the talent pool, based on marketplace profiles and supply-side search interest trends.',
       rawContext: signalContext.supply,
       context: undefined,
       sparklineData: data.monthly.supply,
       colorClass: supplyIsPlaceholder ? 'bg-muted-foreground/40' : 'bg-accent',
       colorName: supplyIsPlaceholder ? 'muted' : 'accent',
       isPlaceholder: supplyIsPlaceholder,
-      comingSoon: !hasLiveSupply,
+      comingSoon: supplyIsPlaceholder,
       showRoleBreakdown: false,
     },
     {

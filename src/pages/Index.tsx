@@ -107,17 +107,17 @@ const Index = () => {
             <Collapsible open={alertsExpanded} onOpenChange={setAlertsExpanded}>
               <div className="rounded-lg border border-orange-500/20 bg-orange-500/5">
                 <CollapsibleTrigger asChild>
-                  <button className="w-full px-4 py-2 flex items-center justify-between text-xs cursor-pointer">
-                    <span className="flex items-center gap-2">
-                      <Bell size={14} className="text-orange-400" />
-                      <span className="text-orange-400 font-medium">
+                  <button className="w-full px-4 py-2 flex items-center justify-between gap-2 text-xs cursor-pointer">
+                    <span className="flex items-center gap-2 min-w-0">
+                      <Bell size={14} className="text-orange-400 shrink-0" />
+                      <span className="text-orange-400 font-medium shrink-0">
                         {alerts.length} alert{alerts.length > 1 ? 's' : ''}
                       </span>
-                      <span className="text-muted-foreground">
+                      <span className="text-muted-foreground truncate">
                         {alerts.map(a => a.label).join(', ')}
                       </span>
                     </span>
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1 shrink-0">
                       <ChevronDown size={14} className={`text-muted-foreground transition-transform ${alertsExpanded ? 'rotate-180' : ''}`} />
                       <X
                         size={14}
