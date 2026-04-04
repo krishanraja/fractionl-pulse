@@ -1,12 +1,6 @@
 import { useState, useEffect, createContext, useContext, createElement } from 'react';
-import { createClient, type User, type Session } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  'https://dtlcprcpvdomrehbejhw.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0bGNwcmNwdmRvbXJlaGJlamh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM4MTM3ODEsImV4cCI6MjA2OTM4OTc4MX0.bSvVAJb5Y2Tszq_AcvAHaNeJs5m--kFlRH4XZ2dfP_8'
-);
-
-export { supabase };
+import type { User, Session } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -63,10 +57,14 @@ export function AuthProvider(props: { children: React.ReactNode }) {
   };
 
   // Waitlist: just insert email into a waitlist table (no auth required)
+  // The table has joined_at with a default, so we only need to send email
+  // Using insert instead of upsert because RLS only allows INSERT, not UPDATE
   const joinWaitlist = async (email: string) => {
     const { error } = await supabase
       .from('waitlist')
-      .upsert({ email, created_at: new Date().toISOString() }, { onConflict: 'email' });
+      .insert({ email });
+    // If email already exists, treat as success (they're already on the list)
+    if (error?.code === '23505') return { error: null };
     return { error: error?.message ?? null };
   };
 
