@@ -117,7 +117,7 @@ async function handleCurrentFWI(): Promise<Response> {
         culture: {
           score: latest.momentum_score,
           weight: weights.culture,
-          sources: ['Google Trends search interest', 'NewsAPI media coverage (28-day)'],
+          sources: ['Google Trends search interest', 'NewsAPI media coverage (28-day)', 'Brave News media coverage', 'Brave Web discourse'],
         },
       },
     },
@@ -146,6 +146,8 @@ async function handleCurrentFWI(): Promise<Response> {
         sources: [
           'Google Trends: 90-day rolling search interest for fractional C-suite terms, geo=US',
           'NewsAPI: Article volume for exact phrase mentions over 28 days',
+          'Brave News: Supplementary news coverage via Brave Search (past month)',
+          'Brave Web: Web discourse volume across blogs, forums, and broader web',
         ],
       },
     },

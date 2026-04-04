@@ -9,7 +9,76 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') || '';
+const BRAVE_API_KEY = Deno.env.get('BRAVE_API_KEY') || '';
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+async function fetchBraveContext(): Promise<string> {
+  if (!BRAVE_API_KEY) return '';
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    const items: { title: string; url: string; description: string; age: string }[] = [];
+
+    // Fetch recent news about fractional executives
+    const newsUrl = `https://api.search.brave.com/res/v1/news/search?q=${encodeURIComponent('"fractional executive" OR "fractional CFO"')}&count=5&freshness=pw`;
+    const newsRes = await fetch(newsUrl, {
+      headers: { 'X-Subscription-Token': BRAVE_API_KEY },
+      signal: controller.signal,
+    });
+
+    if (newsRes.ok) {
+      const newsData = await newsRes.json();
+      for (const r of (newsData.results || []).slice(0, 5)) {
+        items.push({
+          title: r.title || '',
+          url: r.url || '',
+          description: (r.description || '').slice(0, 150),
+          age: r.age || '',
+        });
+      }
+    }
+
+    // Brief pause for rate limiting
+    await new Promise(resolve => setTimeout(resolve, 1100));
+
+    // Fetch broader web context
+    const webUrl = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent('fractional executive market trends')}&count=5&freshness=pm`;
+    const webRes = await fetch(webUrl, {
+      headers: { 'X-Subscription-Token': BRAVE_API_KEY },
+      signal: controller.signal,
+    });
+
+    if (webRes.ok) {
+      const webData = await webRes.json();
+      for (const r of (webData.web?.results || []).slice(0, 3)) {
+        items.push({
+          title: r.title || '',
+          url: r.url || '',
+          description: (r.description || '').slice(0, 150),
+          age: r.age || '',
+        });
+      }
+    }
+
+    clearTimeout(timeout);
+
+    if (items.length === 0) return '';
+
+    return items
+      .map(i => {
+        const source = i.url ? new URL(i.url).hostname : 'unknown';
+        const age = i.age ? `, ${i.age}` : '';
+        return `- "${i.title}" (${source}${age}): ${i.description}`;
+      })
+      .join('\n');
+
+  } catch (error) {
+    console.log('[Brave Context] Skipped:', error.message);
+    return '';
+  }
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -50,17 +119,23 @@ serve(async (req) => {
       ? current.overall_score - previous.overall_score > 0 ? 'improving' : 'declining'
       : 'stable';
 
+    const braveContext = await fetchBraveContext();
+
+    const braveSection = braveContext
+      ? `\n\nRecent market context (from web search):\n${braveContext}\n\nUse these recent articles to ground your insights in current events where relevant.`
+      : '';
+
     const prompt = `You are an analyst for the Fractional Working Index (FWI), a market intelligence product for fractional executives (CMOs, CFOs, CTOs, CROs).
 
 Current FWI data:
 - Overall Score: ${current.overall_score}/100 (${current.notes || 'N/A'})
 - Demand Score: ${current.demand_score}/100
-- Supply Score: ${current.supply_score}/100  
+- Supply Score: ${current.supply_score}/100
 - Momentum Score: ${current.momentum_score}/100
 - Trend vs previous reading: ${trend}
 
 Top movers:
-${(moversData || []).map(m => `- ${m.role}: ${m.change_pct > 0 ? '+' : ''}${m.change_pct}% (${m.note})`).join('\n')}
+${(moversData || []).map(m => `- ${m.role}: ${m.change_pct > 0 ? '+' : ''}${m.change_pct}% (${m.note})`).join('\n')}${braveSection}
 
 Generate 4 insights for fractional executives:
 1. A brief market summary (2 sentences)
@@ -103,7 +178,7 @@ Be specific. No fluff. Write for experienced fractional CMOs/CFOs/CTOs.`;
       insights_json: insights,
       model_used: 'gpt-4o-mini',
       valid_until: validUntil,
-      context: { fwi_score: current.overall_score, date: today },
+      context: { fwi_score: current.overall_score, date: today, brave_context_used: braveContext.length > 0 },
     });
 
     return new Response(JSON.stringify({ ok: true, cached: false, insights }), {

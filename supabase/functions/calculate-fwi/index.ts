@@ -14,7 +14,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 const WEIGHTS = {
   demand: 0.50,    // Adzuna fractional jobs + SEC Form D leading indicator
   supply: 0.20,    // People Data Labs + supply-side search interest
-  culture: 0.30    // Google Trends + NewsAPI culture signals
+  culture: 0.30    // Google Trends + NewsAPI + Brave Search culture signals
 };
 
 const ROLE_NAMES: Record<string, string> = {
@@ -26,7 +26,8 @@ const ROLE_NAMES: Record<string, string> = {
   ceo: 'Interim CEO',
   vc_pipeline: 'VC Funding Pipeline',
   search_interest: 'Search Interest',
-  media_coverage: 'Media Coverage'
+  media_coverage: 'Media Coverage',
+  web_discourse: 'Web Discourse'
 };
 
 const getFWILabel = (score: number) => {
@@ -127,7 +128,7 @@ serve(async (req) => {
 
     // Data completeness: measures what fraction of data sources returned data (not prediction accuracy)
     const SOURCE_COMPLETENESS_WEIGHTS: Record<string, number> = {
-      adzuna: 0.25, google_trends: 0.20, sec_edgar: 0.15, newsapi: 0.10, people_data_labs: 0.20, supply_trends: 0.10,
+      adzuna: 0.25, google_trends: 0.20, sec_edgar: 0.15, newsapi: 0.08, brave_news: 0.08, brave_web: 0.06, people_data_labs: 0.20, supply_trends: 0.10,
     };
     const uniqueSources = [...new Set(signals.map(s => s.source))];
     const totalWeight = Object.values(SOURCE_COMPLETENESS_WEIGHTS).reduce((a, b) => a + b, 0);
@@ -148,7 +149,7 @@ serve(async (req) => {
         signals_used: signals.length,
         sources: Array.from(new Set(signals.map(s => s.source))),
         has_supply_data: hasSupplyData,
-        methodology: 'Adzuna jobs + SEC Form D + Google Trends + NewsAPI'
+        methodology: 'Adzuna jobs + SEC Form D + Google Trends + NewsAPI + Brave Search'
       }
     }, { onConflict: 'date' });
 
@@ -190,8 +191,10 @@ serve(async (req) => {
     // Add non-role signals as movers if significant
     const nonRoleSignals = [
       detailedSignals['sec_edgar_vc_pipeline'],
-      detailedSignals['google_trends_search_interest'], 
-      detailedSignals['newsapi_media_coverage']
+      detailedSignals['google_trends_search_interest'],
+      detailedSignals['newsapi_media_coverage'],
+      detailedSignals['brave_news_media_coverage'],
+      detailedSignals['brave_web_web_discourse']
     ].filter(Boolean);
 
     for (const signal of nonRoleSignals) {
@@ -206,7 +209,10 @@ serve(async (req) => {
         note = `Search interest trending ${signal.score > 45 ? 'up' : signal.score > 35 ? 'steady' : 'down'}`;
       } else if (signal.category === 'media_coverage') {
         changePct = signal.score > 30 ? Math.round((signal.score - 30) / 30 * 100) : Math.round((signal.score - 30) / 30 * 100);
-        note = `${signal.raw_value} articles (28d) - ${signal.score > 35 ? 'high' : 'low'} media attention`;
+        note = `${signal.raw_value} articles - ${signal.score > 35 ? 'high' : 'low'} media attention (${signal.source === 'brave_news' ? 'Brave' : 'NewsAPI'})`;
+      } else if (signal.category === 'web_discourse') {
+        changePct = signal.score > 30 ? Math.round((signal.score - 30) / 30 * 100) : Math.round((signal.score - 30) / 30 * 100);
+        note = `Web discourse ${signal.score > 40 ? 'elevated' : signal.score > 25 ? 'moderate' : 'low'} across blogs and forums`;
       }
 
       if (Math.abs(changePct) >= 10) { // Only include significant movers
