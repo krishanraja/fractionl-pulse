@@ -101,14 +101,14 @@ async function handleCurrentFWI(): Promise<Response> {
         demand: {
           score: latest.demand_score,
           weight: weights.demand,
-          sources: ['Adzuna fractional job postings', 'SEC Form D VC filings (90-day)'],
+          sources: ['Adzuna fractional job postings', 'SerpAPI Google Jobs cross-check', 'SEC Form D VC filings (90-day)'],
         },
         supply: {
           score: latest.supply_score,
           weight: weights.supply,
           sources: weights.supply === 0
             ? []
-            : ['People Data Labs professional profile counts', 'Google Trends supply-side search intent'],
+            : ['People Data Labs profile counts', 'SerpAPI LinkedIn supply proxy', 'GoFractional marketplace listings', 'Supply-side search intent (Google Trends + SerpAPI)'],
           status: weights.supply === 0 ? 'excluded' : 'live',
           note: weights.supply === 0
             ? 'No supply data available this week — weight redistributed to demand and culture'
@@ -117,7 +117,7 @@ async function handleCurrentFWI(): Promise<Response> {
         culture: {
           score: latest.momentum_score,
           weight: weights.culture,
-          sources: ['Search interest trends', 'News media coverage (28-day)', 'Online discourse monitoring'],
+          sources: ['Google Trends search interest', 'NewsAPI + Mediastack + Brave News media coverage', 'Guardian + NYT prestige media', 'Podchaser podcast mentions', 'Reddit + HN community discourse', 'Brave Web discourse monitoring'],
         },
       },
     },
@@ -131,23 +131,40 @@ async function handleCurrentFWI(): Promise<Response> {
       demand: {
         description: 'Job posting volume for fractional C-suite roles + VC funding pipeline via SEC filings',
         roles: ['Fractional CFO', 'Fractional CMO', 'Fractional CTO', 'Fractional COO', 'Fractional CRO', 'Interim CEO'],
+        sources: ['Adzuna job API', 'SerpAPI Google Jobs', 'SEC EDGAR Form D filings'],
         leadingIndicator: 'SEC Form D filings predict fractional demand 1-3 months ahead',
       },
       supply: {
-        description: 'Availability and growth of fractional executive talent pool',
+        description: 'Availability and growth of fractional executive talent pool from multiple sources',
         sources: [
-          'Professional profile counts with "fractional" job titles',
-          'Supply-side search intent (e.g. "become fractional executive")',
+          'People Data Labs professional profile counts',
+          'SerpAPI LinkedIn profile index (site:linkedin.com/in proxy)',
+          'GoFractional marketplace listings (via Apify scraper)',
+          'Supply-side search intent via Google Trends and SerpAPI',
         ],
-        upcoming: 'Marketplace integration (roadmap)',
       },
       culture: {
-        description: 'Market awareness and momentum signals',
+        description: 'Market awareness and momentum signals from 10+ sources',
         sources: [
-          '90-day rolling search interest for fractional C-suite terms, geo=US',
-          'Article volume for exact phrase mentions over 28 days',
-          'Supplementary news coverage (past month)',
-          'Online discourse volume across blogs, forums, and broader web',
+          'Google Trends search interest (SerpAPI primary, Apify fallback)',
+          'NewsAPI article volume (28-day)',
+          'Mediastack news cross-check',
+          'The Guardian prestige media (90-day)',
+          'New York Times Article Search (90-day)',
+          'Podchaser podcast mentions',
+          'Reddit community discourse (via Apify)',
+          'Hacker News tech discourse (Algolia API)',
+          'Brave News coverage',
+          'Brave Web discourse volume',
+        ],
+      },
+      context: {
+        description: 'Macro economic context signals (not used in composite score)',
+        sources: [
+          'FRED JOLTS Job Openings',
+          'FRED Unemployment Rate',
+          'FRED Initial Jobless Claims',
+          'Census ACS self-employment data',
         ],
       },
     },

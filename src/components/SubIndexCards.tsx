@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, Briefcase, Users, Megaphone } from 'lucide-react';
 import SparklineChart from './SparklineChart';
 import RoleBreakdown from './RoleBreakdown';
 import { fadeInUp } from '@/lib/motion';
@@ -8,62 +8,64 @@ import { useSignalContext } from '@/hooks/useSignalContext';
 interface SubIndexCardsProps {
   data: any;
   compact?: boolean;
-  hasLiveSupply?: boolean;
 }
 
-const SubIndexCards = ({ data, compact = false, hasLiveSupply = false }: SubIndexCardsProps) => {
-  const supplyHasData = hasLiveSupply || data.today.supply.score > 0;
-  const supplyIsPlaceholder = !supplyHasData;
+const SOURCE_COUNTS: Record<string, { count: number; examples: string }> = {
+  demand: { count: 3, examples: 'Adzuna, SerpAPI Jobs, SEC EDGAR' },
+  supply: { count: 4, examples: 'PDL, LinkedIn proxy, GoFractional, Supply Trends' },
+  culture: { count: 10, examples: 'Google Trends, NewsAPI, Guardian, NYT, Podchaser, Reddit, HN...' },
+};
+
+const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
   const signalContext = useSignalContext();
+
   const indices = [
     {
       key: 'demand',
-      title: 'Hiring activity',
+      title: 'Hiring Activity',
+      icon: Briefcase,
       weight: data.weights.demand,
       score: data.today.demand.score,
       delta: data.today.demand.delta30d,
-      description: 'How many companies are actively posting fractional roles right now, plus how many just raised funding (a leading indicator of upcoming hires)',
+      description: 'Active fractional job postings + VC funding pipeline as a leading indicator of upcoming hires.',
       rawContext: signalContext.demand,
       context: data.context?.demandContext,
       sparklineData: data.monthly.demand,
-      colorClass: 'bg-primary',
+      accentColor: 'hsl(var(--primary))',
+      dotClass: 'bg-primary',
       colorName: 'primary',
-      isPlaceholder: false,
-      comingSoon: false,
       showRoleBreakdown: true,
     },
     {
       key: 'supply',
-      title: 'Talent availability',
+      title: 'Talent Availability',
+      icon: Users,
       weight: data.weights.supply,
       score: data.today.supply.score,
       delta: data.today.supply.delta30d,
-      description: supplyIsPlaceholder
-        ? 'Will track fractional talent pool growth via marketplace data and supply-side search interest. Currently excluded from the composite score.'
-        : 'How many fractional executives are in the talent pool, based on marketplace profiles and supply-side search interest trends.',
+      description: 'Fractional executive talent pool size from professional profiles, marketplace listings, and supply-side search intent.',
       rawContext: signalContext.supply,
       context: undefined,
       sparklineData: data.monthly.supply,
-      colorClass: supplyIsPlaceholder ? 'bg-muted-foreground/40' : 'bg-accent',
-      colorName: supplyIsPlaceholder ? 'muted' : 'accent',
-      isPlaceholder: supplyIsPlaceholder,
-      comingSoon: supplyIsPlaceholder,
+      accentColor: 'hsl(var(--accent))',
+      dotClass: 'bg-accent',
+      colorName: 'accent',
       showRoleBreakdown: false,
     },
     {
       key: 'culture',
-      title: 'Market buzz',
+      title: 'Market Buzz',
+      icon: Megaphone,
       weight: data.weights.culture,
       score: data.today.culture.score,
       delta: data.today.culture.delta30d,
-      description: 'How much the world is talking about fractional work: Google searches, news coverage, and social mentions. High buzz often predicts a hiring surge.',
+      description: 'Media coverage, search interest, podcast mentions, and community discourse around fractional work.',
       rawContext: signalContext.culture,
       context: data.context?.cultureContext,
       sparklineData: data.monthly.culture,
-      colorClass: 'bg-secondary',
+      accentColor: 'hsl(var(--secondary))',
+      dotClass: 'bg-secondary',
       colorName: 'secondary',
-      isPlaceholder: false,
-      comingSoon: false,
       showRoleBreakdown: false,
     }
   ];
@@ -72,81 +74,48 @@ const SubIndexCards = ({ data, compact = false, hasLiveSupply = false }: SubInde
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {indices.map((index, i) => {
         const isPositive = index.delta >= 0;
-
-        if (index.comingSoon) {
-          return (
-            <motion.div
-              key={i}
-              variants={fadeInUp}
-              className="glass-card index-card p-5 relative overflow-hidden opacity-60"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2.5 h-2.5 rounded-full ${index.colorClass} opacity-50`} />
-                  <h3 className="font-medium text-foreground">{index.title}</h3>
-                </div>
-                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-accent/10 text-accent">
-                  Coming Soon
-                </span>
-              </div>
-
-              {/* Placeholder score */}
-              <div className="flex items-end justify-between mb-4">
-                <div className="score-medium text-muted-foreground/40">--</div>
-              </div>
-
-              {/* Description */}
-              <div className="text-xs text-muted-foreground pt-3 border-t border-border">
-                {index.description}
-              </div>
-            </motion.div>
-          );
-        }
+        const Icon = index.icon;
+        const sourceInfo = SOURCE_COUNTS[index.key];
 
         return (
           <motion.div
             key={i}
             variants={fadeInUp}
-            className="glass-card index-card p-4 sm:p-5 hover-lift cursor-pointer"
+            className="glass-card index-card p-4 sm:p-5 hover-lift"
           >
-            {/* Header */}
+            {/* Header with icon */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <span className={`w-2.5 h-2.5 rounded-full ${index.colorClass}`} />
+                <div className="p-1.5 rounded-lg" style={{ backgroundColor: `${index.accentColor}15` }}>
+                  <Icon size={14} style={{ color: index.accentColor }} />
+                </div>
                 <h3 className="font-medium text-foreground">{index.title}</h3>
               </div>
-              <span className="text-xs text-muted-foreground">
-                {Math.round(index.weight * 100)}% of score
+              <span className="text-[10px] text-muted-foreground/70 tabular-nums">
+                {Math.round(index.weight * 100)}% weight
               </span>
             </div>
 
-            {/* Score and Delta */}
-            <div className="flex items-end justify-between mb-2">
-              <div className={`score-medium ${index.isPlaceholder ? 'text-muted-foreground/50' : 'text-foreground'}`}>
+            {/* Score + delta row */}
+            <div className="flex items-end justify-between mb-1">
+              <div className="score-medium text-foreground">
                 {index.score}
               </div>
-              {index.isPlaceholder ? (
-                <span className="text-xs text-muted-foreground/60 font-medium px-2 py-0.5 bg-muted/50 rounded">
-                  Awaiting data
-                </span>
-              ) : (
-                <div className={`flex items-center gap-1 text-sm font-medium ${
-                  isPositive ? 'stat-up' : 'stat-down'
-                }`}>
-                  {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                  {isPositive ? '+' : ''}{index.delta.toFixed(1)}
-                </div>
-              )}
+              <div className={`flex items-center gap-1 text-sm font-semibold ${
+                isPositive ? 'stat-up' : 'stat-down'
+              }`}>
+                {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                {isPositive ? '+' : ''}{index.delta.toFixed(1)}
+              </div>
             </div>
 
-            {/* Raw context line */}
+            {/* Raw context from live signals */}
             {index.rawContext && (
-              <p className="text-[10px] text-muted-foreground/60 mb-3">
+              <p className="text-[10px] text-muted-foreground/60 mb-3 leading-relaxed line-clamp-2">
                 {index.rawContext}
               </p>
             )}
-            {!index.rawContext && <div className="mb-2" />}
+            {!index.rawContext && <div className="mb-3" />}
 
             {/* Sparkline */}
             {!compact && (
@@ -156,6 +125,15 @@ const SubIndexCards = ({ data, compact = false, hasLiveSupply = false }: SubInde
                   months={data.monthly.months}
                   color={index.colorName}
                 />
+              </div>
+            )}
+
+            {/* Source count badge */}
+            {sourceInfo && (
+              <div className="flex items-center gap-1.5 mb-3">
+                <span className="data-badge bg-muted text-muted-foreground">
+                  {sourceInfo.count} sources
+                </span>
               </div>
             )}
 
@@ -172,7 +150,7 @@ const SubIndexCards = ({ data, compact = false, hasLiveSupply = false }: SubInde
                 {index.context && (
                   <div className="text-foreground/70 font-medium">{index.context}</div>
                 )}
-                <div className="text-muted-foreground">{index.description}</div>
+                <div className="text-muted-foreground leading-relaxed">{index.description}</div>
               </div>
             )}
           </motion.div>

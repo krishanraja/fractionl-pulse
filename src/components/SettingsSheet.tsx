@@ -12,7 +12,6 @@ import { RotateCcw } from 'lucide-react';
 interface SettingsSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  hasLiveSupply?: boolean;
 }
 
 const SettingsContent = () => {

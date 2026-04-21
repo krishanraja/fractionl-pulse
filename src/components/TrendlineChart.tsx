@@ -12,10 +12,9 @@ interface TrendlineChartProps {
     supply: number[];
     culture: number[];
   };
-  hasLiveSupply?: boolean;
 }
 
-const TrendlineChart = ({ data, hasLiveSupply = false }: TrendlineChartProps) => {
+const TrendlineChart = ({ data }: TrendlineChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
   const isMobile = useMediaQuery("(max-width: 640px)");
@@ -30,10 +29,10 @@ const TrendlineChart = ({ data, hasLiveSupply = false }: TrendlineChartProps) =>
     const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
 
-    const mainPointRadius = isMobile ? 4 : 6;
-    const subPointRadius = isMobile ? 2 : 4;
-    const mainHoverRadius = isMobile ? 6 : 8;
-    const subHoverRadius = isMobile ? 4 : 6;
+    const mainPt = isMobile ? 3 : 5;
+    const subPt = isMobile ? 2 : 3;
+    const mainHover = isMobile ? 5 : 7;
+    const subHover = isMobile ? 4 : 5;
 
     chartRef.current = new Chart(ctx, {
       type: 'line',
@@ -46,16 +45,16 @@ const TrendlineChart = ({ data, hasLiveSupply = false }: TrendlineChartProps) =>
           {
             label: 'Overall FWI',
             data: data.overall,
-            borderColor: '#6C40FF',
-            backgroundColor: '#6C40FF20',
+            borderColor: '#7C3AED',
+            backgroundColor: 'rgba(124, 58, 237, 0.08)',
             borderWidth: isMobile ? 2.5 : 3,
             fill: true,
-            tension: 0.4,
-            pointBackgroundColor: '#6C40FF',
+            tension: 0.35,
+            pointBackgroundColor: '#7C3AED',
             pointBorderColor: '#FFFFFF',
             pointBorderWidth: isMobile ? 1.5 : 2,
-            pointRadius: mainPointRadius,
-            pointHoverRadius: mainHoverRadius,
+            pointRadius: mainPt,
+            pointHoverRadius: mainHover,
           },
           {
             label: 'Demand',
@@ -64,29 +63,28 @@ const TrendlineChart = ({ data, hasLiveSupply = false }: TrendlineChartProps) =>
             backgroundColor: 'transparent',
             borderWidth: isMobile ? 1.5 : 2,
             fill: false,
-            tension: 0.4,
+            tension: 0.35,
             pointBackgroundColor: '#3B82F6',
             pointBorderColor: '#FFFFFF',
             pointBorderWidth: 1,
-            pointRadius: subPointRadius,
-            pointHoverRadius: subHoverRadius,
-            borderDash: [2, 2]
+            pointRadius: subPt,
+            pointHoverRadius: subHover,
           },
-          ...(hasLiveSupply ? [{
+          {
             label: 'Supply',
             data: data.supply,
             borderColor: '#8B5CF6',
             backgroundColor: 'transparent',
             borderWidth: isMobile ? 1.5 : 2,
             fill: false,
-            tension: 0.4,
+            tension: 0.35,
             pointBackgroundColor: '#8B5CF6',
             pointBorderColor: '#FFFFFF',
             pointBorderWidth: 1,
-            pointRadius: subPointRadius,
-            pointHoverRadius: subHoverRadius,
-            borderDash: [5, 5]
-          }] : []),
+            pointRadius: subPt,
+            pointHoverRadius: subHover,
+            borderDash: [4, 4],
+          },
           {
             label: 'Culture',
             data: data.culture,
@@ -94,13 +92,13 @@ const TrendlineChart = ({ data, hasLiveSupply = false }: TrendlineChartProps) =>
             backgroundColor: 'transparent',
             borderWidth: isMobile ? 1.5 : 2,
             fill: false,
-            tension: 0.4,
+            tension: 0.35,
             pointBackgroundColor: '#10B981',
             pointBorderColor: '#FFFFFF',
             pointBorderWidth: 1,
-            pointRadius: subPointRadius,
-            pointHoverRadius: subHoverRadius,
-            borderDash: [10, 5]
+            pointRadius: subPt,
+            pointHoverRadius: subHover,
+            borderDash: [8, 4],
           }
         ]
       },
@@ -117,26 +115,30 @@ const TrendlineChart = ({ data, hasLiveSupply = false }: TrendlineChartProps) =>
               pointStyle: 'circle',
               font: {
                 size: isMobile ? 11 : 12,
-                family: 'Inter'
+                family: 'Inter',
+                weight: '500',
               }
             }
           },
           tooltip: {
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            titleColor: '#000',
-            bodyColor: '#000',
-            borderColor: '#E5E7EB',
+            backgroundColor: 'rgba(255, 255, 255, 0.96)',
+            titleColor: '#1e293b',
+            bodyColor: '#475569',
+            borderColor: '#e2e8f0',
             borderWidth: 1,
-            cornerRadius: 8,
+            cornerRadius: 10,
+            padding: 12,
             caretPadding: 8,
             displayColors: true,
+            titleFont: { size: 13, weight: '600', family: 'Inter' },
+            bodyFont: { size: 12, family: 'Inter' },
             callbacks: {
               title: (context) => {
                 const monthIndex = context[0].dataIndex;
                 const date = new Date(data.months[monthIndex] + '-01');
                 return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
               },
-              label: (context) => `${context.dataset.label}: ${context.parsed.y}`
+              label: (context) => `  ${context.dataset.label}: ${context.parsed.y.toFixed(1)}`
             }
           }
         },
@@ -144,30 +146,29 @@ const TrendlineChart = ({ data, hasLiveSupply = false }: TrendlineChartProps) =>
           x: {
             grid: {
               display: true,
-              color: '#F3F4F6'
+              color: 'rgba(148, 163, 184, 0.08)',
             },
             ticks: {
-              font: {
-                size: isMobile ? 10 : 12,
-                family: 'Inter'
-              },
+              font: { size: isMobile ? 10 : 11, family: 'Inter' },
+              color: '#94a3b8',
               maxRotation: isMobile ? 45 : 0,
-            }
+            },
+            border: { display: false },
           },
           y: {
             grid: {
               display: true,
-              color: '#F3F4F6'
+              color: 'rgba(148, 163, 184, 0.08)',
             },
             ticks: {
-              font: {
-                size: isMobile ? 10 : 12,
-                family: 'Inter'
-              }
+              font: { size: isMobile ? 10 : 11, family: 'Inter' },
+              color: '#94a3b8',
+              padding: 8,
             },
+            border: { display: false },
             beginAtZero: false,
-            min: 35,
-            max: 85
+            min: 20,
+            max: 90,
           }
         },
         interaction: {
@@ -185,7 +186,7 @@ const TrendlineChart = ({ data, hasLiveSupply = false }: TrendlineChartProps) =>
   }, [data, isMobile]);
 
   return (
-    <div className="h-60 sm:h-80">
+    <div className="h-64 sm:h-80">
       <canvas ref={canvasRef} />
     </div>
   );

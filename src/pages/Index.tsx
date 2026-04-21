@@ -10,6 +10,7 @@ import TrendlineChart from '@/components/TrendlineChart';
 import SignalsTable from '@/components/SignalsTable';
 import FractionalReadiness from '@/components/FractionalReadiness';
 import AIInsights from '@/components/AIInsights';
+import DataHealthCard from '@/components/DataHealthCard';
 import MethodologyDrawer from '@/components/MethodologyDrawer';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useFWIData } from '@/hooks/useFWIData';
@@ -31,11 +32,9 @@ const Index = () => {
   const [alertsDismissed, setAlertsDismissed] = useState(false);
   const [alertsExpanded, setAlertsExpanded] = useState(false);
   const { preferences } = useUserPreferences();
-  const { data: fwiData, isLive, isLoading, isStale, lastUpdated, hasLiveSupply, refresh } = useFWIData();
+  const { data: fwiData, isLive, isLoading, isStale, lastUpdated, refresh } = useFWIData();
 
-  // Use backend-computed weights (which already handle supply redistribution)
-  // Only override if user has explicitly customized weights AND supply is live
-  const userHasCustomWeights = hasLiveSupply && preferences.weights &&
+  const userHasCustomWeights = preferences.weights &&
     (Math.abs(preferences.weights.demand - 0.5) > 0.01 ||
      Math.abs(preferences.weights.supply - 0.2) > 0.01);
 
@@ -46,57 +45,68 @@ const Index = () => {
 
   const fwiLabel = getFWILabel(data.today.overall);
 
-  // Check user alert threshold against current deltas
   const alerts: AlertItem[] = isLive && preferences.alerts.enabled
     ? checkAlerts(data, preferences.alerts.threshold)
     : [];
+
+  const renderStatusBanner = () => {
+    if (isLive && !isStale) {
+      return (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-lg px-4 py-2 flex items-center gap-2 bg-emerald-500/8 border border-emerald-500/15"
+        >
+          <span className="pulse-dot bg-emerald-500" style={{ color: '#10b981' }} />
+          <span className="text-emerald-600 text-xs font-medium">Live</span>
+          <span className="text-emerald-600/60 text-xs">
+            Updated {lastUpdated
+              ? new Date(lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              : 'recently'}
+          </span>
+        </motion.div>
+      );
+    }
+    if (isLive && isStale) {
+      return (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-lg px-4 py-2 flex items-center gap-2 bg-orange-500/8 border border-orange-500/15"
+        >
+          <span className="w-2 h-2 rounded-full bg-orange-500" />
+          <span className="text-orange-600 text-xs font-medium">Stale</span>
+          <span className="text-orange-600/60 text-xs">
+            Last updated {lastUpdated
+              ? new Date(lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              : 'unknown'}
+          </span>
+        </motion.div>
+      );
+    }
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="rounded-lg px-4 py-2 flex items-center gap-2 bg-amber-500/8 border border-amber-500/15"
+      >
+        <span className="w-2 h-2 rounded-full bg-amber-500" />
+        <span className="text-amber-600 text-xs font-medium">Awaiting First Run</span>
+        <span className="text-amber-600/60 text-xs">Pipeline has not run yet. Scores will appear after the first weekly run.</span>
+      </motion.div>
+    );
+  };
 
   const renderDashboard = () => (
     <motion.div
       variants={staggerContainer}
       initial="hidden"
       animate="show"
-      className="container-width space-y-6 py-6"
+      className="container-width space-y-5 py-5"
     >
-      {/* Live / Preview banner */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`rounded-lg px-4 py-2.5 flex items-center gap-2 ${
-          isLive && !isStale
-            ? 'bg-emerald-500/10 border border-emerald-500/20'
-            : isLive && isStale
-            ? 'bg-orange-500/10 border border-orange-500/20'
-            : 'bg-amber-500/10 border border-amber-500/20'
-        }`}
-      >
-        {isLive && !isStale ? (
-          <>
-            <span className="text-emerald-400 text-xs font-medium">● Live</span>
-            <span className="text-emerald-400/70 text-xs">
-              Updated {lastUpdated
-                ? new Date(lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                : 'today'}
-            </span>
-          </>
-        ) : isLive && isStale ? (
-          <>
-            <span className="text-orange-400 text-xs font-medium">● Stale</span>
-            <span className="text-orange-400/70 text-xs">
-              Last updated {lastUpdated
-                ? new Date(lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                : 'unknown'} - data may be outdated
-            </span>
-          </>
-        ) : (
-          <>
-            <span className="text-amber-400 text-xs font-medium">Awaiting First Run</span>
-            <span className="text-amber-400/70 text-xs">The data pipeline has not run yet. No real data is displayed. Scores will appear after the first weekly pipeline run.</span>
-          </>
-        )}
-      </motion.div>
+      {renderStatusBanner()}
 
-      {/* Collapsible alert summary */}
+      {/* Collapsible alerts */}
       <AnimatePresence>
         {alerts.length > 0 && !alertsDismissed && (
           <motion.div
@@ -109,8 +119,8 @@ const Index = () => {
                 <CollapsibleTrigger asChild>
                   <button className="w-full px-4 py-2 flex items-center justify-between gap-2 text-xs cursor-pointer">
                     <span className="flex items-center gap-2 min-w-0">
-                      <Bell size={14} className="text-orange-400 shrink-0" />
-                      <span className="text-orange-400 font-medium shrink-0">
+                      <Bell size={13} className="text-orange-500 shrink-0" />
+                      <span className="text-orange-500 font-medium shrink-0">
                         {alerts.length} alert{alerts.length > 1 ? 's' : ''}
                       </span>
                       <span className="text-muted-foreground truncate">
@@ -133,7 +143,7 @@ const Index = () => {
                       <div
                         key={i}
                         className={`flex items-center gap-2 text-xs ${
-                          alert.direction === 'up' ? 'text-emerald-400' : 'text-red-400'
+                          alert.direction === 'up' ? 'text-emerald-500' : 'text-red-500'
                         }`}
                       >
                         <span className="font-medium">{alert.label}</span>
@@ -150,6 +160,7 @@ const Index = () => {
         )}
       </AnimatePresence>
 
+      {/* Hero */}
       <HeroSection
         data={data}
         fwiLabel={fwiLabel}
@@ -157,32 +168,38 @@ const Index = () => {
         onRefresh={refresh}
       />
 
+      {/* Sub-index pillars */}
       <section>
-        <SubIndexCards data={data} compact={preferences.compactMode} hasLiveSupply={hasLiveSupply} />
+        <SubIndexCards data={data} compact={preferences.compactMode} />
       </section>
 
+      {/* Market snapshot */}
       <section>
         <MarketSnapshot />
       </section>
 
+      {/* Trendline chart */}
       <section className="glass-card p-4 sm:p-5">
-        <div className="flex items-baseline justify-between mb-4">
+        <div className="section-header">
           <div>
-            <h2 className="text-base sm:text-lg font-semibold text-foreground">How the market has moved</h2>
-            <p className="text-xs text-muted-foreground mt-1">Each point is one week's reading. More weeks = more reliable picture.</p>
+            <h2>Market trend</h2>
+            <p>Each point is one week's reading across all sub-indices</p>
           </div>
           {data.context?.trendSummary && (
-            <span className="text-xs text-muted-foreground hidden sm:inline">{data.context.trendSummary}</span>
+            <span className="text-[10px] text-muted-foreground hidden sm:inline">{data.context.trendSummary}</span>
           )}
         </div>
-        <TrendlineChart data={data.monthly} hasLiveSupply={hasLiveSupply} />
+        <TrendlineChart data={data.monthly} />
       </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+      {/* Movers + Readiness */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <section className="lg:col-span-2 glass-card p-4 sm:p-5">
-          <div className="mb-4">
-            <h2 className="text-base sm:text-lg font-semibold text-foreground">What's moving this week</h2>
-            <p className="text-xs text-muted-foreground mt-1">Roles and signals that are notably above or below the index average of all tracked roles this week.</p>
+          <div className="section-header">
+            <div>
+              <h2>This week's movers</h2>
+              <p>Signals notably above or below the index average</p>
+            </div>
           </div>
           <SignalsTable movers={data.movers} />
         </section>
@@ -191,6 +208,7 @@ const Index = () => {
         </aside>
       </div>
 
+      {/* AI Insights preview */}
       <section className="glass-card p-4 sm:p-5">
         <AIInsights compact />
       </section>
@@ -198,11 +216,13 @@ const Index = () => {
   );
 
   const renderSignals = () => (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="container-width py-6">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="container-width py-5 space-y-4">
       <div className="glass-card p-4 sm:p-5">
-        <div className="mb-4">
-          <h2 className="text-base sm:text-lg font-semibold text-foreground">All signals this week</h2>
-          <p className="text-xs text-muted-foreground mt-1">Every role and signal we tracked, compared to the market average.</p>
+        <div className="section-header">
+          <div>
+            <h2>All signals this week</h2>
+            <p>Every role and signal tracked, compared to the market average</p>
+          </div>
         </div>
         <SignalsTable movers={data.movers} />
       </div>
@@ -210,9 +230,17 @@ const Index = () => {
   );
 
   const renderInsights = () => (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="container-width py-6">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="container-width py-5">
       <div className="glass-card p-4 sm:p-5">
         <AIInsights />
+      </div>
+    </motion.div>
+  );
+
+  const renderData = () => (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="container-width py-5">
+      <div className="glass-card p-4 sm:p-5">
+        <DataHealthCard />
       </div>
     </motion.div>
   );
@@ -223,6 +251,7 @@ const Index = () => {
         {activeTab === 'dashboard' && renderDashboard()}
         {activeTab === 'signals' && renderSignals()}
         {activeTab === 'insights' && renderInsights()}
+        {activeTab === 'data' && renderData()}
       </AnimatePresence>
 
       <MethodologyDrawer

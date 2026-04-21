@@ -115,7 +115,7 @@ serve(async (req) => {
     const [{ data: latestScore }, { data: moversData }, { data: signals }] = await Promise.all([
       supabase.from('fwi_scores').select('*').order('date', { ascending: false }).limit(3),
       supabase.from('movers').select('*').eq('date', today).order('rank', { ascending: true }).limit(5),
-      supabase.from('signals').select('signal_type, category, normalized_value, raw_value').eq('date', today).limit(20),
+      supabase.from('signals').select('source, signal_type, category, normalized_value, raw_value, metadata').eq('date', today).limit(80),
     ]);
 
     if (!latestScore || latestScore.length === 0) {
@@ -137,6 +137,30 @@ serve(async (req) => {
       ? `\n\nRecent market context (from web search):\n${braveContext}\n\nUse these recent articles to ground your insights in current events where relevant.`
       : '';
 
+    // Build per-source signal breakdown for the LLM
+    const signalLines: string[] = [];
+    if (signals && signals.length > 0) {
+      const byType: Record<string, any[]> = {};
+      for (const s of signals) {
+        const t = s.signal_type || 'other';
+        if (!byType[t]) byType[t] = [];
+        byType[t].push(s);
+      }
+      for (const [type, sigs] of Object.entries(byType)) {
+        signalLines.push(`\n${type.toUpperCase()} signals:`);
+        for (const s of sigs) {
+          const meta = s.metadata || {};
+          const extras: string[] = [];
+          if (meta.top_articles?.length) extras.push(`Headlines: ${meta.top_articles.slice(0, 2).map((a: any) => a.title).join('; ')}`);
+          if (meta.subreddits?.length) extras.push(`Subreddits: ${meta.subreddits.slice(0, 3).join(', ')}`);
+          if (meta.median_hourly_rate) extras.push(`Median rate: $${meta.median_hourly_rate}/hr`);
+          if (meta.series_name) extras.push(`${meta.series_name}: ${s.raw_value} (${meta.date})`);
+          if (meta.self_employment_pct) extras.push(`Self-employment: ${meta.self_employment_pct}%`);
+          signalLines.push(`- ${s.source || s.category} (${s.category}): raw=${s.raw_value}, score=${s.normalized_value}/100${extras.length ? ' | ' + extras.join(' | ') : ''}`);
+        }
+      }
+    }
+
     const prompt = `You are an analyst for the Fractional Working Index (FWI), a market intelligence product for fractional executives (CMOs, CFOs, CTOs, CROs).
 
 Current FWI data:
@@ -147,17 +171,19 @@ Current FWI data:
 - Trend vs previous reading: ${trend}
 
 Top movers:
-${(moversData || []).map(m => `- ${m.role}: ${m.change_pct > 0 ? '+' : ''}${m.change_pct}% (${m.note})`).join('\n')}${braveSection}
+${(moversData || []).map(m => `- ${m.skill || m.role}: ${m.change_pct > 0 ? '+' : ''}${m.change_pct}% (${m.note})`).join('\n')}
+
+Detailed signal breakdown:${signalLines.join('\n')}${braveSection}
 
 Generate 4 insights for fractional executives:
-1. A brief market summary (2 sentences)
-2. The biggest opportunity right now
-3. A trend to watch
-4. One tactical recommendation
+1. A brief market summary (2 sentences) grounded in the signal data above
+2. The biggest opportunity right now, citing specific data points
+3. A trend to watch, referencing at least two signal sources
+4. One tactical recommendation for a fractional executive making decisions this week
 
 Return as JSON array: [{"type": "summary|opportunity|trend|recommendation", "title": "short title", "body": "2-3 sentences", "confidence": 0.7-0.95}]
 
-Be specific. No fluff. Write for experienced fractional CMOs/CFOs/CTOs.`;
+Be specific. Reference actual numbers and source names. No fluff. Write for experienced fractional CMOs/CFOs/CTOs.`;
 
     const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -190,7 +216,8 @@ Be specific. No fluff. Write for experienced fractional CMOs/CFOs/CTOs.`;
       insights_json: insights,
       model_used: 'gpt-4o-mini',
       valid_until: validUntil,
-      context: { fwi_score: current.overall_score, date: today, brave_context_used: braveContext.length > 0 },
+      context: { fwi_score: current.overall_score, date: today, brave_context_used: braveContext.length > 0,
+        signal_count: signals?.length || 0, signal_sources: [...new Set((signals || []).map((s: any) => s.source))] },
     });
 
     return new Response(JSON.stringify({ ok: true, cached: false, insights }), {

@@ -1,38 +1,25 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { BrainCircuit, TrendingUp, AlertTriangle, Lightbulb, ChevronRight, RefreshCw } from 'lucide-react';
+import { BrainCircuit, TrendingUp, AlertTriangle, Lightbulb, Target, RefreshCw, Sparkles } from 'lucide-react';
 import { supabase, SUPABASE_FUNCTIONS_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 import { staggerContainer, fadeInUp } from '@/lib/motion';
 import type { AIInsight } from '@/lib/types';
 
-/** Normalize confidence to 0-100 regardless of whether source uses 0-1 or 0-100 */
 function normalizeConfidence(value: number | undefined): number {
   if (value == null) return 80;
-  // If value is between 0 and 1 (exclusive), treat as fraction
   if (value > 0 && value <= 1) return Math.round(value * 100);
-  // Already on 0-100 scale
   return Math.round(Math.min(100, Math.max(0, value)));
 }
 
-// Empty fallback - no fabricated insights before the pipeline has run
 const FALLBACK_INSIGHTS: AIInsight[] = [];
 
-const getInsightIcon = (type: AIInsight['type']) => {
-  switch (type) {
-    case 'summary': return BrainCircuit;
-    case 'prediction': return TrendingUp;
-    case 'alert': return AlertTriangle;
-    case 'opportunity': return Lightbulb;
-  }
-};
-
-const getInsightColor = (type: AIInsight['type']) => {
-  switch (type) {
-    case 'summary': return 'text-primary bg-primary/10 border-primary/20';
-    case 'prediction': return 'text-accent bg-accent/10 border-accent/20';
-    case 'alert': return 'text-warning bg-warning/10 border-warning/20';
-    case 'opportunity': return 'text-success bg-success/10 border-success/20';
-  }
+const INSIGHT_CONFIG: Record<string, { icon: any; label: string; color: string }> = {
+  summary: { icon: BrainCircuit, label: 'Market Summary', color: 'text-primary bg-primary/10 border-primary/20' },
+  prediction: { icon: TrendingUp, label: 'Prediction', color: 'text-accent bg-accent/10 border-accent/20' },
+  trend: { icon: Target, label: 'Trend to Watch', color: 'text-secondary bg-secondary/10 border-secondary/20' },
+  alert: { icon: AlertTriangle, label: 'Alert', color: 'text-warning bg-warning/10 border-warning/20' },
+  opportunity: { icon: Lightbulb, label: 'Opportunity', color: 'text-success bg-success/10 border-success/20' },
+  recommendation: { icon: Sparkles, label: 'Recommendation', color: 'text-primary bg-primary/10 border-primary/20' },
 };
 
 interface AIInsightsProps {
@@ -127,24 +114,31 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
       className="space-y-4"
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <BrainCircuit size={20} className="text-primary" />
-          <h2 className="text-xl font-semibold">AI Insights</h2>
-          {isLive && (
-            <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">Live</span>
-          )}
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 rounded-lg bg-primary/10">
+            <BrainCircuit size={16} className="text-primary" />
+          </div>
+          <div>
+            <h2 className="text-base sm:text-lg font-semibold text-foreground">AI Analysis</h2>
+            <p className="text-[10px] text-muted-foreground">
+              Generated from {isLive ? '21 live data sources' : 'available data'}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">
-            {lastUpdated
-              ? new Date(lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-              : 'Sample data'}
-          </span>
+          {isLive && (
+            <span className="data-badge bg-emerald-500/10 text-emerald-500">Live</span>
+          )}
+          {lastUpdated && (
+            <span className="text-[10px] text-muted-foreground hidden sm:inline">
+              {new Date(lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </span>
+          )}
           <button
             onClick={generate}
             disabled={isGenerating}
             className="p-1.5 rounded-lg hover:bg-muted transition-colors"
-            title="Refresh insights"
+            title="Regenerate insights"
           >
             <RefreshCw size={14} className={`text-muted-foreground ${isGenerating ? 'animate-spin' : ''}`} />
           </button>
@@ -152,19 +146,21 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
       </div>
 
       {displayInsights.length === 0 && (
-        <div className="glass-card p-6 text-center space-y-2">
+        <div className="glass-card p-8 text-center space-y-3">
           {isGenerating ? (
             <>
-              <RefreshCw size={24} className="mx-auto text-primary animate-spin" />
+              <div className="relative mx-auto w-10 h-10">
+                <RefreshCw size={20} className="absolute inset-0 m-auto text-primary animate-spin" />
+              </div>
               <p className="text-sm text-muted-foreground">
-                Generating insights from live market data...
+                Analyzing 21 data sources to generate insights...
               </p>
             </>
           ) : (
             <>
-              <BrainCircuit size={24} className="mx-auto text-muted-foreground/40" />
+              <BrainCircuit size={24} className="mx-auto text-muted-foreground/30" />
               <p className="text-sm text-muted-foreground">
-                No insights available yet. Tap refresh to generate from the latest FWI scores and market signals.
+                No insights yet. Tap refresh to generate from the latest market signals.
               </p>
             </>
           )}
@@ -173,44 +169,41 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
 
       <div className={compact ? "space-y-3" : "grid gap-4 md:grid-cols-2"}>
         {displayInsights.map((insight) => {
-          const Icon = getInsightIcon(insight.type);
-          const colorClass = getInsightColor(insight.type);
+          const config = INSIGHT_CONFIG[insight.type] || INSIGHT_CONFIG.summary;
+          const Icon = config.icon;
 
           return (
             <motion.div
               key={insight.id}
               variants={fadeInUp}
-              className="glass-card p-4 space-y-3 cursor-pointer hover:border-primary/30 transition-colors"
+              className="glass-card p-4 space-y-3 hover:border-primary/20 transition-colors"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <div className={`p-1.5 rounded-lg border ${colorClass}`}>
-                    <Icon size={14} />
+                  <div className={`p-1.5 rounded-lg border ${config.color}`}>
+                    <Icon size={13} />
                   </div>
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    {insight.type}
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    {config.label}
                   </span>
                 </div>
-                <span className="text-xs text-muted-foreground" title="How complete the underlying data was when this insight was generated">
-                  {insight.confidence}% data completeness
+                <span className="data-badge bg-muted text-muted-foreground" title="Data completeness when insight was generated">
+                  {insight.confidence}%
                 </span>
               </div>
 
-              <div className="space-y-2">
-                <h3 className="font-medium text-foreground leading-tight">{insight.title}</h3>
+              <div className="space-y-1.5">
+                <h3 className="font-semibold text-foreground text-sm leading-tight">{insight.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{insight.body}</p>
               </div>
 
               {insight.relatedSignals.length > 0 && (
-                <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                  <div className="flex flex-wrap gap-1.5">
-                    {insight.relatedSignals.map((signal) => (
-                      <span key={signal} className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground">
-                        {signal}
-                      </span>
-                    ))}
-                  </div>
-                  <ChevronRight size={16} className="text-muted-foreground" />
+                <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/50">
+                  {insight.relatedSignals.map((signal) => (
+                    <span key={signal} className="text-[10px] px-2 py-0.5 bg-muted rounded-full text-muted-foreground">
+                      {signal}
+                    </span>
+                  ))}
                 </div>
               )}
             </motion.div>
@@ -218,9 +211,9 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
         })}
       </div>
 
-      {compact && (
-        <button className="w-full text-center text-sm text-primary font-medium py-2 hover:underline">
-          View all insights →
+      {compact && insights.length > 2 && (
+        <button className="w-full text-center text-xs text-primary font-medium py-2 hover:underline">
+          View all {insights.length} insights
         </button>
       )}
     </motion.div>

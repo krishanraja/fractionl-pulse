@@ -27,7 +27,13 @@ const ROLE_NAMES: Record<string, string> = {
   vc_pipeline: 'VC Funding Pipeline',
   search_interest: 'Search Interest',
   media_coverage: 'Media Coverage',
-  web_discourse: 'Online Discourse'
+  web_discourse: 'Online Discourse',
+  prestige_media: 'Prestige Media',
+  audio_culture: 'Podcast Mentions',
+  community_discourse: 'Community Buzz',
+  marketplace: 'Marketplace Listings',
+  supply_intent: 'Supply Intent',
+  self_employment: 'Self-Employment Rate',
 };
 
 const getFWILabel = (score: number) => {
@@ -65,6 +71,7 @@ serve(async (req) => {
     console.log(`[FWI] Processing ${signals.length} signals for ${targetDate}`);
 
     // Group signals by type and calculate averages
+    // 'context' signals (FRED, Census) are stored but excluded from composite scoring
     const signalsByType: Record<string, number[]> = { 
       demand: [], 
       supply: [], 
@@ -72,16 +79,25 @@ serve(async (req) => {
     };
 
     const detailedSignals: Record<string, any> = {};
+    const contextSignals: Record<string, any> = {};
 
     for (const signal of signals) {
       const type = signal.signal_type;
       const value = signal.normalized_value || 0;
       
+      if (type === 'context') {
+        contextSignals[`${signal.source}_${signal.category}`] = {
+          source: signal.source, category: signal.category,
+          raw_value: signal.raw_value, metadata: signal.metadata
+        };
+        console.log(`[FWI] ${signal.source}/${signal.category} (context): ${signal.raw_value} [enrichment only]`);
+        continue;
+      }
+
       if (signalsByType[type]) {
         signalsByType[type].push(value);
       }
 
-      // Track individual signals for movers calculation
       detailedSignals[`${signal.source}_${signal.category}`] = {
         source: signal.source,
         category: signal.category,
@@ -126,9 +142,14 @@ serve(async (req) => {
     console.log(`[FWI] Component scores - Demand: ${demandScore}, Supply: ${finalSupplyScore}, Momentum: ${momentumScore}`);
     console.log(`[FWI] Overall FWI: ${overallScore} (${getFWILabel(overallScore)})`);
 
-    // Data completeness: measures what fraction of data sources returned data (not prediction accuracy)
+    // Data completeness weights aligned with ingest-signals SOURCE_CONFIDENCE_WEIGHTS
     const SOURCE_COMPLETENESS_WEIGHTS: Record<string, number> = {
-      adzuna: 0.25, google_trends: 0.20, sec_edgar: 0.15, newsapi: 0.08, brave_news: 0.08, brave_web: 0.06, people_data_labs: 0.20, supply_trends: 0.10,
+      adzuna: 0.14, serpapi_jobs: 0.08, google_trends: 0.08, serpapi_trends: 0.06,
+      sec_edgar: 0.10, newsapi: 0.05, brave_news: 0.04, brave_web: 0.03,
+      mediastack: 0.03, guardian: 0.02, nyt: 0.02, podchaser: 0.02,
+      reddit: 0.02, hn: 0.01, people_data_labs: 0.10, serpapi_linkedin: 0.06,
+      gofractional: 0.05, supply_trends: 0.04, serpapi_supply_trends: 0.03,
+      fred: 0.01, census_acs: 0.01,
     };
     const uniqueSources = [...new Set(signals.map(s => s.source))];
     const totalWeight = Object.values(SOURCE_COMPLETENESS_WEIGHTS).reduce((a, b) => a + b, 0);
@@ -188,40 +209,41 @@ serve(async (req) => {
       }
     }
 
-    // Add non-role signals as movers if significant
-    // Consolidate media coverage: keep the stronger of newsapi vs brave_news
-    const newsapiMedia = detailedSignals['newsapi_media_coverage'];
-    const braveMedia = detailedSignals['brave_news_media_coverage'];
-    const bestMedia = newsapiMedia && braveMedia
-      ? (braveMedia.score >= newsapiMedia.score ? braveMedia : newsapiMedia)
-      : (newsapiMedia || braveMedia);
-
-    const nonRoleSignals = [
+    // Add non-role signals as movers when they deviate significantly from baseline
+    const candidateMovers = [
       detailedSignals['sec_edgar_vc_pipeline'],
-      detailedSignals['google_trends_search_interest'],
-      bestMedia,
-      detailedSignals['brave_web_web_discourse']
+      detailedSignals['serpapi_trends_search_interest'] || detailedSignals['google_trends_search_interest'],
+      detailedSignals['newsapi_media_coverage'],
+      detailedSignals['brave_web_web_discourse'],
+      detailedSignals['guardian_prestige_media'],
+      detailedSignals['nyt_prestige_media'],
+      detailedSignals['podchaser_audio_culture'],
+      detailedSignals['reddit_community_discourse'],
+      detailedSignals['hn_community_discourse'],
+      detailedSignals['gofractional_marketplace'],
     ].filter(Boolean);
 
-    for (const signal of nonRoleSignals) {
+    for (const signal of candidateMovers) {
+      const baseline = 40;
+      const changePct = Math.round(((signal.score - baseline) / baseline) * 100);
       let note = '';
-      let changePct = 0;
 
       if (signal.category === 'vc_pipeline') {
-        changePct = signal.score > 50 ? Math.round((signal.score - 50) / 50 * 100) : Math.round((signal.score - 50) / 50 * 100);
-        note = `${signal.raw_value} tech filings (90d) - ${signal.score > 55 ? 'strong' : signal.score > 45 ? 'moderate' : 'weak'} funding activity`;
+        note = `${signal.raw_value} tech filings (90d) - ${signal.score > 55 ? 'strong' : signal.score > 45 ? 'moderate' : 'weak'} funding`;
       } else if (signal.category === 'search_interest') {
-        changePct = signal.score > 40 ? Math.round((signal.score - 40) / 40 * 100) : Math.round((signal.score - 40) / 40 * 100);
         note = `Search interest trending ${signal.score > 45 ? 'up' : signal.score > 35 ? 'steady' : 'down'}`;
       } else if (signal.category === 'media_coverage') {
-        const articleCount = bestMedia === braveMedia && newsapiMedia
-          ? Math.round((braveMedia.raw_value || 0) + (newsapiMedia.raw_value || 0))
-          : signal.raw_value;
-        changePct = signal.score > 30 ? Math.round((signal.score - 30) / 30 * 100) : Math.round((signal.score - 30) / 30 * 100);
-        note = `${articleCount} news results - ${signal.score > 35 ? 'strong' : 'low'} coverage via multiple sources`;
-      } else if (signal.category === 'web_discourse') {
-        changePct = signal.score > 30 ? Math.round((signal.score - 30) / 30 * 100) : Math.round((signal.score - 30) / 30 * 100);
-        note = `Online discourse ${signal.score > 40 ? 'elevated' : signal.score > 25 ? 'moderate' : 'low'} across blogs and forums`;
+        note = `${signal.raw_value} articles - ${signal.score > 35 ? 'strong' : 'low'} media coverage`;
+      } else if (signal.category === 'prestige_media') {
+        note = `${signal.raw_value} prestige articles (Guardian/NYT) - ${signal.score > 40 ? 'notable' : 'minimal'} elite coverage`;
+      } else if (signal.category === 'audio_culture') {
+        note = `${signal.raw_value} podcasts discussing fractional work`;
+      } else if (signal.category === 'community_discourse') {
+        note = `${signal.raw_value} community posts - ${signal.score > 40 ? 'active' : 'moderate'} discussion`;
+      } else if (signal.category === 'marketplace') {
+        note = `${signal.raw_value} marketplace listings on GoFractional`;
+      } else {
+        note = `${ROLE_NAMES[signal.category] || signal.category}: score ${signal.score}`;
       }
 
       if (Math.abs(changePct) >= 10) {
@@ -230,8 +252,7 @@ serve(async (req) => {
           skill: ROLE_NAMES[signal.category] || signal.category,
           signal_type: signal.type,
           change_pct: changePct,
-          note: note,
-          rank: 0
+          note, rank: 0
         });
       }
     }
@@ -273,7 +294,7 @@ serve(async (req) => {
       sources_active: uniqueSources,
       movers_count: topMovers.length,
       weights: WEIGHTS,
-      methodology: 'Defensive signal stack: Adzuna fractional jobs + SEC Form D filings + Google Trends + NewsAPI',
+      methodology: 'Multi-source signal stack: Adzuna + SerpAPI Jobs + SEC Form D + Google Trends + NewsAPI + Guardian + NYT + Mediastack + Podchaser + Reddit + HN + Brave + PDL + SerpAPI LinkedIn + GoFractional + Census',
       component_breakdown: {
         demand: {
           sources: signals.filter(s => s.signal_type === 'demand').map(s => `${s.source}/${s.category}`),
