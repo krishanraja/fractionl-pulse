@@ -226,8 +226,8 @@ export function useFWIData(): UseFWIDataReturn {
   useEffect(() => {
     load();
 
-    // Refresh every 12 hours
-    const interval = setInterval(load, 12 * 60 * 60 * 1000);
+    // Refresh every 5 minutes to pick up new pipeline runs quickly
+    const interval = setInterval(load, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, [load]);
 

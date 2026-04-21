@@ -1037,7 +1037,40 @@ serve(async (req) => {
       throw new Error(`Insufficient signals: ${successfulSignals.length} sources succeeded`);
     }
 
-    const signalRecords = successfulSignals.map(signal => ({
+    // Anomaly guard: reject signals >3 stddev from recent 8-week history
+    const { data: recentHistory } = await supabase
+      .from('signals')
+      .select('source, category, normalized_value')
+      .lt('date', today)
+      .order('date', { ascending: false })
+      .limit(500);
+
+    const historyMap: Record<string, number[]> = {};
+    for (const h of (recentHistory || [])) {
+      const key = `${h.source}_${h.category}`;
+      if (!historyMap[key]) historyMap[key] = [];
+      if (historyMap[key].length < 8) historyMap[key].push(h.normalized_value);
+    }
+
+    const validatedSignals = successfulSignals.filter(signal => {
+      const key = `${signal.source}_${signal.category}`;
+      const history = historyMap[key];
+      if (!history || history.length < 3) return true; // not enough data to judge
+      const mean = history.reduce((a, b) => a + b, 0) / history.length;
+      const stddev = Math.sqrt(history.reduce((s, v) => s + (v - mean) ** 2, 0) / history.length);
+      if (stddev < 1) return true; // too little variance to judge
+      const zScore = Math.abs(signal.normalized_value - mean) / stddev;
+      if (zScore > 3) {
+        console.warn(`[Anomaly Guard] REJECTED ${key}: value ${signal.normalized_value} is ${zScore.toFixed(1)} stddev from mean ${mean.toFixed(1)} (stddev=${stddev.toFixed(1)})`);
+        return false;
+      }
+      return true;
+    });
+
+    const rejected = successfulSignals.length - validatedSignals.length;
+    if (rejected > 0) console.log(`[Anomaly Guard] Rejected ${rejected} outlier signal(s)`);
+
+    const signalRecords = validatedSignals.map(signal => ({
       date: today, source: signal.source, signal_type: signal.signal_type,
       category: signal.category, normalized_value: signal.normalized_value,
       raw_value: signal.raw_value, metadata: signal.metadata || {}

@@ -70,6 +70,26 @@ serve(async (req) => {
 
     console.log(`[FWI] Processing ${signals.length} signals for ${targetDate}`);
 
+    // Fetch the most recent prior week's signals for week-over-week deltas
+    const { data: priorScores } = await supabase
+      .from('fwi_scores')
+      .select('date, overall_score, demand_score, supply_score, momentum_score')
+      .lt('date', targetDate)
+      .order('date', { ascending: false })
+      .limit(1);
+    const priorWeek = priorScores?.[0] || null;
+
+    let priorSignalMap: Record<string, number> = {};
+    if (priorWeek) {
+      const { data: priorSigs } = await supabase
+        .from('signals')
+        .select('source, category, normalized_value')
+        .eq('date', priorWeek.date);
+      for (const s of (priorSigs || [])) {
+        priorSignalMap[`${s.source}_${s.category}`] = s.normalized_value;
+      }
+    }
+
     // Group signals by type and calculate averages
     // 'context' signals (FRED, Census) are stored but excluded from composite scoring
     const signalsByType: Record<string, number[]> = { 
@@ -170,7 +190,14 @@ serve(async (req) => {
         signals_used: signals.length,
         sources: Array.from(new Set(signals.map(s => s.source))),
         has_supply_data: hasSupplyData,
-        methodology: 'Job postings + SEC filings + search trends + news coverage'
+        methodology: 'Job postings + SEC filings + search trends + news coverage',
+        prior_week: priorWeek ? {
+          date: priorWeek.date,
+          overall: priorWeek.overall_score,
+          demand: priorWeek.demand_score,
+          supply: priorWeek.supply_score,
+          culture: priorWeek.momentum_score,
+        } : null,
       }
     }, { onConflict: 'date' });
 
@@ -209,7 +236,7 @@ serve(async (req) => {
       }
     }
 
-    // Add non-role signals as movers when they deviate significantly from baseline
+    // Add non-role signals as movers using week-over-week deltas when available
     const candidateMovers = [
       detailedSignals['sec_edgar_vc_pipeline'],
       detailedSignals['serpapi_trends_search_interest'] || detailedSignals['google_trends_search_interest'],
@@ -224,27 +251,24 @@ serve(async (req) => {
     ].filter(Boolean);
 
     for (const signal of candidateMovers) {
-      const baseline = 40;
-      const changePct = Math.round(((signal.score - baseline) / baseline) * 100);
-      let note = '';
+      const priorKey = `${signal.source}_${signal.category}`;
+      const priorScore = priorSignalMap[priorKey];
+      const baseline = priorScore != null ? priorScore : 40;
+      const changePct = baseline > 0
+        ? Math.round(((signal.score - baseline) / baseline) * 100)
+        : 0;
+      const direction = changePct > 0 ? 'up' : changePct < 0 ? 'down' : 'flat';
 
-      if (signal.category === 'vc_pipeline') {
-        note = `${signal.raw_value} tech filings (90d) - ${signal.score > 55 ? 'strong' : signal.score > 45 ? 'moderate' : 'weak'} funding`;
-      } else if (signal.category === 'search_interest') {
-        note = `Search interest trending ${signal.score > 45 ? 'up' : signal.score > 35 ? 'steady' : 'down'}`;
-      } else if (signal.category === 'media_coverage') {
-        note = `${signal.raw_value} articles - ${signal.score > 35 ? 'strong' : 'low'} media coverage`;
-      } else if (signal.category === 'prestige_media') {
-        note = `${signal.raw_value} prestige articles (Guardian/NYT) - ${signal.score > 40 ? 'notable' : 'minimal'} elite coverage`;
-      } else if (signal.category === 'audio_culture') {
-        note = `${signal.raw_value} podcasts discussing fractional work`;
-      } else if (signal.category === 'community_discourse') {
-        note = `${signal.raw_value} community posts - ${signal.score > 40 ? 'active' : 'moderate'} discussion`;
-      } else if (signal.category === 'marketplace') {
-        note = `${signal.raw_value} marketplace listings on GoFractional`;
-      } else {
-        note = `${ROLE_NAMES[signal.category] || signal.category}: score ${signal.score}`;
-      }
+      const noteMap: Record<string, string> = {
+        vc_pipeline: `${signal.raw_value} tech filings (90d) - ${signal.score > 55 ? 'strong' : signal.score > 45 ? 'moderate' : 'weak'} funding`,
+        search_interest: `Search interest trending ${direction}${priorScore != null ? ` vs ${priorScore.toFixed(0)} last week` : ''}`,
+        media_coverage: `${signal.raw_value} articles - ${signal.score > 35 ? 'strong' : 'low'} media coverage`,
+        prestige_media: `${signal.raw_value} prestige articles (Guardian/NYT) - ${signal.score > 40 ? 'notable' : 'minimal'} elite coverage`,
+        audio_culture: `${signal.raw_value} podcasts discussing fractional work`,
+        community_discourse: `${signal.raw_value} community posts - ${signal.score > 40 ? 'active' : 'moderate'} discussion`,
+        marketplace: `${signal.raw_value} marketplace listings on GoFractional`,
+      };
+      const note = noteMap[signal.category] || `${ROLE_NAMES[signal.category] || signal.category}: score ${signal.score}`;
 
       if (Math.abs(changePct) >= 10) {
         moversList.push({

@@ -26,6 +26,18 @@ export const getFWILabel = (score: number): { label: string; emoji: string; colo
   return { label: 'Contracting', emoji: '⚠️', color: 'text-red-400' };
 };
 
+function formatRelativeTime(dateStr: string | null): string {
+  if (!dateStr) return 'recently';
+  const diffMs = Date.now() - new Date(dateStr + 'T00:00:00Z').getTime();
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  if (hours < 1) return 'just now';
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'yesterday';
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 const Index = () => {
   const [showMethodology, setShowMethodology] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -60,9 +72,7 @@ const Index = () => {
           <span className="pulse-dot bg-emerald-500" style={{ color: '#10b981' }} />
           <span className="text-emerald-600 text-xs font-medium">Live</span>
           <span className="text-emerald-600/60 text-xs">
-            Updated {lastUpdated
-              ? new Date(lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-              : 'recently'}
+            Updated {formatRelativeTime(lastUpdated)}
           </span>
         </motion.div>
       );
@@ -77,9 +87,7 @@ const Index = () => {
           <span className="w-2 h-2 rounded-full bg-orange-500" />
           <span className="text-orange-600 text-xs font-medium">Stale</span>
           <span className="text-orange-600/60 text-xs">
-            Last updated {lastUpdated
-              ? new Date(lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-              : 'unknown'}
+            Last updated {formatRelativeTime(lastUpdated)}
           </span>
         </motion.div>
       );
