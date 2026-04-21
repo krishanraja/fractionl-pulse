@@ -21,7 +21,7 @@ Pulse publishes the Fractional Working Index (FWI) -- the only real-time composi
 | Culture | 30% | Live | Search interest + media coverage |
 
 **Interfaces:**
-- Dashboard: `fractionl-pulse.vercel.app`
+- Dashboard: `pulse.fractionl.ai`
 - Public API: `/fwi-api/current` (no auth required)
 - MCP tool definition ships with the repo
 
@@ -192,7 +192,7 @@ Headers include `X-FWI-Score` for lightweight polling.
 
 | Resource | URL |
 |----------|-----|
-| Live Dashboard | https://fractionl-pulse.vercel.app |
+| Live Dashboard | https://pulse.fractionl.ai |
 | API (current score) | https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current |
 | API (history) | https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/history?months=3 |
 | Agent Integration Docs | docs/AGENT_INTEGRATION.md |

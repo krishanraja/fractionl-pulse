@@ -5,7 +5,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const ALLOWED_ORIGINS = [
   'https://fractionl.ai',
   'https://pulse.fractionl.ai',
-  'https://fractionl-pulse.vercel.app',
+  'https://pulse.fractionl.ai',
 ];
 
 function getCorsHeaders(req: Request) {

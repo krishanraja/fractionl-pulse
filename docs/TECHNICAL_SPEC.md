@@ -259,6 +259,6 @@ OPENAI_API_KEY
 
 ## 9. Deployment
 
-- **Frontend:** Vercel. Auto-deploys on push to `main` (`fractionl-pulse.vercel.app`).
+- **Frontend:** Vercel. Auto-deploys on push to `main` (`pulse.fractionl.ai`).
 - **Edge functions:** Supabase. Deploy via Supabase CLI: `supabase functions deploy <name>`.
 - **Database:** Supabase Postgres. Migrations in `supabase/migrations/`.

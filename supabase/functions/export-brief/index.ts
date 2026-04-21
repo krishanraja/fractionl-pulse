@@ -131,13 +131,13 @@ All signals are normalized to a 0-100 scale. An anomaly guard rejects data point
 
 ## Citation
 
-> Fractional Working Index (FWI), Pulse by Fractionl. Week of ${current.date}. Data from 21 sources including Adzuna, SEC EDGAR, Google Trends, and People Data Labs. https://fractionl-pulse.vercel.app
+> Fractional Working Index (FWI), Pulse by Fractionl. Week of ${current.date}. Data from 21 sources including Adzuna, SEC EDGAR, Google Trends, and People Data Labs. https://pulse.fractionl.ai
 
 ---
 
 ## How to Use This Data
 
-**For press/media:** This brief may be quoted with attribution to "Pulse by Fractionl" and a link to https://fractionl-pulse.vercel.app.
+**For press/media:** This brief may be quoted with attribution to "Pulse by Fractionl" and a link to https://pulse.fractionl.ai.
 
 **For analysts:** Raw JSON data is available at https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current
 

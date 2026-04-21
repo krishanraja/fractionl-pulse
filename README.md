@@ -2,7 +2,7 @@
 
 **The Fractional Working Index (FWI)**: live market intelligence for the fractional executive economy. Built for human analysts and AI agents alike.
 
-[![Status](https://img.shields.io/badge/status-live-brightgreen)](https://fractionl-pulse.vercel.app)
+[![Status](https://img.shields.io/badge/status-live-brightgreen)](https://pulse.fractionl.ai)
 [![Sources](https://img.shields.io/badge/data%20sources-21-blue)](https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current)
 [![Schedule](https://img.shields.io/badge/updated-weekly-orange)](https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current)
 

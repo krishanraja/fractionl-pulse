@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://fractionl-pulse.vercel.app/sitemap.xml
+Sitemap: https://pulse.fractionl.ai/sitemap.xml
