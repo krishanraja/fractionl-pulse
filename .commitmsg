@@ -1,0 +1,21 @@
+feat: guaranteed data refresh — React Query, Realtime subscriptions, daily cron with alerts
+
+- Wire up @tanstack/react-query across all 5 data hooks + AIInsights with
+  stale-while-revalidate, 5-min polling, retry with backoff, and refetch
+  on window focus / reconnect
+- Add Supabase Realtime subscriptions (src/lib/realtime.ts) for fwi_scores,
+  signals, cached_insights, and data_source_health — UI updates instantly
+  when the pipeline writes new data
+- Add daily cron (api/cron/daily-ingest.ts) with up to 3 retry attempts,
+  replacing weekly-only schedule. Weekly cron kept as redundant safety net
+- Add /api/health endpoint checking FWI freshness, pipeline run status,
+  and data source health (ready for uptime monitoring)
+- Add send-pipeline-alert edge function using Resend (key already in
+  Supabase secrets) — CRITICAL email on ingest failure, WARNING on
+  insights failure
+- Fix schema drift: migration 004 adds model_used/context columns to
+  cached_insights; fix export-brief to read insights_json instead of
+  non-existent insight_type/content columns
+- Tighten signals RLS: migration 005 replaces blanket FOR ALL with
+  SELECT-only for anon and write-only for service_role
+- Document pg_cron migration as optional backup behind Vercel daily cron

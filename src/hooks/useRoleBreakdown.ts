@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { onDataChange } from '@/lib/realtime';
 
 export interface RoleSignal {
   category: string;
@@ -19,87 +21,93 @@ const ROLE_LABELS: Record<string, string> = {
   ceo: 'Interim CEO',
 };
 
-export function useRoleBreakdown() {
-  const [roles, setRoles] = useState<RoleSignal[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [asOf, setAsOf] = useState<string | null>(null);
+interface RoleResult {
+  roles: RoleSignal[];
+  asOf: string | null;
+}
 
-  useEffect(() => {
-    async function load() {
-      try {
-        // Get the two most recent dates that have adzuna signals
-        const { data: dates } = await supabase
-          .from('signals')
-          .select('date')
-          .eq('source', 'adzuna')
-          .neq('category', 'aggregate')
-          .order('date', { ascending: false })
-          .limit(12); // 6 roles x 2 dates
+async function fetchRoleBreakdown(): Promise<RoleResult> {
+  const { data: dates } = await supabase
+    .from('signals')
+    .select('date')
+    .eq('source', 'adzuna')
+    .neq('category', 'aggregate')
+    .order('date', { ascending: false })
+    .limit(12);
 
-        if (!dates || dates.length === 0) {
-          setIsLoading(false);
-          return;
-        }
+  if (!dates || dates.length === 0) return { roles: [], asOf: null };
 
-        const uniqueDates = [...new Set(dates.map(d => d.date))].sort().reverse();
-        const latestDate = uniqueDates[0];
-        const prevDate = uniqueDates.length >= 2 ? uniqueDates[1] : null;
+  const uniqueDates = [...new Set(dates.map(d => d.date))].sort().reverse();
+  const latestDate = uniqueDates[0];
+  const prevDate = uniqueDates.length >= 2 ? uniqueDates[1] : null;
 
-        // Fetch latest role signals
-        const { data: latest } = await supabase
-          .from('signals')
-          .select('category, raw_value, normalized_value')
-          .eq('source', 'adzuna')
-          .eq('date', latestDate)
-          .neq('category', 'aggregate');
+  const { data: latest } = await supabase
+    .from('signals')
+    .select('category, raw_value, normalized_value')
+    .eq('source', 'adzuna')
+    .eq('date', latestDate)
+    .neq('category', 'aggregate');
 
-        // Fetch previous week for WoW comparison
-        let prevMap: Record<string, number> = {};
-        if (prevDate) {
-          const { data: prev } = await supabase
-            .from('signals')
-            .select('category, normalized_value')
-            .eq('source', 'adzuna')
-            .eq('date', prevDate)
-            .neq('category', 'aggregate');
+  let prevMap: Record<string, number> = {};
+  if (prevDate) {
+    const { data: prev } = await supabase
+      .from('signals')
+      .select('category, normalized_value')
+      .eq('source', 'adzuna')
+      .eq('date', prevDate)
+      .neq('category', 'aggregate');
 
-          if (prev) {
-            for (const s of prev) {
-              prevMap[s.category] = s.normalized_value;
-            }
-          }
-        }
-
-        if (latest && latest.length > 0) {
-          const mapped: RoleSignal[] = latest
-            .filter(s => ROLE_LABELS[s.category])
-            .map(s => {
-              const prevScore = prevMap[s.category] ?? null;
-              return {
-                category: s.category,
-                label: ROLE_LABELS[s.category],
-                rawValue: s.raw_value || 0,
-                score: s.normalized_value || 0,
-                prevScore,
-                wowChange: prevScore !== null
-                  ? Math.round((s.normalized_value - prevScore) * 10) / 10
-                  : null,
-              };
-            })
-            .sort((a, b) => b.rawValue - a.rawValue);
-
-          setRoles(mapped);
-          setAsOf(latestDate);
-        }
-      } catch (e) {
-        console.error('Role breakdown fetch error:', e);
-      } finally {
-        setIsLoading(false);
+    if (prev) {
+      for (const s of prev) {
+        prevMap[s.category] = s.normalized_value;
       }
     }
+  }
 
-    load();
-  }, []);
+  if (!latest || latest.length === 0) return { roles: [], asOf: null };
 
-  return { roles, isLoading, asOf };
+  const mapped: RoleSignal[] = latest
+    .filter(s => ROLE_LABELS[s.category])
+    .map(s => {
+      const prevScore = prevMap[s.category] ?? null;
+      return {
+        category: s.category,
+        label: ROLE_LABELS[s.category],
+        rawValue: s.raw_value || 0,
+        score: s.normalized_value || 0,
+        prevScore,
+        wowChange: prevScore !== null
+          ? Math.round((s.normalized_value - prevScore) * 10) / 10
+          : null,
+      };
+    })
+    .sort((a, b) => b.rawValue - a.rawValue);
+
+  return { roles: mapped, asOf: latestDate };
+}
+
+export function useRoleBreakdown() {
+  const queryClient = useQueryClient();
+
+  const { data: result, isLoading } = useQuery({
+    queryKey: ['role-breakdown'],
+    queryFn: fetchRoleBreakdown,
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    const unsub = onDataChange((payload) => {
+      if (payload.table === 'signals') {
+        queryClient.invalidateQueries({ queryKey: ['role-breakdown'] });
+      }
+    });
+    return unsub;
+  }, [queryClient]);
+
+  return {
+    roles: result?.roles ?? [],
+    isLoading,
+    asOf: result?.asOf ?? null,
+  };
 }

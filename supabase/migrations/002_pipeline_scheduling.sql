@@ -1,15 +1,27 @@
 -- Pipeline scheduling & data quality improvements
 -- Enables automated weekly data collection and staleness alerting
 
--- Enable pg_cron for automated scheduling (requires Supabase Pro plan)
--- Note: Run `ALTER SYSTEM SET cron.database_name = 'postgres';` if not enabled
+-- ============================================================================
+-- OPTIONAL: pg_cron scheduling (Supabase Pro plan required)
+--
+-- The primary data pipeline is triggered by Vercel Cron (see vercel.json and
+-- api/cron/daily-ingest.ts) which runs daily at 06:00 UTC with retry logic
+-- and Resend email alerts on failure. That works on any Supabase tier.
+--
+-- The pg_cron schedule below is a REDUNDANT SAFETY NET. It only activates if:
+--   1. You are on Supabase Pro (pg_cron extension available)
+--   2. You have set app.settings.supabase_url and app.settings.service_role_key
+--      via: ALTER DATABASE postgres SET app.settings.supabase_url = 'https://...';
+--   3. The pg_net extension is also enabled
+--
+-- If any of those prerequisites are missing, this block will error on first run.
+-- That is safe to ignore — Vercel Cron handles ingestion independently.
+-- ============================================================================
 CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA extensions;
 
--- Schedule weekly ingest every Monday at 06:00 UTC
--- This calls the ingest-signals edge function automatically
 SELECT cron.schedule(
   'weekly-fwi-ingest',
-  '0 6 * * 1',  -- Monday 6am UTC
+  '0 6 * * 1',  -- Monday 6am UTC (redundant backup of Vercel daily cron)
   $$
   SELECT net.http_post(
     url := current_setting('app.settings.supabase_url') || '/functions/v1/ingest-signals',

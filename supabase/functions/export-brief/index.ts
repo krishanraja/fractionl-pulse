@@ -55,11 +55,16 @@ serve(async (req) => {
       .order('rank', { ascending: true })
       .limit(5);
 
-    const { data: insights } = await supabase
+    const { data: insightsRow } = await supabase
       .from('cached_insights')
-      .select('insight_type, content')
+      .select('insights_json, generated_at')
       .order('generated_at', { ascending: false })
-      .limit(4);
+      .limit(1)
+      .maybeSingle();
+
+    const insights = insightsRow?.insights_json && Array.isArray(insightsRow.insights_json)
+      ? insightsRow.insights_json.slice(0, 4)
+      : [];
 
     const { data: healthData } = await supabase
       .from('data_source_health')
@@ -76,8 +81,7 @@ serve(async (req) => {
     ).join('\n');
 
     const insightsSection = (insights || []).map((ins: any) => {
-      const content = typeof ins.content === 'string' ? JSON.parse(ins.content) : ins.content;
-      return `- **${content.title || ins.insight_type}:** ${content.summary || content.content || ''}`;
+      return `- **${ins.title || ins.type || 'Insight'}:** ${ins.body || ''}`;
     }).join('\n');
 
     const brief = `# Fractional Working Index — Weekly Market Intelligence Brief

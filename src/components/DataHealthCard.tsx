@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Database, CheckCircle2, AlertCircle, Clock, ExternalLink } from 'lucide-react';
+import { Database, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { onDataChange } from '@/lib/realtime';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
 
 interface SourceHealth {
@@ -9,6 +11,14 @@ interface SourceHealth {
   status: string;
   last_checked: string | null;
   metadata: any;
+}
+
+async function fetchSourceHealth(): Promise<SourceHealth[]> {
+  const { data } = await supabase
+    .from('data_source_health')
+    .select('source, status, last_checked, metadata')
+    .order('source');
+  return data ?? [];
 }
 
 const SOURCE_DISPLAY: Record<string, { label: string; category: string }> = {
@@ -38,21 +48,23 @@ const SOURCE_DISPLAY: Record<string, { label: string; category: string }> = {
 const CATEGORY_ORDER = ['Demand', 'Supply', 'Culture', 'Context'];
 
 const DataHealthCard = () => {
-  const [sources, setSources] = useState<SourceHealth[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  const { data: sources = [], isLoading } = useQuery({
+    queryKey: ['data-source-health'],
+    queryFn: fetchSourceHealth,
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 2 * 60 * 1000,
+  });
 
   useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase
-        .from('data_source_health')
-        .select('source, status, last_checked, metadata')
-        .order('source');
-
-      if (data) setSources(data);
-      setIsLoading(false);
-    };
-    load();
-  }, []);
+    const unsub = onDataChange((payload) => {
+      if (payload.table === 'data_source_health') {
+        queryClient.invalidateQueries({ queryKey: ['data-source-health'] });
+      }
+    });
+    return unsub;
+  }, [queryClient]);
 
   const getStatusIcon = (status: string) => {
     if (status === 'healthy' || status === 'ok') return <CheckCircle2 size={12} className="text-emerald-500" />;

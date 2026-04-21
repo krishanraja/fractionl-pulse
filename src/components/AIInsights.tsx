@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { BrainCircuit, TrendingUp, AlertTriangle, Lightbulb, Target, RefreshCw, Sparkles } from 'lucide-react';
 import { supabase, SUPABASE_FUNCTIONS_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
+import { onDataChange } from '@/lib/realtime';
 import { staggerContainer, fadeInUp } from '@/lib/motion';
 import type { AIInsight } from '@/lib/types';
 
@@ -26,12 +28,56 @@ interface AIInsightsProps {
   compact?: boolean;
 }
 
+async function fetchCachedInsights(): Promise<{ insights: AIInsight[]; isLive: boolean; lastUpdated: string | null; isExpired: boolean }> {
+  const { data } = await supabase
+    .from('cached_insights')
+    .select('insights_json, generated_at, valid_until')
+    .order('generated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const isExpired = !!(data?.valid_until && new Date(data.valid_until).getTime() < Date.now());
+
+  if (data?.insights_json && Array.isArray(data.insights_json) && data.insights_json.length > 0 && !isExpired) {
+    const mapped: AIInsight[] = (data.insights_json as any[]).map((ins: any, i: number) => ({
+      id: String(i + 1),
+      type: ins.type || 'summary',
+      title: ins.title || 'Insight',
+      body: ins.body || '',
+      confidence: normalizeConfidence(ins.confidence),
+      generatedAt: data.generated_at,
+      relatedSignals: ins.relatedSignals || [],
+    }));
+    return { insights: mapped, isLive: true, lastUpdated: data.generated_at, isExpired: false };
+  }
+
+  return { insights: [], isLive: false, lastUpdated: null, isExpired };
+}
+
 const AIInsights = ({ compact = false }: AIInsightsProps) => {
-  const [insights, setInsights] = useState<AIInsight[]>(FALLBACK_INSIGHTS);
-  const [isLive, setIsLive] = useState(false);
+  const queryClient = useQueryClient();
   const [isGenerating, setIsGenerating] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const autoGenerateAttempted = useRef(false);
+
+  const { data: cached } = useQuery({
+    queryKey: ['cached-insights'],
+    queryFn: fetchCachedInsights,
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const insights = cached?.insights ?? FALLBACK_INSIGHTS;
+  const isLive = cached?.isLive ?? false;
+  const lastUpdated = cached?.lastUpdated ?? null;
+
+  useEffect(() => {
+    const unsub = onDataChange((payload) => {
+      if (payload.table === 'cached_insights') {
+        queryClient.invalidateQueries({ queryKey: ['cached-insights'] });
+      }
+    });
+    return unsub;
+  }, [queryClient]);
 
   const generate = useCallback(async () => {
     setIsGenerating(true);
@@ -51,58 +97,21 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
       );
       const data = await res.json();
       if (data.insights && Array.isArray(data.insights)) {
-        const mapped: AIInsight[] = data.insights.map((ins: any, i: number) => ({
-          id: String(i + 1),
-          type: ins.type || 'summary',
-          title: ins.title || 'Insight',
-          body: ins.body || '',
-          confidence: normalizeConfidence(ins.confidence),
-          generatedAt: new Date().toISOString(),
-          relatedSignals: ins.relatedSignals || [],
-        }));
-        setInsights(mapped);
-        setIsLive(true);
-        setLastUpdated(new Date().toISOString());
+        queryClient.invalidateQueries({ queryKey: ['cached-insights'] });
       }
     } catch (e) {
       console.error('Insights generation failed:', e);
     } finally {
       setIsGenerating(false);
     }
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase
-        .from('cached_insights')
-        .select('insights_json, generated_at, valid_until')
-        .order('generated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const isExpired = data?.valid_until && new Date(data.valid_until).getTime() < Date.now();
-
-      if (data?.insights_json && Array.isArray(data.insights_json) && data.insights_json.length > 0 && !isExpired) {
-        const mapped: AIInsight[] = (data.insights_json as any[]).map((ins: any, i: number) => ({
-          id: String(i + 1),
-          type: ins.type || 'summary',
-          title: ins.title || 'Insight',
-          body: ins.body || '',
-          confidence: normalizeConfidence(ins.confidence),
-          generatedAt: data.generated_at,
-          relatedSignals: ins.relatedSignals || [],
-        }));
-        setInsights(mapped);
-        setIsLive(true);
-        setLastUpdated(data.generated_at);
-      } else if (!autoGenerateAttempted.current) {
-        autoGenerateAttempted.current = true;
-        generate();
-      }
-    };
-
-    load();
-  }, [generate]);
+    if (cached && !cached.isLive && cached.isExpired && !autoGenerateAttempted.current) {
+      autoGenerateAttempted.current = true;
+      generate();
+    }
+  }, [cached, generate]);
 
   const displayInsights = compact ? insights.slice(0, 2) : insights;
 
