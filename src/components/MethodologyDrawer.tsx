@@ -15,19 +15,15 @@ interface MethodologyDrawerProps {
 }
 
 const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weights'] }) => {
-  const supplyIsActive = weights.supply > 0;
-
   return (
     <div className="space-y-6 py-4">
-      {/* Overview */}
       <div className="bg-muted/30 p-4 rounded-lg">
         <h4 className="font-medium mb-2 text-foreground">How this works</h4>
         <p className="text-sm text-muted-foreground">
-          The Fractional Working Index is a single weekly score (0-100) that answers one question: is this a good time to hire a fractional executive? It combines three signals: how much companies are hiring, how many executives are available, and how much the market is talking about fractional work.
+          The Fractional Working Index is a single weekly score (0-100) that answers one question: is this a good time to hire a fractional executive? It combines 21 data sources across three dimensions: hiring activity, talent availability, and market momentum.
         </p>
       </div>
 
-      {/* Components */}
       <div className="space-y-4">
         <h4 className="font-medium text-foreground text-sm uppercase tracking-wide">What we measure</h4>
 
@@ -40,56 +36,73 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
               </div>
               <span className="text-sm text-muted-foreground">{(weights.demand * 100).toFixed(0)}% of score</span>
             </div>
-            <p className="text-xs text-muted-foreground pl-5">Live job postings for fractional CFO, CMO, CTO, COO, CRO, and interim CEO roles. Plus venture capital funding filings: companies that just raised tend to hire fractional executives 1-3 months later.</p>
+            <p className="text-xs text-muted-foreground pl-5">Adzuna + SerpAPI Google Jobs postings for fractional CFO, CMO, CTO, COO, CRO, and interim CEO roles. SEC Form D filings track VC funding: companies that just raised tend to hire fractional executives 1-3 months later.</p>
           </div>
 
-          <div className={`p-3 bg-muted/20 rounded-lg space-y-1 ${!supplyIsActive ? 'opacity-50' : ''}`}>
+          <div className="p-3 bg-muted/20 rounded-lg space-y-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-accent" />
                 <span className="font-medium text-foreground">Talent availability</span>
               </div>
-              {supplyIsActive ? (
-                <span className="text-sm text-muted-foreground">{(weights.supply * 100).toFixed(0)}% of score</span>
-              ) : (
-                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-accent/10 text-accent">Coming Soon</span>
-              )}
+              <span className="text-sm text-muted-foreground">{(weights.supply * 100).toFixed(0)}% of score</span>
             </div>
-            <p className="text-xs text-muted-foreground pl-5">
-              {supplyIsActive
-                ? 'How many fractional executives are currently available to hire, based on marketplace data.'
-                : 'Will track fractional talent availability via marketplace profiles and supply-side data. We are integrating live data sources in Q2 2026; currently excluded from the composite score.'}
-            </p>
+            <p className="text-xs text-muted-foreground pl-5">People Data Labs professional profiles, SerpAPI LinkedIn search proxy, GoFractional marketplace listings, and supply-intent Google Trends (searches like "become fractional executive").</p>
           </div>
 
           <div className="p-3 bg-muted/20 rounded-lg space-y-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-secondary" />
-                <span className="font-medium text-foreground">Market buzz</span>
+                <span className="font-medium text-foreground">Market momentum</span>
               </div>
               <span className="text-sm text-muted-foreground">{(weights.culture * 100).toFixed(0)}% of score</span>
             </div>
-            <p className="text-xs text-muted-foreground pl-5">Google search interest for fractional executive terms plus news article volume. High buzz typically precedes a hiring surge by a few weeks.</p>
+            <p className="text-xs text-muted-foreground pl-5">Google Trends search interest, NewsAPI + Mediastack + Brave News coverage, Guardian + NYT prestige media mentions, Podchaser podcast episodes, Reddit + Hacker News community discourse.</p>
           </div>
         </div>
       </div>
 
-      {/* Normalization */}
       <div className="border-t border-border pt-4">
-        <h4 className="font-medium mb-2 text-foreground text-sm uppercase tracking-wide">How we normalize raw data</h4>
-        <p className="text-xs text-muted-foreground mb-3">
-          Each data source returns different units (job counts, filing counts, search interest 0-100, article counts). We convert each to a 0-100 score using these calibrations:
-        </p>
-        <div className="space-y-2 text-xs text-muted-foreground">
-          <p><span className="font-medium text-foreground">Job postings:</span> Log scale where 200 live listings = 100. Chosen because the highest-volume role (Fractional CFO) peaks around 150-200 listings.</p>
-          <p><span className="font-medium text-foreground">SEC Form D filings:</span> Linear scale where 800 tech filings per 90 days = 50. This is the approximate historical median.</p>
-          <p><span className="font-medium text-foreground">News articles:</span> Square-root scale (dampens viral spikes) where ~44 articles per 28 days = 100.</p>
-          <p><span className="font-medium text-foreground">Google Trends:</span> Passed through directly. Google already returns a 0-100 relative interest score.</p>
+        <h4 className="font-medium mb-2 text-foreground text-sm uppercase tracking-wide">21 data sources</h4>
+        <div className="grid grid-cols-2 gap-1.5 text-xs text-muted-foreground">
+          <span>Adzuna Jobs</span><span>SerpAPI Google Jobs</span>
+          <span>SEC EDGAR Form D</span><span>Google Trends (demand)</span>
+          <span>SerpAPI Trends</span><span>NewsAPI</span>
+          <span>Mediastack</span><span>Brave News</span>
+          <span>Brave Web Search</span><span>The Guardian</span>
+          <span>NY Times</span><span>Podchaser</span>
+          <span>Reddit</span><span>Hacker News</span>
+          <span>People Data Labs</span><span>SerpAPI LinkedIn</span>
+          <span>GoFractional</span><span>Supply Trends (Apify)</span>
+          <span>SerpAPI Supply Trends</span><span>FRED Macro Data</span>
+          <span>Census ACS</span>
         </div>
       </div>
 
-      {/* Data Quality */}
+      <div className="border-t border-border pt-4">
+        <h4 className="font-medium mb-2 text-foreground text-sm uppercase tracking-wide">Normalization</h4>
+        <p className="text-xs text-muted-foreground mb-3">
+          Each source returns different units. We normalize to 0-100 using calibrated scales:
+        </p>
+        <div className="space-y-2 text-xs text-muted-foreground">
+          <p><span className="font-medium text-foreground">Job postings:</span> Log scale (200 listings = 100)</p>
+          <p><span className="font-medium text-foreground">SEC filings:</span> Linear (800 tech filings/90d = 50)</p>
+          <p><span className="font-medium text-foreground">News:</span> Square-root scale (dampens viral spikes)</p>
+          <p><span className="font-medium text-foreground">Trends:</span> Native 0-100 pass-through</p>
+          <p><span className="font-medium text-foreground">Supply:</span> Log scale (10,000 profiles = 100)</p>
+        </div>
+      </div>
+
+      <div className="border-t border-border pt-4">
+        <h4 className="font-medium mb-2 text-foreground text-sm uppercase tracking-wide">Data integrity</h4>
+        <div className="space-y-2 text-xs text-muted-foreground">
+          <p><span className="font-medium text-foreground">Anomaly guard:</span> Rejects any signal more than 3 standard deviations from its 8-week rolling average to prevent API glitches from corrupting the index.</p>
+          <p><span className="font-medium text-foreground">Confidence score:</span> Weighted by source reliability. A week where all 21 sources report = 1.0 confidence.</p>
+          <p><span className="font-medium text-foreground">Week-over-week deltas:</span> Movers are calculated against the prior week's actual scores, not static baselines.</p>
+        </div>
+      </div>
+
       <div className="border-t border-border pt-4">
         <h4 className="font-medium mb-2 text-foreground">How to read the score</h4>
         <div className="space-y-1.5 text-sm text-muted-foreground">
@@ -104,11 +117,10 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
       <div className="bg-gradient-to-r from-primary/10 to-secondary/10 p-4 rounded-lg border border-primary/20">
         <h4 className="font-medium mb-1 text-foreground">Updated weekly</h4>
         <p className="text-sm text-muted-foreground">
-          The index runs every Monday morning. Each week's reading is stored permanently, so the trend chart fills in over time with real historical data.
+          The pipeline runs every Monday at 6am UTC via Vercel Cron. Each week's reading is stored permanently in Supabase, building genuine historical depth.
         </p>
       </div>
 
-      {/* CTA */}
       <Button
         className="w-full"
         onClick={() => window.open('https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current', '_blank')}

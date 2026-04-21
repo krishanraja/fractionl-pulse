@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
-import { Bell, ChevronDown, X } from 'lucide-react';
+import { Bell, ChevronDown, X, Download } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import HeroSection from '@/components/HeroSection';
 import SubIndexCards from '@/components/SubIndexCards';
@@ -67,13 +67,22 @@ const Index = () => {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-lg px-4 py-2 flex items-center gap-2 bg-emerald-500/8 border border-emerald-500/15"
+          className="rounded-lg px-4 py-2 flex items-center justify-between bg-emerald-500/8 border border-emerald-500/15"
         >
-          <span className="pulse-dot bg-emerald-500" style={{ color: '#10b981' }} />
-          <span className="text-emerald-600 text-xs font-medium">Live</span>
-          <span className="text-emerald-600/60 text-xs">
-            Updated {formatRelativeTime(lastUpdated)}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="pulse-dot bg-emerald-500" style={{ color: '#10b981' }} />
+            <span className="text-emerald-600 text-xs font-medium">Live</span>
+            <span className="text-emerald-600/60 text-xs">
+              Updated {formatRelativeTime(lastUpdated)}
+            </span>
+          </div>
+          <button
+            onClick={() => window.open('https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief', '_blank')}
+            className="flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-500 transition-colors cursor-pointer"
+          >
+            <Download size={12} />
+            <span className="hidden sm:inline">Export Brief</span>
+          </button>
         </motion.div>
       );
     }

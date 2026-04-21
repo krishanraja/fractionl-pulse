@@ -19,8 +19,28 @@ const SERP_API_KEY = Deno.env.get('SERP_API_KEY') || '';
 const MEDIASTACK_API_KEY = Deno.env.get('MEDIASTACK_API_KEY') || '';
 const PODCHASER_API_KEY = Deno.env.get('PODCHASER_API_KEY') || '';
 const GUARDIAN_API_KEY = Deno.env.get('GUARDIAN_API_KEY') || '';
+const NYT_API_KEY = Deno.env.get('NYT_API_KEY') || '';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+const SKIP_SOURCES = (Deno.env.get('SKIP_SOURCES') || '').split(',').map(s => s.trim()).filter(Boolean);
+
+const SOURCE_COST_ESTIMATE: Record<string, number> = {
+  adzuna: 0, sec_edgar: 0, newsapi: 0, hn: 0, census_acs: 0, fred: 0, guardian: 0,
+  serpapi_jobs: 0.005, serpapi_trends: 0.005, serpapi_linkedin: 0.02, serpapi_supply_trends: 0.005,
+  brave_news: 0.003, brave_web: 0.003,
+  mediastack: 0, nyt: 0, podchaser: 0,
+  people_data_labs: 0.06, reddit: 0, gofractional: 0.01,
+  google_trends: 0.01, supply_trends: 0.01,
+};
+
+function shouldSkip(source: string): boolean {
+  if (SKIP_SOURCES.includes(source)) {
+    console.log(`[Skip] ${source} is in SKIP_SOURCES, skipping`);
+    return true;
+  }
+  return false;
+}
 
 const FRACTIONAL_ROLES = [
   { phrase: 'fractional CFO', category: 'cfo', weight: 1.5 },
@@ -490,6 +510,11 @@ async function collectGuardianSignal(date: string): Promise<SignalResult> {
 }
 
 async function collectNYTSignal(date: string): Promise<SignalResult> {
+  if (!NYT_API_KEY) {
+    console.log('[NYT] No key, skipping');
+    return { source: 'nyt', signal_type: 'momentum', category: 'prestige_media',
+      raw_value: 0, normalized_value: 5, success: false, error: 'No NYT_API_KEY' };
+  }
   console.log('[NYT] Collecting prestige media mentions...');
   try {
     const endDate = new Date(date);
@@ -497,7 +522,7 @@ async function collectNYTSignal(date: string): Promise<SignalResult> {
     startDate.setDate(startDate.getDate() - 90);
     const beginStr = startDate.toISOString().slice(0, 10).replace(/-/g, '');
     const endStr = endDate.toISOString().slice(0, 10).replace(/-/g, '');
-    const url = `https://api.nytimes.com/svc/search/v2/articlesearch.json?q=%22fractional+executive%22+OR+%22fractional+CFO%22&begin_date=${beginStr}&end_date=${endStr}&api-key=NYTIMES_FREE_KEY`;
+    const url = `https://api.nytimes.com/svc/search/v2/articlesearch.json?q=%22fractional+executive%22+OR+%22fractional+CFO%22&begin_date=${beginStr}&end_date=${endStr}&api-key=${NYT_API_KEY}`;
     const response = await fetchWithRetry(url, {}, 2, 10000);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
@@ -552,41 +577,31 @@ async function collectPodchaserSignal(_date: string): Promise<SignalResult> {
 }
 
 async function collectRedditSignal(_date: string): Promise<SignalResult> {
-  if (!APIFY_API_KEY) {
-    return { source: 'reddit', signal_type: 'momentum', category: 'community_discourse',
-      raw_value: 0, normalized_value: 10, success: false, error: 'No APIFY_API_KEY' };
-  }
-  console.log('[Reddit] Collecting community discourse via Apify...');
+  console.log('[Reddit] Collecting community discourse via Reddit JSON API...');
   try {
-    const runResponse = await fetchWithRetry(`https://api.apify.com/v2/acts/vulnv~reddit-posts-search-scraper/runs?token=${APIFY_API_KEY}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        searchQueries: ['fractional executive', 'fractional CFO', 'fractional CMO'],
-        sort: 'relevance', time: 'month', maxItems: 50
-      })
-    }, 2, 15000);
-    if (!runResponse.ok) throw new Error(`Apify run failed: HTTP ${runResponse.status}`);
-    const runData = await runResponse.json();
-    const runId = runData.data.id;
-    const datasetId = runData.data.defaultDatasetId;
-    let status = 'READY';
-    let pollCount = 0;
-    while (status !== 'SUCCEEDED' && status !== 'FAILED' && pollCount < 12) {
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      const sr = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${APIFY_API_KEY}`);
-      status = (await sr.json()).data.status;
-      pollCount++;
+    const queries = ['fractional+executive', 'fractional+CFO', 'fractional+CMO'];
+    let allPosts: any[] = [];
+    for (const q of queries) {
+      try {
+        const url = `https://www.reddit.com/search.json?q=${q}&sort=relevance&t=month&limit=25`;
+        const response = await fetchWithRetry(url, {
+          headers: { 'User-Agent': 'FWI-Pulse/1.0 data@fractionl.ai' }
+        }, 2, 8000);
+        if (!response.ok) continue;
+        const data = await response.json();
+        const children = data?.data?.children || [];
+        allPosts.push(...children.map((c: any) => c.data));
+      } catch { /* individual query failure is ok */ }
     }
-    if (status !== 'SUCCEEDED') throw new Error(`Reddit run ${status}`);
-    const items = await (await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_KEY}`)).json();
-    const posts = Array.isArray(items) ? items : [];
-    const avgScore = posts.length > 0 ? posts.reduce((s: number, p: any) => s + safeNumber(p.score || p.ups, 0), 0) / posts.length : 0;
-    const subreddits = [...new Set(posts.map((p: any) => p.subreddit || p.subredditName).filter(Boolean))];
-    const normalized = normalizeRedditActivity(posts.length, avgScore);
-    console.log(`[Reddit] ${posts.length} posts, avg score ${avgScore.toFixed(1)} -> ${normalized}`);
+    const uniquePosts = [...new Map(allPosts.map(p => [p.id, p])).values()];
+    const avgScore = uniquePosts.length > 0
+      ? uniquePosts.reduce((s: number, p: any) => s + safeNumber(p.score, 0), 0) / uniquePosts.length : 0;
+    const subreddits = [...new Set(uniquePosts.map((p: any) => p.subreddit).filter(Boolean))];
+    const normalized = normalizeRedditActivity(uniquePosts.length, avgScore);
+    console.log(`[Reddit] ${uniquePosts.length} posts, avg score ${avgScore.toFixed(1)} -> ${normalized}`);
     return {
       source: 'reddit', signal_type: 'momentum', category: 'community_discourse',
-      raw_value: posts.length, normalized_value: normalized,
+      raw_value: uniquePosts.length, normalized_value: normalized,
       metadata: { avg_score: Math.round(avgScore), subreddits: subreddits.slice(0, 10), window: 'past_month' },
       success: true
     };
@@ -631,16 +646,11 @@ async function collectBraveNewsSignal(date: string): Promise<SignalResult> {
   console.log('[Brave News] Collecting news coverage...');
   try {
     const query = encodeURIComponent('"fractional CFO" OR "fractional CMO" OR "fractional CTO" OR "fractional executive"');
-    let totalArticles = 0;
-    for (let offset = 0; offset < 60; offset += 20) {
-      const url = `https://api.search.brave.com/res/v1/news/search?q=${query}&count=20&offset=${offset}&freshness=pm`;
-      const response = await fetchWithRetry(url, { headers: { 'X-Subscription-Token': BRAVE_API_KEY } });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      totalArticles += (data.results || []).length;
-      if ((data.results || []).length < 20) break;
-      if (offset + 20 < 60) await new Promise(r => setTimeout(r, 1100));
-    }
+    const url = `https://api.search.brave.com/res/v1/news/search?q=${query}&count=20&freshness=pm`;
+    const response = await fetchWithRetry(url, { headers: { 'X-Subscription-Token': BRAVE_API_KEY } }, 2, 8000);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    const totalArticles = safeNumber(data.query?.total_count, (data.results || []).length);
     return {
       source: 'brave_news', signal_type: 'momentum', category: 'media_coverage',
       raw_value: totalArticles, normalized_value: normalizeNews(totalArticles),
@@ -765,11 +775,22 @@ async function collectGoFractionalSupply(_date: string): Promise<SignalResult> {
     return { source: 'gofractional', signal_type: 'supply', category: 'marketplace',
       raw_value: 0, normalized_value: 10, success: false, error: 'No APIFY_API_KEY' };
   }
-  console.log('[GoFractional] Collecting marketplace listings via Apify...');
+  console.log('[GoFractional] Collecting marketplace listings via Apify web scraper...');
   try {
-    const runResponse = await fetchWithRetry(`https://api.apify.com/v2/acts/lexis-solutions~gofractional-scraper/runs?token=${APIFY_API_KEY}`, {
+    const runResponse = await fetchWithRetry(`https://api.apify.com/v2/acts/apify~web-scraper/runs?token=${APIFY_API_KEY}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ maxItems: 100 })
+      body: JSON.stringify({
+        startUrls: [{ url: 'https://www.gofractional.com/fractional-executives' }],
+        pageFunction: `async function pageFunction(context) {
+          const $ = context.jQuery;
+          const results = [];
+          $('[class*="executive"], [class*="profile"], [class*="card"]').each((i, el) => {
+            results.push({ title: $(el).find('[class*="name"], h3, h4').first().text().trim() });
+          });
+          return results.length > 0 ? results : [{ count: $('a[href*="profile"], a[href*="executive"]').length || 0 }];
+        }`,
+        maxPagesPerCrawl: 3,
+      })
     }, 2, 15000);
     if (!runResponse.ok) throw new Error(`Apify run failed: HTTP ${runResponse.status}`);
     const runData = await runResponse.json();
@@ -785,15 +806,13 @@ async function collectGoFractionalSupply(_date: string): Promise<SignalResult> {
     }
     if (status !== 'SUCCEEDED') throw new Error(`GoFractional run ${status}`);
     const items = await (await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_KEY}`)).json();
-    const listings = Array.isArray(items) ? items : [];
-    const rates = listings.map((l: any) => safeNumber(l.hourlyRate || l.rate, 0)).filter(r => r > 0);
-    const medianRate = rates.length > 0 ? rates.sort((a, b) => a - b)[Math.floor(rates.length / 2)] : 0;
-    const roles = [...new Set(listings.map((l: any) => l.role || l.title).filter(Boolean))];
-    console.log(`[GoFractional] ${listings.length} listings, median rate $${medianRate}`);
+    const listings = Array.isArray(items) ? items.flat() : [];
+    const count = listings.length > 1 ? listings.length : safeNumber(listings[0]?.count, 0);
+    console.log(`[GoFractional] ${count} listings found`);
     return {
       source: 'gofractional', signal_type: 'supply', category: 'marketplace',
-      raw_value: listings.length, normalized_value: normalizeSupplyCount(listings.length),
-      metadata: { median_hourly_rate: medianRate, roles_found: roles.slice(0, 10), listings_with_rates: rates.length },
+      raw_value: count, normalized_value: normalizeSupplyCount(count),
+      metadata: { method: 'apify_web_scraper', listings_found: count },
       success: true
     };
   } catch (error) {

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f0a1e"/>
+      <stop offset="100%" stop-color="#1a1035"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#5B3DB8"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="60" y="520" width="200" height="4" rx="2" fill="url(#accent)"/>
+  <text x="60" y="180" font-family="system-ui,-apple-system,sans-serif" font-size="28" font-weight="500" fill="#8B5CF6" letter-spacing="4">PULSE BY FRACTIONL</text>
+  <text x="60" y="280" font-family="system-ui,-apple-system,sans-serif" font-size="72" font-weight="700" fill="white">The Fractional</text>
+  <text x="60" y="370" font-family="system-ui,-apple-system,sans-serif" font-size="72" font-weight="700" fill="white">Working Index</text>
+  <text x="60" y="450" font-family="system-ui,-apple-system,sans-serif" font-size="24" fill="#9ca3af">Weekly market intelligence from 21 data sources</text>
+  <text x="60" y="490" font-family="system-ui,-apple-system,sans-serif" font-size="24" fill="#9ca3af">Demand · Supply · Momentum</text>
+  <text x="60" y="560" font-family="system-ui,-apple-system,sans-serif" font-size="18" fill="#6b7280">fractionl.ai</text>
+</svg>
