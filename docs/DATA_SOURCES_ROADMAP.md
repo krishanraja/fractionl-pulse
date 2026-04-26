@@ -1,375 +1,265 @@
-# Data Sources Roadmap: Fractional Working Index
+# Data Sources: Live Inventory + Roadmap
 
-## Overview
-
-The FWI's credibility and value depend entirely on the quality, breadth, and freshness of its underlying data. This document outlines the data acquisition strategy.
+The credibility and value of the FWI depend entirely on the quality, breadth, and freshness of underlying data. This document is the living source of truth for what's live today, what's planned, and how we monitor data quality.
 
 ---
 
-## 1. Data Source Categories
+## 1. Live Source Inventory (21 sources)
 
-### Demand Signals (Weight: 40%)
-Measure enterprise appetite for fractional talent
+**Total**: 17 composite + 4 context (FRED + Census, stored not scored).
 
-| Source | Signal | Method | Status | Priority |
-|--------|--------|--------|--------|----------|
-| LinkedIn Jobs | "Fractional" job postings | Talent Insights API | 🔴 Planned | Critical |
-| Indeed | Interim/contract postings | API + scraping | 🔴 Planned | Critical |
-| Glassdoor | Company reviews mentioning fractional | API | 🟡 Planned | High |
-| Google Jobs | Aggregated job postings | Scraping | 🟡 Planned | High |
-| Crunchbase | Startup fractional hiring | API | 🟡 Planned | High |
-| SEC Filings | Consulting expense disclosures | EDGAR API | 🟢 Planned | Medium |
-| RFP Databases | Consulting RFP volume | Partnerships | 🟢 Planned | Medium |
+### Demand pillar (50% weight)
 
-### Supply Signals (Weight: 40%)
-Measure fractional talent availability and activity
+| Source | Signal | Method | Status | Cost / call |
+|--------|--------|--------|--------|-------------|
+| **Adzuna** | Fractional job postings, 6 C-suite roles | REST API, `what_phrase` exact-phrase | 🟢 Live | $0 (free tier) |
+| **SerpAPI Google Jobs** | Independent Google Jobs cross-check | SerpAPI engine, exact phrase per role | 🟢 Live | ~$0.005 |
+| **SEC EDGAR Form D** | VC funding pipeline, tech/SaaS, 90-day rolling | EDGAR full-text search | 🟢 Live | $0 (gov) |
 
-| Source | Signal | Method | Status | Priority |
-|--------|--------|--------|--------|----------|
-| LinkedIn Profiles | "Fractional" in title/about | People API | 🔴 Planned | Critical |
-| Upwork | Fractional exec listings | API | 🔴 Planned | Critical |
-| Toptal | Expert availability | Partnership | 🟡 Planned | High |
-| A.Team | Fractional listings | Partnership | 🟡 Planned | High |
-| Catalant | Project marketplace | Partnership | 🟡 Planned | High |
-| Personal websites | Fractional exec sites | Crawling | 🟢 Planned | Medium |
+### Supply pillar (20% weight, redistributes if empty)
 
-### Culture Signals (Weight: 20%)
-Measure cultural adoption and awareness
+| Source | Signal | Method | Status | Cost / call |
+|--------|--------|--------|--------|-------------|
+| **People Data Labs** | Profile counts containing fractional/interim title terms | PDL Person Search API | 🟢 Live | ~$0.06 |
+| **SerpAPI LinkedIn** | `site:linkedin.com/in "fractional CFO"` proxy | SerpAPI Google Search | 🟢 Live | ~$0.02 |
+| **GoFractional** | Active marketplace listings | Apify scraper actor | 🟢 Live | ~$0.01 |
+| **Apify Trends (supply intent)** | Searches like "become fractional executive" | Apify google-trends-scraper | 🟢 Live | ~$0.01 |
+| **SerpAPI Trends (supply intent)** | Independent supply-intent cross-check | SerpAPI Trends | 🟢 Live | ~$0.005 |
 
-| Source | Signal | Method | Status | Priority |
-|--------|--------|--------|--------|----------|
-| Google Trends | Search interest | API | 🟢 Ready | Medium |
-| Twitter/X | Mentions, sentiment | API | 🟢 Ready | Medium |
-| NewsAPI | Media coverage | ✅ Configured | ✅ Ready | Medium |
-| Eventbrite | Industry events | ✅ Configured | ✅ Ready | Medium |
-| Podcasts | Episode mentions | Scraping | 🟢 Planned | Low |
-| Reddit | Community discussions | API | 🟢 Planned | Low |
-| Substack | Newsletter coverage | Scraping | 🟢 Planned | Low |
+### Culture pillar (30% weight)
 
----
+| Source | Signal | Method | Status | Cost / call |
+|--------|--------|--------|--------|-------------|
+| **SerpAPI Google Trends** | Search interest, 90-day, US geo | SerpAPI Trends (primary) | 🟢 Live | ~$0.005 |
+| **Apify Google Trends** | Backup search-interest provider | Apify google-trends-scraper | 🟢 Live | ~$0.01 |
+| **NewsAPI** | Article volume, 28-day, exact phrase | REST API | 🟢 Live | $0 (free tier) |
+| **Mediastack** | Independent news cross-check | REST API | 🟢 Live | $0 (free tier) |
+| **Brave News** | News-vertical search | Brave Search API | 🟢 Live | ~$0.003 |
+| **Brave Web Search** | Total web mentions across sites | Brave Search API | 🟢 Live | ~$0.003 |
+| **The Guardian** | Elite UK media, 90-day | Guardian Open Platform API | 🟢 Live | $0 |
+| **NY Times** | Elite US media, 90-day | NYT Article Search API | 🟢 Live | $0 |
+| **Podchaser** | Podcast episodes mentioning fractional terms | Podchaser GraphQL API | 🟢 Live | $0 |
+| **Reddit** | Posts + engagement in relevant subreddits | Apify Reddit scraper | 🟢 Live | ~$0.005 |
+| **Hacker News** | Stories + points | Algolia HN Search | 🟢 Live | $0 |
 
-## 2. Data Quality Requirements
+### Context (stored, excluded from composite)
 
-### Freshness
-| Tier | Requirement | Method |
-|------|-------------|--------|
-| Critical | < 24 hours | Hourly ingestion |
-| High | < 48 hours | Daily ingestion |
-| Medium | < 1 week | Weekly ingestion |
-
-### Coverage
-- Minimum 5 sources per signal type
-- Geographic: US primary, UK/EU secondary
-- Role coverage: C-suite through Director level
-- Industry breadth: All major sectors
-
-### Accuracy
-- Automated outlier detection
-- Human spot-checks (weekly)
-- Backtesting against known events
-- Cross-source validation
+| Source | Signal | Method | Status |
+|--------|--------|--------|--------|
+| **FRED — JOLTS** | US Job Openings (monthly) | FRED API | 🟢 Live |
+| **FRED — Unemployment** | US Unemployment Rate (monthly) | FRED API | 🟢 Live |
+| **FRED — Initial Claims** | US Initial Jobless Claims (weekly) | FRED API | 🟢 Live |
+| **Census ACS** | Self-employment household percentage | Census API | 🟢 Live |
 
 ---
 
-## 3. Integration Priorities
+## 2. Source-Confidence Weights
 
-### Phase 1 (Weeks 1-4): Foundation
+Each source has a domain-weighted contribution to the data-completeness score, baked into `SOURCE_CONFIDENCE_WEIGHTS` in `supabase/functions/ingest-signals/index.ts`:
 
-**Goal**: 3+ live data sources per signal type
+| Source | Weight |
+|--------|--------|
+| Adzuna | 0.14 |
+| SEC EDGAR | 0.10 |
+| People Data Labs | 0.10 |
+| SerpAPI Jobs | 0.08 |
+| Google Trends (Apify) | 0.08 |
+| SerpAPI LinkedIn | 0.06 |
+| SerpAPI Trends | 0.06 |
+| GoFractional | 0.05 |
+| NewsAPI | 0.05 |
+| Brave News | 0.04 |
+| Apify supply trends | 0.04 |
+| Brave Web | 0.03 |
+| Mediastack | 0.03 |
+| SerpAPI supply trends | 0.03 |
+| Guardian | 0.02 |
+| NY Times | 0.02 |
+| Podchaser | 0.02 |
+| Reddit | 0.02 |
+| Hacker News | 0.01 |
+| FRED | 0.01 |
+| Census ACS | 0.01 |
 
-```
-Week 1: NewsAPI + Google Trends
-- [x] NewsAPI key configured
-- [ ] Build ingestion Edge Function
-- [ ] Test search queries
-- [ ] Store results in signals table
-
-Week 2: LinkedIn Talent Insights
-- [ ] Apply for API access
-- [ ] Negotiate partnership terms
-- [ ] Design data mapping
-- [ ] Build ingestion pipeline
-
-Week 3: Indeed/Glassdoor
-- [ ] Evaluate API vs scraping
-- [ ] Legal review of ToS
-- [ ] Build ingestion pipeline
-- [ ] Normalize to signal format
-
-Week 4: Upwork/Toptal
-- [ ] Outreach to partnerships team
-- [ ] API documentation review
-- [ ] Sample data validation
-- [ ] Integration build
-```
-
-### Phase 2 (Weeks 5-8): Expansion
-
-**Goal**: 8+ live sources, robust pipeline
-
-```
-- [ ] Crunchbase integration
-- [ ] SEC EDGAR integration
-- [ ] Twitter/X API v2
-- [ ] A.Team partnership
-- [ ] Catalant partnership
-- [ ] Reddit API
-- [ ] Podcast index crawling
-```
-
-### Phase 3 (Weeks 9-12): Refinement
-
-**Goal**: Production-quality data infrastructure
-
-```
-- [ ] Automated quality monitoring
-- [ ] Alerting for stale data
-- [ ] Historical backfill (24 months)
-- [ ] Cross-source validation
-- [ ] Confidence scoring per signal
-```
+Weights reflect signal-quality + uniqueness, not raw volume. They do **not** measure prediction accuracy.
 
 ---
 
-## 4. API Access Strategy
+## 3. Data Quality Architecture
 
-### LinkedIn Talent Insights
+### Anomaly guard
 
-**Critical for demand + supply signals**
+For every successful signal, the ingest function fetches the last 8 weeks of values for `(source, category)`. If `|value − rolling_mean| / rolling_stddev > 3` (and the history has at least 3 points with `stddev > 1`), the signal is **rejected** from the upsert and logged. The composite is never contaminated by an outlier from a single buggy source.
 
-| Requirement | Status |
-|-------------|--------|
-| Company page (10K+ followers) | Needed |
-| Business justification | Draft ready |
-| Annual contract ($25K+) | Budget allocated |
-| Technical implementation | 2-week timeline |
+### Cross-source triangulation
 
-**Fallback**: LinkedIn post scraping (limited, risky)
+- 3 news APIs (NewsAPI, Mediastack, Brave) cover the same culture signal
+- 2 Google Trends providers (SerpAPI primary, Apify fallback)
+- 4 supply sources (PDL, LinkedIn proxy, GoFractional, supply-intent search)
+- 2 demand sources for jobs (Adzuna, SerpAPI Google Jobs)
 
-### Indeed Publisher Program
+Single-source disruptions don't take the index down.
 
-**Important for job posting data**
+### Idempotent writes
 
-| Requirement | Status |
-|-------------|--------|
-| Publisher application | Submitted |
-| Use case approval | Pending |
-| API key issuance | Pending |
-| Rate limits | TBD |
+`UPSERT ON CONFLICT (date, source, signal_type, category)` — re-running the pipeline on the same date is safe.
 
-**Fallback**: JSearch API (aggregator)
+### Per-source health monitoring
 
-### Google Trends
+Every ingest run updates `data_source_health.{status, last_checked, last_success, error_count}`. The dashboard's `DataHealthCard` surfaces health badges in real time via Supabase Realtime.
 
-**Public API, no approval needed**
+### Pipeline run log
 
-```typescript
-// Example implementation
-const fetchGoogleTrends = async (keyword: string) => {
-  const response = await fetch(
-    `https://trends.google.com/trends/api/dailytrends?geo=US&q=${encodeURIComponent(keyword)}`
-  );
-  // Parse and normalize
-};
-```
+Every cron + manual run writes a `pipeline_runs` row with status, records inserted, confidence, error, and metadata (which sources succeeded, which failed). Two views — `pipeline_health` and `data_quality_summary` — expose this for the dashboard.
+
+### Email alerts
+
+`send-pipeline-alert` fires Resend transactional emails on critical (ingest failure) or warning (insights generation failure) events.
 
 ---
 
-## 5. Data Pipeline Architecture
+## 4. Roadmap
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    EXTERNAL SOURCES                          │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 INGESTION LAYER                              │
-│                                                              │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
-│  │ LinkedIn │  │  Indeed  │  │  News    │  │  Social  │    │
-│  │ Fetcher  │  │ Fetcher  │  │ Fetcher  │  │ Fetcher  │    │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 PROCESSING LAYER                             │
-│                                                              │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │              Signal Normalizer                        │   │
-│  │  • Schema validation                                  │   │
-│  │  • Value normalization (0-100)                       │   │
-│  │  • Deduplication                                     │   │
-│  │  • Outlier detection                                 │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 STORAGE LAYER                                │
-│                                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │   signals    │  │  fwi_scores  │  │    movers    │      │
-│  │   (raw)      │  │  (computed)  │  │  (analysis)  │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 COMPUTATION LAYER                            │
-│                                                              │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │              Index Calculator                         │   │
-│  │  • Weight application                                │   │
-│  │  • Composite scoring                                 │   │
-│  │  • Delta calculation                                 │   │
-│  │  • Confidence scoring                                │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
+### Near-term (next 1–2 quarters)
+
+- 🚧 **Webhook threshold alerts** — push notifications on band changes, role-level deltas, score crossings (Pro/Enterprise feature)
+- 🚧 **API key tiered auth** — `api_keys` table is provisioned; rolling out per enterprise customer
+- 🚧 **Stripe billing integration** — convert waitlist to active Pro subscribers
+- 🚧 **White-label embeddable widget** — single-script gauge + sub-index cards
+- 🚧 **CSV / Parquet export** for Pro and Enterprise
+
+### Source expansion candidates
+
+| Candidate | Pillar | Why | Status |
+|-----------|--------|-----|--------|
+| **Crunchbase** | Demand | Funding velocity cross-check beyond Form D | 🟡 Evaluating cost vs uplift |
+| **Indeed Publisher API** | Demand | Cross-check on Adzuna + SerpAPI jobs | 🟡 Evaluating Publisher Program |
+| **A.Team marketplace** | Supply | Direct fractional listings | 🟡 Partnership outreach |
+| **Catalant** | Supply | Project marketplace listings | 🟡 Partnership outreach |
+| **Twitter/X API v2** | Culture | Real-time fractional discourse | 🟡 Evaluating cost vs ToS risk |
+| **Eventbrite** | Culture | Industry-event signals | 🔴 Backlog |
+| **Substack** | Culture | Newsletter coverage volume | 🔴 Backlog (RSS-based) |
+| **Glassdoor** | Demand | Company reviews mentioning fractional | 🔴 Backlog (ToS-restricted) |
+| **LinkedIn Talent Insights** | Demand + Supply | Direct LinkedIn data | ❄️ Cost-prohibitive ($25K+) — proxy via SerpAPI for now |
+
+### Geographic expansion
+
+- 🟢 US — primary, all sources cover
+- 🟢 UK — Adzuna, Guardian, NewsAPI all cover
+- 🟡 EU — partial Mediastack + Adzuna coverage
+- 🔴 APAC — backlog, requires regional sources
+
+### Role expansion
+
+Currently 6 C-suite roles (CFO, CMO, CTO, COO, CRO, CEO). Candidates for expansion (Pro / Enterprise feature):
+
+- Fractional VPs (Sales, Engineering, People)
+- Fractional Heads of (Growth, Product)
+- Industry-vertical sub-indices (FinTech FWI, SaaS FWI, etc.) — Enterprise custom
 
 ---
 
-## 6. Normalization Formulas
-
-### Job Posting Count → Score
-
-```typescript
-const normalizeJobPostings = (count: number, baseline: number = 1000) => {
-  // Logarithmic scaling to handle variance
-  const ratio = count / baseline;
-  const score = 50 + (Math.log10(ratio) * 30);
-  return Math.max(0, Math.min(100, score));
-};
-```
-
-### Search Interest → Score
-
-```typescript
-const normalizeSearchInterest = (googleTrendsValue: number) => {
-  // Google Trends is already 0-100, but relative
-  // Apply smoothing and trend adjustment
-  return googleTrendsValue;
-};
-```
-
-### Social Mentions → Score
-
-```typescript
-const normalizeSocialMentions = (count: number, sentiment: number) => {
-  // sentiment: -1 to 1
-  // weight volume by sentiment
-  const volumeScore = Math.min(100, Math.sqrt(count) * 5);
-  const sentimentMultiplier = 0.5 + (sentiment + 1) * 0.25; // 0.5 to 1.0
-  return volumeScore * sentimentMultiplier;
-};
-```
-
----
-
-## 7. Quality Monitoring
-
-### Automated Checks
-
-```sql
--- Alert if no signals in 24 hours
-CREATE OR REPLACE FUNCTION check_signal_freshness()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF (
-    SELECT MAX(created_at) 
-    FROM signals
-  ) < NOW() - INTERVAL '24 hours' THEN
-    -- Trigger alert
-    PERFORM pg_notify('data_alert', 'Stale signals detected');
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-```
-
-### Dashboard Metrics
+## 5. Quality Targets
 
 | Metric | Target | Alert Threshold |
 |--------|--------|-----------------|
-| Signals/day | 100+ | < 50 |
-| Source coverage | 10+ | < 5 |
-| Freshness (avg) | < 12 hrs | > 24 hrs |
-| Null rate | < 5% | > 10% |
-| Duplicate rate | < 1% | > 5% |
+| Daily pipeline success rate | > 98% | < 95% over rolling 7d |
+| Source freshness (composite) | < 24h | > 48h triggers `is_stale` flag |
+| Source coverage per run | ≥ 17 / 21 | < 14 |
+| Anomaly rejection rate | < 5% of signals | > 15% |
+| Data completeness | > 0.85 | < 0.75 |
 
 ---
 
-## 8. Cost Estimates
+## 6. Cost Model
 
-### API Costs (Monthly)
+### Variable per-run costs
 
-| Source | Plan | Cost/month |
-|--------|------|------------|
-| LinkedIn Talent Insights | Enterprise | $2,000 |
-| Indeed Publisher | Free tier | $0 |
-| Crunchbase | Pro | $300 |
-| NewsAPI | Business | $450 |
-| Twitter API | Basic | $100 |
-| Google Cloud (Trends) | Pay-as-go | ~$50 |
-| **Total** | | **~$2,900/mo** |
+A single full ingest run touches every source listed above. Estimated cost per run (worst case, all sources fire):
 
-### Infrastructure Costs
+| Source family | Estimated cost / run |
+|---------------|---------------------|
+| Adzuna + 6 roles | $0 |
+| SerpAPI (jobs + trends + LinkedIn + supply) | ~$0.10 |
+| Apify (Google Trends + supply trends + Reddit + GoFractional) | ~$0.04 |
+| Brave (news + web) | ~$0.006 |
+| People Data Labs (per role) | ~$0.36 |
+| OpenAI (insights) | ~$0.005 |
+| Free APIs (NewsAPI, Mediastack, FRED, Census, NYT, Guardian, Podchaser, HN, SEC) | $0 |
+| **Total per daily run** | **~$0.50** |
 
-| Service | Cost/month |
-|---------|------------|
-| Supabase (Pro) | $25 |
-| Edge Function invocations | ~$20 |
-| Storage | ~$10 |
-| **Total** | **~$55/mo** |
+Daily cron × 30 days = ~$15/mo in variable data cost. Real annual variable cost: ~$180.
 
----
+### Fixed costs
 
-## 9. Legal Considerations
+| Service | Cost / month |
+|---------|--------------|
+| Adzuna API | $0 (free tier ample for 6 roles) |
+| NewsAPI | $0 (free dev tier) — $449 if upgraded |
+| Mediastack | $0 (free tier) |
+| SerpAPI | $50–$150 depending on volume |
+| PDL | $99 (starter) — $500+ at scale |
+| Apify | $49 (starter plan) |
+| Brave Search | $5–$50 depending on volume |
+| Resend | $0–$20 |
+| OpenAI | $20–$100 |
+| Supabase Pro | $25 |
+| Vercel | $0 (Hobby) — $20 (Pro) |
+| **Total** | **~$300–$1,000 / mo** |
 
-### Terms of Service Compliance
-
-| Source | Scraping Allowed | API Available | Notes |
-|--------|------------------|---------------|-------|
-| LinkedIn | ❌ No | ✅ Yes (paid) | Requires partnership |
-| Indeed | ⚠️ Limited | ✅ Yes | Publisher program |
-| Twitter | ❌ No | ✅ Yes (paid) | API v2 required |
-| Google Trends | ⚠️ Gray area | ⚠️ Unofficial | Use pytrends carefully |
-| News sites | ✅ Usually | Varies | Respect robots.txt |
-
-### Data Usage Rights
-
-- All derived indices are our IP
-- Raw data cannot be redistributed
-- Attribution required in methodology
-- User data kept separate from signals
+This is the actual operating cost behind the FWI — useful when prospects ask why a single API can't replicate the index.
 
 ---
 
-## 10. Contingency Plans
-
-### Source Disruption
-
-| Scenario | Impact | Mitigation |
-|----------|--------|------------|
-| LinkedIn API revoked | Critical | Pre-negotiate backup suppliers |
-| Indeed rate limited | High | Queue management, caching |
-| Social API cost spike | Medium | Alternative providers |
-| Scraping blocked | Low | API-first strategy |
-
-### Data Quality Issues
+## 7. Source Disruption Playbook
 
 | Scenario | Detection | Response |
 |----------|-----------|----------|
-| Anomalous spike | Z-score > 3 | Human review, possible exclusion |
-| Source offline | No data in window | Alert, use last known |
-| Schema change | Validation failure | Immediate engineering response |
+| Single source rate-limited | `data_source_health.status = 'failed'` | Add to `SKIP_SOURCES` env, monitor; composite continues |
+| Single source returns garbage | Anomaly guard rejects in next run | Investigate metadata; if persistent, add to `SKIP_SOURCES` |
+| Two sources in same pillar fail | Pillar score still computed from remaining; confidence drops | Review within 24h, source replacement plan |
+| All supply sources fail | Supply weight redistributes to demand + culture | Surfaced in API response; fix within 48h |
+| Anomalous WoW delta (>15 points) | Manual review on `pipeline_runs.metadata` | Compare against priors, possibly reject + recompute |
+| API schema change | Edge function logs error | Hotfix function, redeploy via `supabase functions deploy` |
 
 ---
 
-*Last updated: 2026-01-12*
+## 8. Legal & Terms-of-Service
+
+| Source | Use type | Notes |
+|--------|----------|-------|
+| Adzuna | API, commercial | Within ToS for derivative analytics |
+| SerpAPI | API, commercial | Paid tier, derivative use OK |
+| SEC EDGAR | Public government data | Free, no restrictions |
+| FRED, Census | Public government data | Free, attribution best practice |
+| NewsAPI | API, commercial | Free tier limited, paid tier full commercial |
+| Mediastack | API, commercial | Within ToS |
+| Brave Search | API, commercial | Within paid plan ToS |
+| Guardian | API, commercial | Open Platform allows commercial w/ key |
+| NY Times | API, non-commercial dev key | Article counts only — within fair use |
+| Podchaser | API, commercial | Within ToS |
+| People Data Labs | API, commercial | Aggregate counts only, within ToS |
+| Reddit (via Apify) | Scraper | Apify handles ToS; we consume aggregate counts |
+| Hacker News | Public Algolia API | Free, no restrictions |
+| GoFractional (via Apify) | Scraper | Aggregate listings counts; respects robots.txt |
+| Google Trends (Apify / SerpAPI) | API/scraper proxy | Aggregate score values only, within proxy ToS |
+
+We store and expose **aggregate signal values**, not raw third-party content. No source is redistributed verbatim.
+
+---
+
+## 9. Recent Changes
+
+See `git log` and `supabase/migrations/`. Highlights:
+
+- `001_defensible_signals.sql` — initial 4-source schema
+- `002_pipeline_scheduling.sql` — pg_cron safety net + freshness function + quality views
+- `003_expand_signal_sources.sql` — added 17 sources to `data_source_health`, added `context` signal type
+- `004_fix_cached_insights_columns.sql` — `model_used`/`context` schema sync trigger
+- `005_tighten_signals_rls.sql` — RLS hardening (public read, service-role-only writes)
+- `20260402_create_waitlist.sql` — waitlist table + anon-insert policy
+- `f653feb` — Brave Search integration
+- `a07f401` — PDL fix activated supply pillar
+- `b2760de` — fixed 13 failed sources, 12-week backfill, code splitting
+
+For the live source-by-source state at any moment: `SELECT * FROM data_source_health ORDER BY status, source;`

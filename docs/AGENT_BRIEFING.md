@@ -1,218 +1,307 @@
 # Agent Briefing: Pulse by Fractionl
 
-## Quick Pitch
-
-Pulse publishes the Fractional Working Index (FWI) -- the only real-time composite score (0-100) tracking demand, supply, and cultural momentum in the fractional executive market. It combines job postings, SEC Form D filings (a leading indicator no competitor uses), search trends, and media coverage into a single weekly number designed for both human analysts and AI agents.
-
----
-
-## 1. What Pulse Is
-
-**Product:** The Fractional Working Index (FWI) -- a weekly composite 0-100 score measuring the health of the fractional executive market.
-
-**Formula:** `FWI = (Demand x 0.50) + (Supply x 0.20) + (Culture x 0.30)`
-
-**Three Pillars:**
-
-| Pillar | Weight | Status | What It Measures |
-|--------|--------|--------|-----------------|
-| Demand | 50% | Live | Job postings + VC funding pipeline |
-| Supply | 20% | Neutral baseline (live data Q2 2026) | Fractional exec availability |
-| Culture | 30% | Live | Search interest + media coverage |
-
-**Interfaces:**
-- Dashboard: `pulse.fractionl.ai`
-- Public API: `/fwi-api/current` (no auth required)
-- MCP tool definition ships with the repo
-
-**Update cadence:** Weekly
+> **Audience:** AI sales agents, marketing agents, outbound agents, customer-facing chat agents, embedded research agents.
+> **Goal:** Give the agent everything it needs to talk about Pulse accurately, persuasively, and at scale — without inventing claims.
 
 ---
 
-## 2. Value Proposition and Differentiation
+## 1. One-Sentence Pitch
 
-### Core Value
-A single, normalized number that answers: "How healthy is the fractional executive market right now, and where is it heading?"
+Pulse publishes the **Fractional Working Index (FWI)** — the only real-time composite 0–100 score tracking demand, supply, and cultural momentum in the fractional executive market, blended from 21 independent data sources and built API-first for AI agents.
 
-### Differentiation
-- **First mover.** No other product publishes a real-time composite index for the fractional executive market.
-- **SEC Form D as leading indicator.** Companies that file Form D (Series A/B/C raises) enter the fractional buyer pool 1-3 months later. No competitor uses this signal.
-- **Composite methodology.** Combines demand, supply, and culture signals into one score. Competitors offer fragments (job boards, marketplace listings, or quarterly reports), never a composite.
-- **Agent-native design.** Public API, structured JSON schema, MCP tool definition, `X-FWI-Score` shortcut header. Built for AI agents as first-class consumers.
-- **Historical moat.** 52 weeks of weekly data creates a dataset no competitor can replicate without spending a year collecting it.
+## 2. 30-Second Pitch (use in cold email / DM)
 
----
+> The fractional executive economy moves weekly, but operators inside it (execs, agencies, marketplaces, VCs) still rely on stale quarterly reports or LinkedIn anecdotes. We built Pulse — a weekly composite index from 21 live sources (Adzuna, SEC EDGAR Form D, Google Trends, NewsAPI, Guardian, NYT, Reddit, HN, People Data Labs, GoFractional, and more). One number, three pillars, no auth required to query. SEC Form D filings give us a 1–3 month leading indicator no other index uses. Live at pulse.fractionl.ai.
 
-## 3. Score Scale
+## 3. Two-Minute Pitch (use in discovery call / longer DM)
 
-| Range | Label | Meaning |
-|-------|-------|---------|
-| 75-100 | Surging | Exceptional demand. Fractional executives have pricing power. |
-| 60-74 | Growing | Strong market. Opportunities abundant for qualified operators. |
-| 45-59 | Stable | Balanced conditions. Normal hiring cadence. |
-| 30-44 | Cooling | Softening demand. Selectivity increasing. |
-| 0-29 | Contracting | Market under pressure. Supply exceeds demand. |
+> Pulse turns the fractional executive market into a measurable, trackable asset.
+>
+> The Fractional Working Index combines hiring demand (Adzuna jobs, SerpAPI Google Jobs, SEC Form D VC filings), supply (People Data Labs profiles, LinkedIn proxy, GoFractional marketplace, supply-intent search), and culture (Google Trends, NewsAPI, Mediastack, Brave, Guardian, NYT, Podchaser, Reddit, HN) into a single 0–100 score with weekly granularity.
+>
+> The output: agencies time campaigns. Fractional execs raise rates with confidence. VCs validate workforce thesis. HR tech embeds the index. Media cites it.
+>
+> The methodology is open — weights, normalization, and source list are all published. The API is public, no auth, and ships with an MCP tool definition. We use SEC Form D as a 1–3 month leading indicator for fractional hiring — companies file Form D 15 days after raising, then enter the fractional buyer pool 1–3 months later. No other product does this.
 
 ---
 
-## 4. Data Sources (Live)
+## 4. What Pulse Is (precise)
 
-| Source | Signal | Normalization | Unique Angle |
-|--------|--------|--------------|-------------|
-| Adzuna Jobs API | Fractional C-suite job postings (CFO, CMO, CTO, COO, CRO, interim CEO) | Log scale: 200 listings = score 100 | Exact phrase matching filters out non-fractional exec search |
-| SEC EDGAR Form D | VC funding filings (Series A/B/C) as leading demand indicator | Linear: 800 filings/90 days = score 50 | 1-3 month predictive lag on fractional hiring demand. No competitor uses this. |
-| Google Trends (via Apify) | Search interest for fractional terms, 90-day rolling, US geo | Passthrough (already 0-100) | Precedes job postings by 4-6 weeks |
-| NewsAPI | Media coverage volume for fractional executive terms, 28-day window | Sqrt scale: ~44 articles = score 100 | Tracks mainstream awareness velocity |
+| Attribute | Value |
+|-----------|-------|
+| **Product** | The Fractional Working Index (FWI) |
+| **Type** | Weekly composite 0–100 market index + dashboard + public API + MCP tool |
+| **Formula** | `FWI = (Demand × 0.50) + (Supply × 0.20) + (Culture × 0.30)` |
+| **Update cadence** | Daily ingestion, weekly composite settles, public dashboard refreshes via Realtime |
+| **Data sources** | 21 live + 4 macro context (FRED + Census, stored not scored) |
+| **Roles tracked** | Fractional CFO, CMO, CTO, COO, CRO, Interim CEO |
+| **Geography** | US primary, UK/EU secondary via Guardian + Adzuna |
+| **Live URL** | https://pulse.fractionl.ai |
+| **API** | https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current |
+| **Pricing** | Defined; Stripe **not yet live**, waitlist active |
 
-**Supply (not yet live):** Neutral baseline at 50. Marketplace integrations (Contra, Toptal) planned for Q2 2026. This is disclosed transparently in the methodology.
+### Three Pillars
+
+| Pillar | Weight | Live? | What it captures |
+|--------|--------|-------|------------------|
+| **Demand** | 50% | ✅ Live | Job postings (Adzuna + SerpAPI Google Jobs, 6 roles) + SEC Form D VC filings (leading indicator) |
+| **Supply** | 20% | ✅ Live | People Data Labs profile counts, LinkedIn proxy, GoFractional listings, supply-intent search |
+| **Culture** | 30% | ✅ Live | Google Trends, NewsAPI, Mediastack, Brave, Guardian, NYT, Podchaser, Reddit, HN |
+
+If a pillar's sources fail in a given week, weight redistributes proportionally — surfaced in `meta.dataCompleteness`.
 
 ---
 
-## 5. Pricing Model
+## 5. Differentiation (use these in the second message)
 
-Pricing is defined but Stripe integration is not yet live. Payments are not currently accepted.
+1. **First mover.** No other product publishes a real-time composite index for the fractional executive market.
+2. **SEC Form D as a leading indicator.** Companies file Form D 15 days after raising. They enter the fractional buyer pool 1–3 months later. This gives the demand component a predictive lag that single-source competitors don't have.
+3. **21-source composite.** Cross-source triangulation (3 news APIs, 2 trend providers, 4 supply sources) makes the index resistant to any single API going dark or being gamed.
+4. **Agent-native.** Public REST API with no auth required for read endpoints. MCP tool definition ships in the repo. `X-FWI-Score` and `X-FWI-Label` shortcut headers for cheap polling. Built for LLM agents as first-class users, not as an afterthought.
+5. **Transparent methodology.** Weights, normalization formulas, source list, and confidence model are all published. Anomaly guard (3σ over 8-week rolling mean) is documented.
+6. **Historical moat.** 12-week backfill at launch + new datapoints accumulating weekly. After 52 weeks, the dataset is unreplicable without spending a year collecting.
+
+---
+
+## 6. Outcomes (use these to justify the spend)
+
+| Customer | What they buy | Outcome they get |
+|----------|---------------|------------------|
+| Fractional CFO making $250K | Pro at $99/mo | Raises rates 15% during a "Surging" week, cites Pulse to clients. ROI in week one. |
+| Boutique fractional staffing agency, $5M revenue | Enterprise at $1.5K/mo | Times outbound campaign to "Growing" weeks; doubles inbound during cultural-momentum spikes. |
+| Career coach with 50 clients/yr | Pro | Replaces gut-feel "is now a good time to go fractional?" with cited weekly data. |
+| HR tech SaaS, 5K customers | Enterprise white-label, $3K/mo | Embeds FWI gauge in dashboard. Charges premium for "market intelligence" tier. |
+| Series B VC | Enterprise data feed, $2.5K/mo | Validates workforce thesis with external composite. Calibrates portfolio fractional spend. |
+| Business outlet | Citation license, $5K/yr | Weekly citable index for talent-economy coverage. |
+| Outbound AI agent | Public API, free | Answers "is now a good time to hire a fractional CMO?" in one tool call. |
+
+---
+
+## 7. FWI Scale (memorize for chat)
+
+| Range | Label | Plain-language meaning |
+|-------|-------|------------------------|
+| 75–100 | **Surging** | Exceptional demand. Fractional execs have pricing power. Raise rates. |
+| 60–74 | **Growing** | Strong market. Inbound is healthy. Time to launch new offerings. |
+| 45–59 | **Stable** | Balanced conditions. Normal hiring cadence. Hold pricing. |
+| 30–44 | **Cooling** | Softening demand. Selectivity rising. Tighten ICP, shorten cycles. |
+| 0–29 | **Contracting** | Market under pressure. Supply > demand. Lock in retainers, defend rates. |
+
+---
+
+## 8. Pricing (waitlist active, Stripe pending)
 
 | Tier | Price | Includes |
-|------|-------|---------|
+|------|-------|----------|
 | **Free** | $0 | Overall score, 30-day trend, top 5 movers, weekly email digest, readiness gauge |
-| **Pro** | $99/mo ($79/mo annual) | Full sub-index breakdown, 12-month history, all signals, AI insights, custom alerts, methodology deep-dive, PDF exports |
-| **Enterprise** | $500-5,000/mo | API access, white-label embed, custom weighting, industry sub-indices, SSO, SLA |
+| **Pro** | $99/mo or $79/mo annual | Full sub-index breakdown, 12-month history, all 21 signals, AI insights, custom alerts, methodology deep-dive, PDF/Markdown brief export, custom weight tuning |
+| **Enterprise** | $500–$5,000/mo | API access (REST + MCP), white-label embed, custom weighting, industry sub-indices, SSO, SLA, dedicated success manager |
+| **Data feed license** | $1K–$2.5K/mo | Daily JSON or realtime feed, no UI |
+| **Citation license** | $500 one-time / $5K annual | Press, research papers, newsletters |
+
+> **Important:** Stripe checkout is **not yet live**. All conversions today land on the waitlist. Tell prospects this transparently — frame it as "founding-customer pricing locked in."
 
 ---
 
-## 6. Current Product State
+## 9. Current Product State (truth-checked)
 
-### Live Now
-- React dashboard with professional UI
-- Four-source signal ingestion (Adzuna, SEC EDGAR, Google Trends, NewsAPI)
-- Weekly FWI score calculation and publication
-- Public API (no auth, JSON response)
-- AI insight cards (GPT-4o-mini generated)
-- Waitlist and auth system
-- Supply "Coming Soon" UI
+### Live now ✅
+- 21 data sources ingested daily (06:00 UTC) via Vercel Cron
+- Three live pillars (demand, supply, culture) with anomaly guard + WoW deltas
+- Public REST API with MCP tool definition
+- Markdown weekly intelligence brief at `/export-brief`
+- AI insight cards (GPT-4o-mini, 12h cache)
+- React dashboard with React Query + Supabase Realtime auto-refresh
+- 12 weeks of historical backfill priming trendlines
+- Per-source health monitoring + Resend email alerts on cron failure
+- Waitlist + auth (Supabase magic link)
+- RLS hardened (public read on read-only tables, service-role-only writes)
+- Custom domain `pulse.fractionl.ai`
 
-### Not Yet Live
-- Supply pillar data (Q2 2026)
-- Stripe payment integration (Q3 2026)
-- Webhook threshold alerts (Q2 2026)
-- White-label embed (Q3 2026)
-- Only a few weeks of historical data accumulated so far
-- Index has not been peer-reviewed or backtested against major market events
-
----
-
-## 7. Target Personas and Use Cases
-
-| Persona | Income/Budget | Use Case | Why They Pay |
-|---------|--------------|----------|-------------|
-| Fractional executives | $200K+ individual income | Timing market entry, setting rates, deciding when to take on new clients | A single well-timed rate adjustment or market entry decision pays for years of subscription |
-| Small staffing agencies | Revenue $1M-20M | Competitive intel, market timing, client advisory | Data-driven positioning against larger firms |
-| Career coaches | Revenue varies | Advising clients considering fractional transition | Credibility tool: data-backed guidance vs. gut feel |
-| HR tech platforms | SaaS companies | Embedding market intelligence into their product | White-label API enriches their platform without building from scratch |
-| VC/PE firms | AUM $50M+ | Market thesis validation, portfolio company workforce guidance | Leading indicator (Form D signal) validates their own deal flow patterns |
-| Enterprise HR | Companies 500+ employees | Workforce planning: hire fractional vs. full-time decisions | Quantified market conditions reduce hiring risk |
+### Not yet live 🚧
+- Stripe payment integration (waitlist only today)
+- Webhook threshold alerts (planned)
+- White-label embeddable widget (planned)
+- API key tiered auth (`api_keys` table provisioned, not exposed)
+- Less than a year of accumulated weekly data
+- Methodology has not been peer-reviewed or backtested against past cycles
 
 ---
 
-## 8. How to Talk About the Methodology
+## 10. Target Personas + Trigger Signals
 
-### Credible Framing
-- The FWI combines four independent data sources into a single composite score. Each source is normalized to a 0-100 scale using a method appropriate to its distribution (log, linear, sqrt, or passthrough).
-- The SEC Form D signal is a genuine methodological innovation. Companies that raise venture funding file Form D with the SEC. These companies enter the fractional executive buyer pool 1-3 months after filing. This creates a leading indicator.
-- The methodology is fully documented and transparent. Weights, normalization curves, and data sources are published.
-
-### What to Emphasize
-- Composite approach (not just one data point)
-- Leading indicator capability (Form D predates hiring by 1-3 months)
-- Transparency of methodology
-- Agent-native API design
-
-### What to Acknowledge Proactively
-- Supply data is not live yet (neutral baseline until Q2 2026)
-- Historical dataset is still young (weeks, not years)
-- The index is new and has not been backtested against past market events
+| Persona | Primary signal to act on | Hook to lead with |
+|---------|--------------------------|-------------------|
+| Fractional CFO/CMO/CTO | New role landed in last 6 months OR active LinkedIn posting about rates | "There's a public index for your market now. Most weeks tell you whether to push rates or hold." |
+| Boutique staffing agency principal | Hiring inbound BD, new Webflow site, recent thought-leadership push | "We track when the fractional market is heating up so your campaigns hit the right week." |
+| HR tech founder/PM | Recently shipped a marketplace or talent feature | "Embed our FWI score in your product. Adds a market-intel tier without you building research capacity." |
+| VC platform team | Posts about portfolio workforce strategy | "Form D filings predict fractional hiring 1–3 months out. We turn your own sector signal into an external composite." |
+| Enterprise HR/Talent ops | Recent layoffs or major restructure | "Quantify hire-fractional-vs-full-time decisions with weekly market context." |
+| Talent-economy journalist | Just published anything on fractional/contract work | "Pulse gives you a citable weekly number with transparent methodology. We're the official source." |
 
 ---
 
-## 9. Competitive Landscape
+## 11. Outbound Hooks (cold email + LinkedIn)
 
-### Direct Competitors
-None. No other product publishes a real-time composite index for the fractional executive market.
+### Subject lines (under 50 chars)
 
-### Indirect Competitors
+- `quick FWI question for {{first_name}}`
+- `the fractional market is at {{score}} this week`
+- `is your rate card calibrated to the FWI?`
+- `21-source index for the fractional economy`
+- `forwarded from someone who tracks fractional`
 
-| Competitor | What They Offer | Why Pulse Wins |
-|-----------|----------------|---------------|
-| LinkedIn Economic Graph | Broad labor market data | Not fractional-specific. No composite index. No public API. No demand + culture + supply composite. |
-| Staffing Industry Analysts (SIA) | Quarterly staffing reports | Quarterly (not weekly). Expensive. Not specific to fractional C-suite. No API. |
-| Upwork/Toptal marketplace data | Supply-side marketplace metrics | Supply only, not indexed. No demand signal. No leading indicators. No composite methodology. |
-| Job boards (Indeed, LinkedIn Jobs) | Raw job listing counts | Raw data, not normalized. No composite. No leading indicator. No culture signal. No historical tracking as an index. |
+### LinkedIn DM template (fractional exec)
+
+> {{first_name}} — saw your post on {{topic}}. We just shipped Pulse, a weekly 0–100 index of the fractional exec market. Right now it reads {{score}} ({{label}}), with {{role}} demand {{up/down}} {{delta}}% WoW. Free public API + dashboard at pulse.fractionl.ai — figured it might be useful when you set rates next quarter.
+
+### Cold email template (agency / HR tech)
+
+> Subject: 21-source index for the fractional economy
+>
+> {{first_name}},
+>
+> The fractional executive market moves weekly. Most agencies track it with quarterly reports and LinkedIn anecdotes.
+>
+> We built Pulse — a composite 0–100 score (the Fractional Working Index) blending 21 sources, including SEC Form D filings as a 1–3 month leading indicator no other product uses. It's free to query (no auth) and ships with an MCP tool definition for AI agents.
+>
+> {{customized hook tied to recipient's company / role}}
+>
+> Worth 15 min to see if it's useful for {{specific use case}}? Or just steal the public API: pulse.fractionl.ai
+>
+> {{name}}
+
+### Twitter / X post template
+
+> The fractional executive market just hit {{score}} on the FWI ({{label}}).
+>
+> {{role}} demand is {{delta}} WoW. {{single insight from movers}}.
+>
+> Free public API. MCP-ready. Weekly updates.
+> pulse.fractionl.ai
 
 ---
 
-## 10. Objection Handling
+## 12. How to Talk About Methodology
 
-**"How is this different from just looking at job boards?"**
-Job boards give you raw listings. Pulse gives you a composite score that combines job postings with a leading demand indicator (SEC Form D), cultural momentum (search trends + media coverage), and supply-side data -- all normalized to a 0-100 scale with historical tracking. It is the difference between checking the temperature outside vs. reading a weather forecast.
+### Credible framing
 
-**"The supply data is missing."**
-Correct. We are transparent about this. Supply is at a neutral baseline (50) until we launch marketplace integrations with Contra and Toptal in Q2 2026. The demand and culture pillars (80% of the current weight) are fully live with real data.
+- "The FWI combines 21 independent data sources into a single composite. Each is normalized to 0–100 with a curve appropriate to its distribution — log scale for job counts, sqrt for media volume, linear for filings, native passthrough for Google Trends."
+- "SEC Form D is the methodological innovation. Companies file Form D 15 days after a raise, then enter the fractional buyer pool 1–3 months later. That gives the demand component a predictive lag."
+- "Three news APIs, two trend providers, four supply sources — the index is resistant to any single source going dark or being gamed."
+- "Anomaly guard rejects any signal more than 3 standard deviations from its 8-week rolling mean."
+- "Weights, formulas, and source list are all published. The methodology is fully transparent."
+
+### Always acknowledge proactively
+
+- "Less than a year of accumulated weekly data — we've backfilled 12 weeks at launch but the dataset gets stronger every week."
+- "The index is new. It hasn't been peer-reviewed or backtested against historical cycles. The methodology is open for scrutiny."
+- "Stripe checkout isn't live yet — we're waitlist-only. Founding-customer pricing locks in for early signups."
+
+---
+
+## 13. Competitive Landscape (no name-shaming)
+
+| Competitor | What they offer | Why Pulse wins |
+|-----------|-----------------|----------------|
+| LinkedIn Economic Graph | Broad labor market data | Not fractional-specific. No composite. No public API for this slice. |
+| Staffing Industry Analysts (SIA) | Quarterly staffing reports | Quarterly cadence. Expensive paywall. Not fractional-specific. No API. |
+| Upwork / Toptal marketplace data | Supply-side metrics | Supply only. No demand or culture. No leading indicator. |
+| Indeed / LinkedIn Jobs (raw) | Raw listing counts | Not normalized. No composite. No leading indicator. No historical index. |
+| Internal CFO dashboards | Company-specific signals | Proprietary, single-org. Pulse is the external composite that makes those internal signals interpretable. |
+
+State Pulse's advantages factually. **Never disparage a competitor by name.**
+
+---
+
+## 14. Objection Handling
+
+**"How is this different from job boards?"**
+Job boards give you raw listings. Pulse gives you a composite score combining job postings with a leading demand indicator (SEC Form D), cultural momentum (3 news APIs + Google Trends + Reddit + HN + Podchaser), and four supply sources — normalized to 0–100, weekly, with historical tracking. It's the difference between checking the temperature outside vs. reading a weather forecast.
+
+**"Why should I trust 21 sources over one?"**
+Cross-source triangulation. If Adzuna and SerpAPI Google Jobs both show CMO postings up, that's a stronger signal than either alone. If Brave News, Mediastack, and NewsAPI all show culture momentum rising, that's mainstream awareness, not noise. The composite is the point.
+
+**"The supply data is always weak."**
+We surface this transparently in the API response. When supply has data, it carries 20% weight. When it doesn't, weight redistributes to demand and culture proportionally. People Data Labs profile counts are now live and drive the supply pillar today.
 
 **"You only have a few weeks of data."**
-Every longitudinal data product starts at week one. We accumulate one data point per week that no competitor is collecting. After 52 weeks, that dataset is a defensible asset no one can replicate without spending a year. Early access means the ability to shape the methodology and get in before the historical moat is built.
+We backfilled 12 weeks at launch using historical-capable APIs (FRED, SEC EDGAR, Guardian, NYT, HN, Census). Going forward we accumulate one weekly datapoint that no competitor is collecting. After 52 weeks, the dataset is a defensible asset no one can replicate without spending a year. Early access means the ability to shape methodology and lock in founding-customer pricing before the historical moat is built.
 
-**"$99/month seems expensive for a single number."**
-The target user earns $200K+ annually. A single well-timed decision -- raising rates during a "Surging" period, or delaying market entry during "Cooling" -- pays for years of the subscription. Pro also includes full sub-index breakdowns, 12-month history, AI insights, and custom alerts.
+**"$99/month seems expensive for one number."**
+It's not one number — it's a sub-index breakdown, 12 months of history, AI-generated insights, custom alerts, role-level demand, and a methodology drawer. The target user makes $200K+. A single well-timed rate decision (raise during "Surging", hold during "Cooling") pays for years of subscription.
 
-**"Why not just use LinkedIn?"**
-LinkedIn does not track fractional work specifically. It does not publish a composite index. It does not have a public API for this data. It does not combine demand, culture, and supply signals. It does not use SEC Form D as a leading indicator.
+**"Why not LinkedIn?"**
+LinkedIn doesn't track fractional work specifically. It doesn't publish a composite index. It doesn't have a public API for this slice. It doesn't combine demand, culture, and supply. It doesn't use SEC Form D as a leading indicator. Different product entirely.
 
 **"This hasn't been peer-reviewed or backtested."**
-True, and we say so openly. The methodology is fully transparent and published. We welcome scrutiny. The index gains validation through accumulation: as we collect data through multiple market cycles, backtesting becomes possible. That is a feature of time, not a flaw of approach.
+True, and we say so openly. The methodology is fully transparent and published. We welcome scrutiny. The index gains validation through accumulation — backtesting becomes possible after multiple cycles. That's a feature of time, not a flaw of approach.
+
+**"How do I know this isn't gameable?"**
+Single sources are gameable. A 21-source composite with anomaly guards (3σ over 8-week rolling) is structurally hard to manipulate. Form D filings come from the SEC directly. Adzuna postings come from employers. Google Trends comes from real searches. Triangulation does the work.
+
+**"Stripe isn't live — what am I actually buying?"**
+Founding-customer pricing locked in, Pro feature access today via manual onboarding, and direct line to the team for product feedback. When Stripe launches, founding customers stay at the original rate.
 
 ---
 
-## 11. API Quick Reference (for Agent Integration)
+## 15. API Quick Reference
 
 ```bash
-# Current score (no auth required)
+# Current score (no auth)
 curl https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current
 
 # Historical data
 curl "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/history?months=3"
+
+# Markdown weekly brief (press / newsletter / agent ingestion)
+curl https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief
+
+# JSON brief
+curl "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief?format=json"
 ```
 
-Response includes: overall score, label, 30-day delta, component breakdown (demand/supply/culture with scores and weights), top movers with role-level detail and insights.
-
-Headers include `X-FWI-Score` for lightweight polling.
+Response includes overall score, label, 30-day delta, component breakdown, top movers with role-level detail, and an `X-FWI-Score` shortcut header for lightweight polling.
 
 ---
 
-## 12. Key Links
+## 16. Key Links
 
 | Resource | URL |
 |----------|-----|
 | Live Dashboard | https://pulse.fractionl.ai |
 | API (current score) | https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current |
 | API (history) | https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/history?months=3 |
-| Agent Integration Docs | docs/AGENT_INTEGRATION.md |
-| MCP Tool Definition | docs/MCP_TOOL.md |
-| Methodology (in API response) | Included in `meta` field of every API response |
-| Contact (data licensing) | data@fractionl.ai |
+| Markdown brief | https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief |
+| Agent integration docs | `docs/AGENT_INTEGRATION.md` |
+| MCP tool definition | `docs/MCP_TOOL.md` |
+| Sales playbook (ICP, outcomes, sequences) | `docs/SALES_PLAYBOOK.md` |
+| Methodology (in API response) | `meta.methodology` field on every response |
+| Contact | data@fractionl.ai |
 
 ---
 
-## Do Not Say
+## 17. Do Not Say (truth-discipline)
 
-Agents must never make the following claims:
+Agents must never make these claims:
 
-- **Do not claim the supply pillar has live data.** It is at a neutral baseline until Q2 2026.
-- **Do not claim years of historical data.** The index has only been running for a few weeks.
-- **Do not claim the index has been peer-reviewed, academically validated, or backtested.** It has not.
-- **Do not claim pricing is live or that users can purchase Pro/Enterprise today.** Stripe is not integrated. Waitlist only.
-- **Do not claim predictive accuracy with specific numbers** (e.g., "85% accurate"). The leading indicator relationship (Form D to hiring) is a reasonable hypothesis based on funding-to-hiring patterns, not a validated statistical model.
-- **Do not claim real-time data.** The index updates weekly, not in real time.
-- **Do not claim coverage of non-C-suite fractional roles.** The index tracks six roles: fractional CFO, CMO, CTO, COO, CRO, and interim CEO.
-- **Do not disparage competitors by name.** State Pulse's advantages factually.
-- **Do not guarantee ROI or financial outcomes** from using the index.
-- **Do not imply the index is an official government or institutional metric.** It is a proprietary composite index published by Fractionl.
+- ❌ "Years of historical data." (We have ~12 weeks backfilled + accumulating weekly.)
+- ❌ "Peer-reviewed", "academically validated", or "backtested." (Not yet.)
+- ❌ "Pricing is live, you can buy Pro today." (Stripe is pending. Waitlist only.)
+- ❌ Specific predictive accuracy numbers (e.g. "85% accurate"). The leading-indicator hypothesis is reasonable, not statistically validated.
+- ❌ "Real-time data." Updates are daily ingest, weekly composite settle.
+- ❌ Coverage of non-C-suite roles. We track 6 roles: fractional CFO, CMO, CTO, COO, CRO, interim CEO.
+- ❌ Disparaging competitors by name. State Pulse's advantages factually.
+- ❌ Guaranteed ROI or financial outcomes. Use ranges and conditional language.
+- ❌ "Official government metric" or "institutional index." It's a proprietary composite published by Fractionl.
+- ❌ "Supply has been live since day one." Supply pillar went live after the People Data Labs integration; before that it was a neutral baseline. Be honest about timeline.
+
+---
+
+## 18. Tone & Voice
+
+- **Confident, not hyped.** Cite the methodology. Avoid superlatives.
+- **Specific numbers over adjectives.** "21 sources, 6 roles, 90-day Form D window" beats "comprehensive coverage."
+- **Acknowledge limits.** Calling out that backtesting hasn't happened yet builds more trust than glossing over it.
+- **Lead with the agent-native angle when talking to technical buyers.** Lead with the SEC Form D leading indicator when talking to operators.
+- **Always close with a free public-API call.** Lowers friction. Most prospects will try the curl before they reply.
