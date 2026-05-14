@@ -3,6 +3,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } f
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/use-mobile';
+import { SUPABASE_FUNCTIONS_URL } from '@/lib/supabase';
 
 interface MethodologyDrawerProps {
   open: boolean;
@@ -123,7 +124,7 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
 
       <Button
         className="w-full"
-        onClick={() => window.open('https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current', '_blank')}
+        onClick={() => window.open(`${SUPABASE_FUNCTIONS_URL}/fwi-api/current`, '_blank')}
       >
         <Download size={16} className="mr-2" />
         View raw data (JSON)

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const SUPABASE_URL = 'https://dtlcprcpvdomrehbejhw.supabase.co';
+const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const CRON_SECRET = process.env.CRON_SECRET || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
