@@ -76,12 +76,16 @@
     "current": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current",
     "history": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/history?months=N",
     "brief": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief",
+    "feed_rss": "https://pulse.fractionl.ai/feed.xml",
+    "verdict": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-verdict",
     "trigger_note": "POST /fwi-api/trigger is service-role only",
     "example_curl": "curl https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current"
   },
   "discovery": {
     "llms_txt": "https://pulse.fractionl.ai/llms.txt",
     "ai_plugin": "https://pulse.fractionl.ai/.well-known/ai-plugin.json",
+    "embeddable_badge": "https://pulse.fractionl.ai/embed.js",
+    "rss_feed": "https://pulse.fractionl.ai/feed.xml",
     "mcp_tools": ["get_fractional_working_index", "get_fwi_weekly_brief"],
     "hosted_mcp_server": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp"
   },

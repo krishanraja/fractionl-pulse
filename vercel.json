@@ -11,6 +11,7 @@
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/feed.xml", "destination": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-feed" },
     { "source": "/(.*)", "destination": "/" }
   ]
 }

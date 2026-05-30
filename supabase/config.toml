@@ -34,6 +34,10 @@ verify_jwt = false
 [functions.create-checkout-session]
 verify_jwt = false
 
+# Public RSS/JSON feed of the weekly FWI.
+[functions.fwi-feed]
+verify_jwt = false
+
 # Pipeline + alerting internals stay JWT-verified (service-role only).
 [functions.ingest-signals]
 verify_jwt = true
