@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Bell, ChevronDown, X, Download } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
+import VerdictLine from '@/components/VerdictLine';
 import HeroSection from '@/components/HeroSection';
 import SubIndexCards from '@/components/SubIndexCards';
 import MarketSnapshot from '@/components/MarketSnapshot';
@@ -181,6 +182,9 @@ const Index = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* The Verdict Line: the magic moment leads the dashboard */}
+      <VerdictLine />
 
       {/* Hero */}
       <HeroSection

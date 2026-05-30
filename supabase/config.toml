@@ -19,6 +19,11 @@ verify_jwt = false
 [functions.mcp]
 verify_jwt = false
 
+# Verdict Line: browser posts a one-line situation, gets a streamed grounded
+# verdict. No JWT (origin-restricted in code), OpenAI-backed, token-capped.
+[functions.fwi-verdict]
+verify_jwt = false
+
 # Pipeline + alerting internals stay JWT-verified (service-role only).
 [functions.ingest-signals]
 verify_jwt = true
