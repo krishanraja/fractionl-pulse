@@ -2,6 +2,14 @@
 
 The Fractional Working Index (FWI) is designed for AI agents as first-class consumers, not as an afterthought. This guide is everything an LLM agent, MCP host, or developer integration needs.
 
+### Machine-readable discovery surfaces
+
+For autonomous discovery, three files are served from the site root:
+
+- `/llms.txt`: a plain-text map of what Pulse is and where the live data lives, written for LLMs.
+- `/.well-known/ai-plugin.json`: the plugin manifest for agent platforms that auto-discover tools.
+- `/product-truth.json`: the runtime source of truth for the current offer and pricing. Read this rather than hardcoding prices, since the offer changes (for example when Stripe self-serve checkout goes live).
+
 ---
 
 ## What the FWI Measures
@@ -28,9 +36,11 @@ If a pillar has no live data in a given week, its weight redistributes proportio
 
 ---
 
-## Public Endpoints (no authentication)
+## Public Endpoints (no authentication required)
 
 Base URL: `https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1`
+
+These endpoints are genuinely no-auth in production. As of 2026-05-30 the exact bare curl below returns HTTP 200 with no `Authorization` header. There is no key to obtain, no header to send, nothing to sign up for. Copy a command, run it, get JSON or Markdown back.
 
 ### `GET /fwi-api/current`
 
@@ -50,7 +60,7 @@ curl "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/history?mont
 
 ### `GET /export-brief`
 
-Returns the **weekly market intelligence brief** as Markdown — ideal for press, newsletters, or LLM context windows.
+Returns the **weekly market brief** as Markdown, ideal for press, newsletters, or LLM context windows.
 
 ```bash
 curl https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief
@@ -70,7 +80,7 @@ curl -X POST https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/trigg
   -H "Authorization: Bearer SUPABASE_SERVICE_ROLE_KEY"
 ```
 
-Service role required. Reserved for ops + on-demand "trigger fresh data" workflows.
+This is the one endpoint that still requires authentication: a Supabase service-role bearer token. The three read endpoints above (`/current`, `/history`, `/export-brief`) are public no-auth; `/fwi-api/trigger` is not and never will be. It is reserved for ops and on-demand "trigger fresh data" workflows.
 
 ### Tiered API keys (rolling out per customer)
 
@@ -192,7 +202,7 @@ Use `X-FWI-Score` and `X-FWI-Label` for lightweight polling without parsing the 
 |--------|------------------|---------------------|
 | **Adzuna** | 6 fractional C-suite roles, exact phrase matching | Filters out general exec search. Genuine fractional listings. |
 | **SerpAPI Google Jobs** | Same 6 roles via Google Jobs aggregator | Independent cross-check on Adzuna |
-| **SEC EDGAR Form D** | VC funding filings, tech/SaaS, 90-day rolling | Government data, free API. Form D is filed within 15 days of a raise. Companies enter the fractional buyer pool 1–3 months later. **No other index uses this.** |
+| **SEC EDGAR Form D** | VC funding filings, tech/SaaS, 90-day rolling | Government data, free API. The basis of **the Form D Lead**: Form D is filed within 15 days of a raise, and companies enter the fractional buyer pool 1 to 3 months later. **No other index uses this.** |
 
 ### Supply pillar
 
@@ -231,16 +241,16 @@ Macro context signals enrich narrative without contaminating the index.
 
 ---
 
-## The Leading Indicator Signal
+## The Form D Lead (leading-indicator method)
 
-The SEC Form D integration is the most novel piece of methodology. How it works:
+**The Form D Lead** is Pulse's method of using SEC Form D filing velocity as a 1 to 3 month leading indicator of fractional executive demand. Companies file Form D within 15 days of a raise, then enter the fractional buyer pool 1 to 3 months later. How it works:
 
 1. Companies must file Form D with the SEC within **15 days of closing a funding round**.
 2. We query Form D filings for tech / software / SaaS issuers across a 90-day rolling window.
-3. High filing volume in a period predicts **fractional executive hiring volume 1–3 months later**. Companies raise → stabilize → bring in fractional leadership to execute before committing to full-time hires.
-4. This lag means the FWI demand component has a **predictive** element, not just a lagging measure.
+3. High filing volume in a period leads **fractional executive hiring volume 1 to 3 months later**. Companies raise, stabilize, then bring in fractional leadership to execute before committing to full-time hires.
+4. This lag gives the FWI demand component a forward-looking element, not just a lagging measure.
 
-No competing fractional market index uses funding velocity as a demand predictor. It is the methodology differentiator.
+No competing fractional market index uses funding velocity as a demand signal. The Form D Lead is the methodology differentiator no competitor has.
 
 ---
 

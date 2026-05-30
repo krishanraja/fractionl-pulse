@@ -116,7 +116,7 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
               font: {
                 size: isMobile ? 11 : 12,
                 family: 'Inter',
-                weight: '500',
+                weight: 500,
               }
             }
           },
@@ -130,7 +130,7 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
             padding: 12,
             caretPadding: 8,
             displayColors: true,
-            titleFont: { size: 13, weight: '600', family: 'Inter' },
+            titleFont: { size: 13, weight: 600, family: 'Inter' },
             bodyFont: { size: 12, family: 'Inter' },
             callbacks: {
               title: (context) => {

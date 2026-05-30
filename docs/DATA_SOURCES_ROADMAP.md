@@ -118,13 +118,36 @@ Every cron + manual run writes a `pipeline_runs` row with status, records insert
 
 ---
 
-## 4. Roadmap
+## 4. API & Agent-Native Surfaces
+
+### Live now
+
+- 🟢 **Public no-auth REST API** — as of 2026-05-30, `supabase/config.toml` sets `verify_jwt=false` for `fwi-api` and `export-brief`, and `fwi-api` was redeployed. The documented bare curl now returns HTTP 200 (previously 401 `UNAUTHORIZED_NO_AUTH_HEADER` from the gateway). The agent-native, query-in-two-minutes, no-auth claim is now true.
+  - `GET /fwi-api/current` (no auth) — latest weekly composite + components + weights + delta30d + top movers + full source breakdown + meta (dataCompleteness, nextUpdate). Returns `Cache-Control` and `X-FWI-Score` / `X-FWI-Label` headers.
+  - `GET /fwi-api/history?months=N` (no auth, N clamped 1–12) — weekly data points.
+  - `GET /export-brief` (no auth) — `?format=markdown` (default, downloadable .md) or `?format=json`.
+  - `POST /fwi-api/trigger` — service-role bearer only (NOT public).
+  - Example: `curl https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current`
+- 🟢 **Markdown brief export** — working via `/export-brief`.
+- 🟢 **Machine-readable discovery surfaces** — `/product-truth.json` and `/llms.txt` shipped this pass for agent and LLM discovery.
+- 🟢 **MCP reference tools** — two documented tools (`get_fractional_working_index`, `get_fwi_weekly_brief`). Today this is a reference implementation plus the live REST API that agents call directly.
+
+### Roadmap (not yet shipped)
+
+- 🚧 **Hosted MCP server** — a deployed MCP endpoint is on the roadmap; not yet live.
+- 🚧 **`/.well-known/ai-plugin.json`** — additional discovery surface, being added.
+- 🚧 **API key tiered auth** — `api_keys` table is provisioned; rolling out per enterprise customer.
+
+---
+
+## 5. Roadmap
 
 ### Near-term (next 1–2 quarters)
 
 - 🚧 **Webhook threshold alerts** — push notifications on band changes, role-level deltas, score crossings (Pro/Enterprise feature)
 - 🚧 **API key tiered auth** — `api_keys` table is provisioned; rolling out per enterprise customer
-- 🚧 **Stripe billing integration** — convert waitlist to active Pro subscribers
+- 🚧 **Stripe billing integration** — self-serve checkout not yet live; today conversions route to the waitlist with manual onboarding and founding-customer pricing. When it ships, the offer flips to "Pro checkout LIVE."
+- 🚧 **Hosted MCP server** — deployed MCP endpoint (reference tools + live REST API exist today)
 - 🚧 **White-label embeddable widget** — single-script gauge + sub-index cards
 - 🚧 **CSV / Parquet export** for Pro and Enterprise
 
@@ -159,7 +182,7 @@ Currently 6 C-suite roles (CFO, CMO, CTO, COO, CRO, CEO). Candidates for expansi
 
 ---
 
-## 5. Quality Targets
+## 6. Quality Targets
 
 | Metric | Target | Alert Threshold |
 |--------|--------|-----------------|
@@ -171,7 +194,7 @@ Currently 6 C-suite roles (CFO, CMO, CTO, COO, CRO, CEO). Candidates for expansi
 
 ---
 
-## 6. Cost Model
+## 7. Cost Model
 
 ### Variable per-run costs
 
@@ -211,7 +234,7 @@ This is the actual operating cost behind the FWI — useful when prospects ask w
 
 ---
 
-## 7. Source Disruption Playbook
+## 8. Source Disruption Playbook
 
 | Scenario | Detection | Response |
 |----------|-----------|----------|
@@ -224,7 +247,7 @@ This is the actual operating cost behind the FWI — useful when prospects ask w
 
 ---
 
-## 8. Legal & Terms-of-Service
+## 9. Legal & Terms-of-Service
 
 | Source | Use type | Notes |
 |--------|----------|-------|
@@ -248,7 +271,7 @@ We store and expose **aggregate signal values**, not raw third-party content. No
 
 ---
 
-## 9. Recent Changes
+## 10. Recent Changes
 
 See `git log` and `supabase/migrations/`. Highlights:
 

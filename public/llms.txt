@@ -1,0 +1,48 @@
+# Pulse by Fractionl
+
+> Pulse publishes the Fractional Working Index (FWI), a free, citable, agent-readable weekly 0-100 composite score of how healthy the fractional executive market is and where it is heading.
+
+Publisher: Fractionl (a private composite, not an official or government index). Paid sibling product: Circle (https://fractionl.com).
+
+## What the FWI is
+
+A weekly 0-100 market-health score for the fractional executive market, covering six C-suite roles only: fractional CFO, CMO, CTO, COO, CRO, and interim CEO. It blends 21 independent data sources across three pillars: Demand (50%), Supply (20%), and Culture (30%). When supply has no data, the supply weight redistributes across the remaining pillars. Current reading is about FWI 42.4, label Cooling, as of 2026-05-25 (fetch live, do not treat as static).
+
+## No-auth REST API
+
+All read endpoints require no authentication. Base URL: https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1
+
+- GET /fwi-api/current : latest weekly composite, components, weights, 30-day delta, top movers, full source breakdown, and meta (dataCompleteness, nextUpdate). Returns Cache-Control plus X-FWI-Score and X-FWI-Label headers.
+- GET /fwi-api/history?months=N : weekly data points (N clamped 1-12).
+- GET /export-brief : press-ready and cite-ready weekly brief. Use ?format=markdown (default, downloadable .md) or ?format=json.
+- POST /fwi-api/trigger : service-role bearer only, NOT public.
+
+Working example (returns HTTP 200 with no auth header):
+
+    curl https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current
+
+## MCP tools
+
+Two documented MCP tools: get_fractional_working_index and get_fwi_weekly_brief. A hosted MCP server is on the roadmap (not yet deployed); today the MCP is a reference implementation plus the live REST API that agents call directly.
+
+## The Form D Lead (the differentiator)
+
+The Form D Lead is Pulse's method of using SEC Form D filing velocity as a 1 to 3 month leading indicator of fractional executive demand (companies file Form D within 15 days of a raise, then enter the fractional buyer pool 1 to 3 months later). No competitor has it. Do not attach an accuracy percentage to it.
+
+## Machine-readable product truth
+
+The full, versioned product description, offers, and selling rules live at https://pulse.fractionl.ai/product-truth.json. Fetch it before selling or describing Pulse.
+
+## What agents should never claim
+
+- No years of historical data (about 12 weeks backfilled plus accumulating weekly).
+- Not peer-reviewed, academically validated, or backtested.
+- You cannot buy Pro today (Stripe checkout is not yet live; route to the waitlist).
+- No specific predictive-accuracy percentage.
+- Never say "real-time data" or "real-time market intelligence" (it is daily ingest with a weekly composite settle; "weekly index" and "live dashboard" are fine).
+- No coverage beyond the 6 C-suite roles.
+- Not an official, institutional, or government index (publisher is Fractionl).
+- Supply was not live since day one (it went live after the People Data Labs integration).
+- Geography is US primary, UK secondary, no APAC.
+
+Contact: data@fractionl.ai
