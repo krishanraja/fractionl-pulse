@@ -18,14 +18,16 @@ This is the handoff contract for a separate Mindmaker OS session to verify that 
   - `GET /fwi-api/current` (no auth): latest weekly composite, components, weights, delta30d, top movers, full source breakdown, and meta (dataCompleteness, nextUpdate). Returns `Cache-Control`, `X-FWI-Score`, and `X-FWI-Label` headers.
   - `GET /fwi-api/history?months=N` (no auth, N clamped 1 to 12): weekly data points.
 - **No-auth brief export (`export-brief`).** `GET /export-brief?format=markdown` (default, downloadable .md) or `?format=json`. Press and cite ready weekly brief, also covered by `verify_jwt = false`.
-- **Machine-readable discovery surfaces** (created in this same pass): `/product-truth.json`, `/llms.txt`, `/.well-known/ai-plugin.json`.
+- **Machine-readable discovery surfaces** (live, HTTP 200): `/product-truth.json`, `/llms.txt`, `/.well-known/ai-plugin.json`.
+- **Hosted MCP server (live, verified).** `POST https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp`, Streamable HTTP JSON-RPC 2.0, no auth. Tools: `get_fractional_working_index`, `get_fwi_weekly_brief`. `initialize`, `tools/list`, and `tools/call` verified.
+- **Build-time prerender + Dataset JSON-LD (live).** `dist/index.html` now ships the live FWI in the title and OG, a canonical tag, schema.org Dataset + Organization JSON-LD, and a `<noscript>` content block. Re-runs each deploy. Closed the blank-first-paint gap.
+- **RLS write hole closed (migration 006 applied + verified).** anon writes to `fwi_scores`/`movers`/`cached_insights`/`data_source_health`/`pipeline_runs` now denied (401); reads preserved; `pipeline_runs`/`api_keys` revoked from public roles.
+- **Attribution capture (client) + emit-event proxy (deployed).** First-touch UTM + anonymous_id captured on first paint; `landed`/`signed_up`/`activated` wired; the `emit-event` edge proxy is deployed and no-ops until the OS sets the ingest secret.
 
 ### PENDING (not yet built or not yet wired end to end)
 
-- **Stripe self-serve checkout.** Not yet live. Conversions route to the waitlist with manual onboarding, and founding pricing locks the rate. When checkout ships, the offer flips to "Pro checkout LIVE".
-- **Hosted MCP server.** On the roadmap, not yet deployed. Today the MCP is a reference implementation (two documented tools: `get_fractional_working_index`, `get_fwi_weekly_brief`) plus the live REST API that agents call directly.
-- **Attribution event emission end to end.** Greenfield. The event contract below is the target; Pulse does not yet emit the full lifecycle to the warehouse.
-- **Build-time prerender of public routes.** Not yet wired.
+- **Stripe self-serve checkout.** Not yet built. Conversions route to the waitlist with manual onboarding, and founding pricing locks the rate. Needs the Pro product/price, `PULSE_STRIPE_WEBHOOK_SECRET`, the checkout + webhook functions, an entitlements layer, and Pro-feature gating. When checkout ships, the offer flips to "Pro checkout LIVE".
+- **Attribution end to end.** The Pulse emit side is built and deployed; it stays a no-op until the OS stands up `ingest-attribution` and the `ATTRIBUTION_INGEST_SECRET` + `ATTRIBUTION_INGEST_URL` (Pulse project) and `VITE_ATTRIBUTION_EMIT_URL` (Pulse Vercel env) are set. See sections below.
 
 ---
 
