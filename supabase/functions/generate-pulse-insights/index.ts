@@ -209,9 +209,16 @@ Be specific. Reference actual numbers and source names. No fluff. Write for expe
       insights = [];
     }
 
-    // Cache for 12 hours
+    // Never cache an empty result: a parse miss must not poison the 12h cache.
+    if (!Array.isArray(insights) || insights.length === 0) {
+      return new Response(JSON.stringify({ ok: false, cached: false, insights: [], error: 'no_insights_parsed' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Cache for 12 hours. Check the write so a failure surfaces instead of being swallowed.
     const validUntil = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
-    await supabase.from('cached_insights').insert({
+    const { error: cacheError } = await supabase.from('cached_insights').insert({
       generated_at: new Date().toISOString(),
       insights_json: insights,
       model_used: 'gpt-4o-mini',
@@ -219,8 +226,9 @@ Be specific. Reference actual numbers and source names. No fluff. Write for expe
       context: { fwi_score: current.overall_score, date: today, brave_context_used: braveContext.length > 0,
         signal_count: signals?.length || 0, signal_sources: [...new Set((signals || []).map((s: any) => s.source))] },
     });
+    if (cacheError) console.error('cached_insights insert failed:', cacheError.message);
 
-    return new Response(JSON.stringify({ ok: true, cached: false, insights }), {
+    return new Response(JSON.stringify({ ok: true, cached: false, persisted: !cacheError, insights }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
