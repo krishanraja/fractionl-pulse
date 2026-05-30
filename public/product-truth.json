@@ -76,6 +76,7 @@
     "current": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current",
     "history": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/history?months=N",
     "brief": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief",
+    "role_indices": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-roles",
     "feed_rss": "https://pulse.fractionl.ai/feed.xml",
     "verdict": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-verdict",
     "trigger_note": "POST /fwi-api/trigger is service-role only",
