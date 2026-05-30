@@ -83,7 +83,7 @@
     "llms_txt": "https://pulse.fractionl.ai/llms.txt",
     "ai_plugin": "https://pulse.fractionl.ai/.well-known/ai-plugin.json",
     "mcp_tools": ["get_fractional_working_index", "get_fwi_weekly_brief"],
-    "hosted_mcp_server": "roadmap"
+    "hosted_mcp_server": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp"
   },
   "do_not_say": [
     "Do not claim years of historical data (reality: about 12 weeks backfilled plus accumulating weekly).",

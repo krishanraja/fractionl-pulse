@@ -15,6 +15,10 @@ verify_jwt = false
 [functions.emit-event]
 verify_jwt = false
 
+# Hosted MCP server: any agent host attaches by URL with no auth.
+[functions.mcp]
+verify_jwt = false
+
 # Pipeline + alerting internals stay JWT-verified (service-role only).
 [functions.ingest-signals]
 verify_jwt = true

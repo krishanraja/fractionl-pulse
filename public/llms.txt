@@ -23,7 +23,7 @@ Working example (returns HTTP 200 with no auth header):
 
 ## MCP tools
 
-Two documented MCP tools: get_fractional_working_index and get_fwi_weekly_brief. A hosted MCP server is on the roadmap (not yet deployed); today the MCP is a reference implementation plus the live REST API that agents call directly.
+Two MCP tools: get_fractional_working_index and get_fwi_weekly_brief. A hosted MCP server is live (Streamable HTTP, JSON-RPC 2.0, no auth): attach by URL at https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp. Agents can also call the REST API directly.
 
 ## The Form D Lead (the differentiator)
 
