@@ -87,12 +87,13 @@ const Index = () => {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-lg px-4 py-2 flex items-center justify-between bg-emerald-500/8 border border-emerald-500/15"
+          className="rounded-xl pl-3.5 pr-3 py-2.5 flex items-center justify-between bg-emerald-500/[0.07] border border-emerald-500/20"
         >
-          <div className="flex items-center gap-2">
-            <span className="pulse-dot bg-emerald-500" style={{ color: '#10b981' }} />
-            <span className="text-emerald-600 text-xs font-medium">Live</span>
-            <span className="text-emerald-600/60 text-xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="pulse-dot bg-emerald-500 shrink-0" style={{ color: '#10b981' }} />
+            <span className="text-emerald-700 text-xs font-semibold tracking-wide">Live</span>
+            <span className="text-emerald-700/50 text-xs hidden xs:inline">·</span>
+            <span className="text-emerald-700/70 text-xs truncate">
               Updated {formatRelativeTime(lastUpdated)}
             </span>
           </div>
@@ -101,7 +102,7 @@ const Index = () => {
               void emitEvent('activated', { via: 'export_brief' });
               window.open(`${SUPABASE_FUNCTIONS_URL}/export-brief`, '_blank');
             }}
-            className="flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-500 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/15 rounded-lg px-2.5 py-1.5 transition-colors cursor-pointer shrink-0"
           >
             <Download size={12} />
             <span className="hidden sm:inline">Export Brief</span>
@@ -114,11 +115,12 @@ const Index = () => {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-lg px-4 py-2 flex items-center gap-2 bg-orange-500/8 border border-orange-500/15"
+          className="rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 bg-orange-500/[0.07] border border-orange-500/20"
         >
-          <span className="w-2 h-2 rounded-full bg-orange-500" />
-          <span className="text-orange-600 text-xs font-medium">Stale</span>
-          <span className="text-orange-600/60 text-xs">
+          <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
+          <span className="text-orange-700 text-xs font-semibold tracking-wide">Stale</span>
+          <span className="text-orange-700/50 text-xs hidden xs:inline">·</span>
+          <span className="text-orange-700/70 text-xs truncate">
             Last updated {formatRelativeTime(lastUpdated)}
           </span>
         </motion.div>
@@ -128,14 +130,62 @@ const Index = () => {
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-lg px-4 py-2 flex items-center gap-2 bg-amber-500/8 border border-amber-500/15"
+        className="rounded-xl px-3.5 py-2.5 flex items-start gap-2.5 bg-amber-500/[0.07] border border-amber-500/20"
       >
-        <span className="w-2 h-2 rounded-full bg-amber-500" />
-        <span className="text-amber-600 text-xs font-medium">Awaiting First Run</span>
-        <span className="text-amber-600/60 text-xs">Pipeline has not run yet. Scores will appear after the first weekly run.</span>
+        <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 mt-1" />
+        <div className="min-w-0">
+          <span className="text-amber-700 text-xs font-semibold tracking-wide">Awaiting first run</span>
+          <p className="text-amber-700/70 text-xs leading-relaxed mt-0.5">The pipeline has not run yet. Scores will appear after the first weekly run.</p>
+        </div>
       </motion.div>
     );
   };
+
+  const renderDashboardSkeleton = () => (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="container-width space-y-5 py-5"
+      aria-busy="true"
+      aria-label="Loading the index"
+    >
+      <div className="skeleton-line h-10 rounded-xl" />
+      <div className="glass-card-elevated p-5 sm:p-6 space-y-4">
+        <div className="flex items-center gap-2.5">
+          <div className="skeleton-line w-7 h-7 rounded-lg" />
+          <div className="skeleton-line h-4 w-40" />
+        </div>
+        <div className="skeleton-line h-12 rounded-xl" />
+        <div className="flex gap-1.5">
+          <div className="skeleton-line h-7 w-32 rounded-full" />
+          <div className="skeleton-line h-7 w-28 rounded-full" />
+        </div>
+      </div>
+      <div className="instrument-card p-5 sm:p-6">
+        <div className="flex gap-6">
+          <div className="skeleton-line w-32 h-32 sm:w-36 sm:h-36 rounded-full shrink-0" />
+          <div className="flex-1 space-y-3 pt-2">
+            <div className="skeleton-line h-6 w-28 rounded-full" />
+            <div className="skeleton-line h-7 w-24 rounded-md" />
+            <div className="skeleton-line h-3 w-40" />
+          </div>
+        </div>
+        <div className="mt-5 pt-4 border-t border-hairline flex gap-4">
+          <div className="skeleton-line h-3 w-28" />
+          <div className="skeleton-line h-3 w-28" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="glass-card p-4 sm:p-5 space-y-3">
+            <div className="skeleton-line h-4 w-24" />
+            <div className="skeleton-line h-8 w-16" />
+            <div className="skeleton-line h-10 w-full rounded-lg" />
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
 
   const renderDashboard = () => (
     <motion.div
@@ -299,7 +349,7 @@ const Index = () => {
   return (
     <AppShell activeTab={activeTab} onTabChange={setActiveTab}>
       <AnimatePresence mode="wait">
-        {activeTab === 'dashboard' && renderDashboard()}
+        {activeTab === 'dashboard' && (isLoading ? renderDashboardSkeleton() : renderDashboard())}
         {activeTab === 'signals' && renderSignals()}
         {activeTab === 'insights' && renderInsights()}
         {activeTab === 'data' && renderData()}

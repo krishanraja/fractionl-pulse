@@ -4,67 +4,87 @@
 
 @layer base {
   :root {
-    --primary: 250 60% 48%;
-    --secondary: 248 45% 55%;
-    --accent: 220 70% 50%;
-    --success: 158 64% 42%;
-    --warning: 38 92% 45%;
-    --error: 0 72% 51%;
+    /* Authoritative ink-indigo primary. Deep, confident, distinctive.
+       Replaces the candy-purple. WCAG AA on white: 8.1:1. */
+    --primary: 234 58% 34%;
+    --primary-strong: 234 64% 26%;
+    --secondary: 222 30% 38%;
+    --accent: 200 78% 38%;
+    --success: 158 64% 38%;
+    --warning: 35 92% 42%;
+    --error: 0 70% 47%;
 
-    --background: 220 14% 96%;
-    --foreground: 222 47% 11%;
+    /* FWI band palette: the instrument speaks in these five tones. */
+    --band-surging: 158 72% 38%;     /* emerald */
+    --band-growing: 142 62% 40%;     /* green */
+    --band-stable: 42 92% 44%;       /* amber */
+    --band-cooling: 24 90% 50%;      /* orange */
+    --band-contracting: 2 72% 52%;   /* red */
+
+    /* Warm paper, ink-deep foreground for editorial weight. */
+    --background: 40 24% 97%;
+    --surface: 0 0% 100%;
+    --foreground: 230 30% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --muted: 220 14% 93%;
-    --muted-foreground: 220 13% 40%;
-    --border: 220 13% 88%;
-    --input: 220 13% 88%;
-    --ring: 250 60% 48%;
+    --card-foreground: 230 30% 12%;
+    --muted: 36 16% 93%;
+    --muted-foreground: 228 12% 42%;
+    --border: 232 16% 88%;
+    --hairline: 232 14% 90%;
+    --input: 232 16% 86%;
+    --ring: 234 58% 34%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 230 30% 12%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 70% 47%;
     --destructive-foreground: 0 0% 100%;
 
-    --sidebar-background: 220 14% 96%;
-    --sidebar-foreground: 220 13% 26%;
-    --sidebar-primary: 250 60% 48%;
+    --sidebar-background: 40 24% 97%;
+    --sidebar-foreground: 228 14% 28%;
+    --sidebar-primary: 234 58% 34%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 93%;
-    --sidebar-accent-foreground: 220 13% 26%;
-    --sidebar-border: 220 13% 88%;
-    --sidebar-ring: 250 60% 48%;
+    --sidebar-accent: 36 16% 93%;
+    --sidebar-accent-foreground: 228 14% 28%;
+    --sidebar-border: 232 16% 88%;
+    --sidebar-ring: 234 58% 34%;
 
-    --gradient-brand: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
-    --gradient-subtle: linear-gradient(135deg, hsl(250 60% 96%) 0%, hsl(248 45% 92%) 100%);
+    --gradient-brand: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-strong)) 100%);
+    --gradient-subtle: linear-gradient(180deg, hsl(40 30% 99%) 0%, hsl(40 22% 96%) 100%);
 
-    --shadow-soft: 0 4px 24px -4px hsl(250 60% 48% / 0.12);
-    --shadow-card: 0 1px 3px hsl(220 13% 20% / 0.08), 0 4px 16px hsl(220 13% 20% / 0.04);
-    --shadow-elevated: 0 8px 32px -8px hsl(220 13% 20% / 0.12), 0 4px 16px hsl(220 13% 20% / 0.06);
+    /* Restrained, cool-neutral elevation. Reads as paper + glass, not plastic. */
+    --shadow-soft: 0 2px 12px -4px hsl(230 30% 12% / 0.10);
+    --shadow-card: 0 1px 2px hsl(230 30% 12% / 0.05), 0 1px 16px -8px hsl(230 30% 12% / 0.10);
+    --shadow-elevated: 0 1px 2px hsl(230 30% 12% / 0.06), 0 16px 40px -16px hsl(230 30% 12% / 0.16);
+    --shadow-instrument: 0 1px 0 hsl(0 0% 100% / 0.7) inset, 0 1px 2px hsl(230 30% 12% / 0.05), 0 24px 56px -24px hsl(234 58% 34% / 0.18);
 
-    --radius: 0.75rem;
+    --radius: 0.875rem;
   }
 
   .dark {
-    --background: 222 47% 7%;
-    --foreground: 220 14% 96%;
-    --card: 222 47% 10%;
-    --card-foreground: 220 14% 96%;
-    --border: 222 47% 15%;
-    --input: 222 47% 15%;
-    --muted: 222 47% 12%;
-    --muted-foreground: 220 13% 65%;
-    --popover: 222 47% 10%;
-    --popover-foreground: 220 14% 96%;
-    --sidebar-background: 222 47% 7%;
-    --sidebar-foreground: 220 14% 90%;
-    --sidebar-primary: 250 60% 58%;
+    --background: 230 32% 7%;
+    --surface: 230 28% 10%;
+    --foreground: 40 24% 95%;
+    --card: 230 28% 10%;
+    --card-foreground: 40 24% 95%;
+    --border: 230 22% 18%;
+    --hairline: 230 20% 16%;
+    --input: 230 22% 18%;
+    --muted: 230 24% 14%;
+    --muted-foreground: 228 12% 64%;
+    --popover: 230 28% 10%;
+    --popover-foreground: 40 24% 95%;
+    --primary: 232 70% 66%;
+    --primary-strong: 232 76% 72%;
+    --ring: 232 70% 66%;
+    --sidebar-background: 230 32% 7%;
+    --sidebar-foreground: 40 20% 90%;
+    --sidebar-primary: 232 70% 66%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 47% 12%;
-    --sidebar-accent-foreground: 220 14% 90%;
-    --sidebar-border: 222 47% 15%;
-    --sidebar-ring: 250 60% 58%;
+    --sidebar-accent: 230 24% 14%;
+    --sidebar-accent-foreground: 40 20% 90%;
+    --sidebar-border: 230 22% 18%;
+    --sidebar-ring: 232 70% 66%;
   }
 
   * {
@@ -73,9 +93,14 @@
 
   body {
     @apply bg-background text-foreground font-primary antialiased;
-    font-feature-settings: "cv11", "ss01";
+    font-feature-settings: "cv11", "ss01", "tnum" 0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Faint paper grain so the surface never reads as flat template white. */
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, hsl(234 58% 34% / 0.04), transparent 60%),
+      linear-gradient(180deg, hsl(40 30% 98%) 0%, hsl(40 22% 96%) 100%);
+    background-attachment: fixed;
   }
 
   .font-primary {
@@ -84,15 +109,25 @@
 
   .font-display {
     font-family: "Inter", system-ui, sans-serif;
-    font-weight: 600;
-    letter-spacing: -0.02em;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
   }
 }
 
 @layer components {
   .container-width {
     --container-padding: 1rem;
-    max-width: 1200px;
+    max-width: 1140px;
     margin: 0 auto;
     padding-left: var(--container-padding);
     padding-right: var(--container-padding);
@@ -106,18 +141,55 @@
     .container-width { --container-padding: 2rem; }
   }
 
+  /* Surface system: a paper card with a true hairline border. */
   .glass-card {
-    background: hsl(var(--card));
-    border: 1px solid hsl(var(--border));
+    background: hsl(var(--surface));
+    border: 1px solid hsl(var(--hairline));
     border-radius: var(--radius);
     box-shadow: var(--shadow-card);
   }
 
   .glass-card-elevated {
-    background: hsl(var(--card));
-    border: 1px solid hsl(var(--border));
+    background: hsl(var(--surface));
+    border: 1px solid hsl(var(--hairline));
     border-radius: var(--radius);
     box-shadow: var(--shadow-elevated);
+  }
+
+  /* The instrument: the FWI score housing. Reads as a precision panel. */
+  .instrument-card {
+    position: relative;
+    background:
+      linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(40 26% 99%) 100%);
+    border: 1px solid hsl(var(--hairline));
+    border-radius: calc(var(--radius) + 0.125rem);
+    box-shadow: var(--shadow-instrument);
+    overflow: hidden;
+  }
+
+  .instrument-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--band-accent, var(--gradient-brand));
+    opacity: 0.9;
+  }
+
+  /* faint grid texture inside the instrument, like a measurement panel */
+  .instrument-grid {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.4;
+    background-image:
+      linear-gradient(hsl(230 30% 12% / 0.018) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(230 30% 12% / 0.018) 1px, transparent 1px);
+    background-size: 22px 22px;
+    mask-image: radial-gradient(ellipse 90% 70% at 30% 30%, black, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 90% 70% at 30% 30%, black, transparent 75%);
   }
 
   .index-card {
@@ -130,10 +202,10 @@
     position: absolute;
     top: 0;
     left: 0;
-    right: 0;
-    height: 3px;
-    background: var(--gradient-brand);
-    opacity: 0.6;
+    width: 3px;
+    height: 100%;
+    background: var(--accent-rail, hsl(var(--primary)));
+    opacity: 0.55;
   }
 
   .stat-up { color: hsl(var(--success)); }
@@ -150,8 +222,8 @@
   }
 
   .section-label {
-    @apply text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60;
-    letter-spacing: 0.08em;
+    @apply text-[10px] font-semibold uppercase text-muted-foreground/70;
+    letter-spacing: 0.14em;
   }
 
   .section-header {
@@ -159,64 +231,106 @@
   }
 
   .section-header h2 {
-    @apply text-base sm:text-lg font-semibold text-foreground;
+    @apply text-[15px] sm:text-base font-semibold text-foreground tracking-tight;
   }
 
   .section-header p {
-    @apply text-xs text-muted-foreground mt-0.5;
+    @apply text-xs text-muted-foreground mt-1;
+  }
+
+  /* Editorial section eyebrow: a hairline + label, used to title sections. */
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-[10px] font-semibold uppercase text-muted-foreground/70;
+    letter-spacing: 0.16em;
+  }
+
+  .eyebrow::before {
+    content: '';
+    width: 1.25rem;
+    height: 1px;
+    background: hsl(var(--primary) / 0.5);
   }
 
   .pulse-dot {
     @apply w-2 h-2 rounded-full;
-    animation: pulse-glow 2s ease-in-out infinite;
+    animation: pulse-glow 2.4s ease-in-out infinite;
   }
 
   @keyframes pulse-glow {
     0%, 100% { opacity: 1; box-shadow: 0 0 0 0 currentColor; }
-    50% { opacity: 0.8; box-shadow: 0 0 0 4px transparent; }
+    50% { opacity: 0.65; box-shadow: 0 0 0 5px transparent; }
   }
 
   .data-badge {
-    @apply inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full;
+    @apply inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full;
+    letter-spacing: 0.02em;
   }
 
   .score-ring {
-    transition: stroke-dashoffset 1.8s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: stroke-dashoffset 1.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Designed loading shimmer (no raw spinners on the dashboard). */
+  .skeleton-line {
+    position: relative;
+    overflow: hidden;
+    background: hsl(var(--muted));
+    border-radius: 0.5rem;
+  }
+
+  .skeleton-line::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(0 0% 100% / 0.55),
+      transparent
+    );
+    animation: shimmer 1.6s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    100% { transform: translateX(100%); }
   }
 }
 
 @layer utilities {
+  /* Editorial hero: confident weight contrast, tight tracking, single accent.
+     No gradient text. */
   .hero-title {
-    font-size: 1.75rem;
-    line-height: 1.1;
+    font-size: 2rem;
+    line-height: 1.04;
     font-weight: 700;
-    letter-spacing: -0.03em;
-  }
-
-  .hero-title-gradient {
-    background: linear-gradient(135deg, hsl(250 60% 48%) 0%, hsl(280 70% 55%) 50%, hsl(248 45% 55%) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .hero-title-accent {
+    letter-spacing: -0.035em;
     color: hsl(var(--foreground));
   }
 
+  .hero-title-accent {
+    color: hsl(var(--primary));
+    font-weight: 700;
+  }
+
+  .hero-title-muted {
+    color: hsl(var(--foreground) / 0.92);
+    font-weight: 600;
+  }
+
   @media (min-width: 640px) {
-    .hero-title { font-size: 2.25rem; }
+    .hero-title { font-size: 2.5rem; }
   }
 
   @media (min-width: 1024px) {
-    .hero-title { font-size: 2.75rem; }
+    .hero-title { font-size: 3rem; }
   }
 
   .text-hero {
     font-size: 2.25rem;
-    line-height: 1.1;
-    font-weight: 600;
-    letter-spacing: -0.02em;
+    line-height: 1.06;
+    font-weight: 700;
+    letter-spacing: -0.03em;
   }
 
   @media (min-width: 640px) {
@@ -227,33 +341,35 @@
     .text-hero { font-size: 3.5rem; }
   }
 
+  /* The big number on the instrument: optically tight, tabular. */
   .score-large {
-    font-size: 2.5rem;
+    font-size: 3.25rem;
+    font-weight: 700;
+    line-height: 0.92;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.045em;
+  }
+
+  @media (min-width: 640px) {
+    .score-large { font-size: 3.75rem; }
+  }
+
+  .score-medium {
+    font-size: 2rem;
     font-weight: 700;
     line-height: 1;
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.03em;
   }
 
-  @media (min-width: 640px) {
-    .score-large { font-size: 3rem; }
-  }
-
-  .score-medium {
-    font-size: 1.875rem;
-    font-weight: 600;
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.01em;
-  }
-
   .hover-lift {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.25s ease;
   }
 
   .hover-lift:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-soft);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-elevated);
+    border-color: hsl(var(--primary) / 0.28);
   }
 
   .tabular-nums {

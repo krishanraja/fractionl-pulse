@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, BookOpen, RefreshCw, Activity } from 'lucide-react';
-import { fadeInUp } from '@/lib/motion';
+import { BookOpen, RefreshCw, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 import { calcComposite } from '@/lib/types';
 
 interface HeroSectionProps {
@@ -12,6 +11,16 @@ interface HeroSectionProps {
   fwiLabel?: { label: string; emoji: string; color: string };
 }
 
+// The five FWI bands, expressed once so the gauge, rail, and chip stay in lockstep.
+type Band = { name: string; color: string; tint: string; text: string };
+const bandFor = (score: number): Band => {
+  if (score >= 75) return { name: 'Surging', color: 'hsl(158 72% 38%)', tint: 'hsl(158 72% 38% / 0.10)', text: 'hsl(158 72% 30%)' };
+  if (score >= 60) return { name: 'Growing', color: 'hsl(142 62% 40%)', tint: 'hsl(142 62% 40% / 0.10)', text: 'hsl(142 62% 30%)' };
+  if (score >= 45) return { name: 'Stable', color: 'hsl(42 92% 44%)', tint: 'hsl(42 92% 44% / 0.12)', text: 'hsl(38 92% 34%)' };
+  if (score >= 30) return { name: 'Cooling', color: 'hsl(24 90% 50%)', tint: 'hsl(24 90% 50% / 0.10)', text: 'hsl(22 86% 42%)' };
+  return { name: 'Contracting', color: 'hsl(2 72% 52%)', tint: 'hsl(2 72% 52% / 0.10)', text: 'hsl(0 70% 44%)' };
+};
+
 const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSectionProps) => {
   const [animatedScore, setAnimatedScore] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -19,6 +28,7 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
   const compositeScore = calcComposite(data.today, data.weights);
   const delta = data.today.delta30d;
   const isPositive = delta >= 0;
+  const isFlat = Math.abs(delta) < 0.05;
 
   // Forward lean from the Form D Lead: demand is the leading pillar, so its recent
   // trajectory is a directional read on where the index is heading. Directional,
@@ -55,28 +65,45 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
     setTimeout(() => setIsRefreshing(false), 1200);
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 75) return '#10b981';
-    if (score >= 60) return '#22c55e';
-    if (score >= 45) return '#eab308';
-    if (score >= 30) return '#f97316';
-    return '#ef4444';
+  const band = bandFor(animatedScore);
+
+  // Gauge geometry: a 270-degree open dial, the convention for an instrument.
+  const R = 52;
+  const ARC = 270; // degrees of sweep
+  const GAP = 90; // bottom gap
+  const startAngle = 90 + GAP / 2; // start at lower-left
+  const fullArcLen = (ARC / 360) * (2 * Math.PI * R);
+  const circumference = 2 * Math.PI * R;
+  const progressLen = (animatedScore / 100) * fullArcLen;
+
+  // Tick marks at each band boundary (30/45/60/75) plus 0 and 100.
+  const ticks = [0, 30, 45, 60, 75, 100];
+  const tickPos = (value: number) => {
+    const angle = (startAngle + (value / 100) * ARC) * (Math.PI / 180);
+    return {
+      x1: 60 + (R + 8) * Math.cos(angle),
+      y1: 60 + (R + 8) * Math.sin(angle),
+      x2: 60 + (R + 12) * Math.cos(angle),
+      y2: 60 + (R + 12) * Math.sin(angle),
+    };
   };
 
-  const circumference = 2 * Math.PI * 54;
-  const progress = (animatedScore / 100) * circumference;
-  const scoreColor = getScoreColor(animatedScore);
-
   return (
-    <motion.div variants={fadeInUp} className="space-y-4">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+      className="space-y-5"
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
+          <p className="eyebrow mb-2.5">The Fractional Working Index</p>
           <h1 className="hero-title">
-            <span className="hero-title-gradient">Fractional</span>
-            <span className="hero-title-accent"> Working Index</span>
+            <span className="hero-title-accent">Fractional</span>{' '}
+            <span className="hero-title-muted">Working Index</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-1.5 max-w-lg">
-            Market intelligence for fractional executives. Updated weekly from 21 data sources.
+          <p className="text-sm text-muted-foreground mt-2.5 max-w-md leading-relaxed">
+            Market intelligence for fractional executives. A live dashboard on a weekly index, read from 21 data sources.
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
@@ -84,6 +111,7 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
             variant="ghost"
             size="icon"
             onClick={handleRefresh}
+            aria-label="Refresh index"
             className={`text-muted-foreground hover:text-primary h-8 w-8 ${isRefreshing ? 'animate-spin' : ''}`}
           >
             <RefreshCw size={16} />
@@ -91,62 +119,87 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
         </div>
       </div>
 
-      <div className="glass-card-elevated p-5 sm:p-6">
-        <div className="flex flex-col sm:flex-row gap-6">
-          {/* Score ring + number */}
+      <div
+        className="instrument-card p-5 sm:p-6"
+        style={{ ['--band-accent' as string]: `linear-gradient(90deg, ${band.color}, ${band.color}40)` }}
+      >
+        <div className="instrument-grid" aria-hidden="true" />
+
+        <div className="relative flex flex-col sm:flex-row gap-6 sm:gap-7">
+          {/* The gauge instrument */}
           <div className="flex items-center gap-5 sm:gap-6">
-            <div className="relative w-28 h-28 sm:w-32 sm:h-32 shrink-0">
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
+            <div className="relative w-32 h-32 sm:w-36 sm:h-36 shrink-0">
+              <svg className="w-full h-full" viewBox="0 0 120 120" role="img" aria-label={`FWI score ${animatedScore.toFixed(1)} out of 100`}>
+                {/* track */}
                 <circle
-                  cx="60" cy="60" r="54"
-                  stroke="hsl(var(--border))"
-                  strokeWidth="6"
-                  fill="none"
-                />
-                <circle
-                  cx="60" cy="60" r="54"
-                  stroke={scoreColor}
-                  strokeWidth="6"
+                  cx="60" cy="60" r={R}
+                  stroke="hsl(var(--muted))"
+                  strokeWidth="8"
                   fill="none"
                   strokeLinecap="round"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={circumference - progress}
-                  className="score-ring"
-                  style={{ filter: `drop-shadow(0 0 6px ${scoreColor}40)` }}
+                  strokeDasharray={`${fullArcLen} ${circumference}`}
+                  transform={`rotate(${startAngle} 60 60)`}
                 />
+                {/* progress */}
+                <circle
+                  cx="60" cy="60" r={R}
+                  stroke={band.color}
+                  strokeWidth="8"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeDasharray={`${progressLen} ${circumference}`}
+                  transform={`rotate(${startAngle} 60 60)`}
+                  className="score-ring"
+                  style={{ filter: `drop-shadow(0 1px 4px ${band.color}55)` }}
+                />
+                {/* band boundary ticks */}
+                {ticks.map((t) => {
+                  const p = tickPos(t);
+                  return (
+                    <line
+                      key={t}
+                      x1={p.x1} y1={p.y1} x2={p.x2} y2={p.y2}
+                      stroke="hsl(var(--muted-foreground) / 0.35)"
+                      strokeWidth="1"
+                      strokeLinecap="round"
+                    />
+                  );
+                })}
               </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-3xl sm:text-4xl font-bold tabular-nums" style={{ color: scoreColor }}>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pt-1">
+                <span className="score-large" style={{ color: band.color }}>
                   {animatedScore.toFixed(1)}
                 </span>
-                <span className="text-[10px] text-muted-foreground mt-0.5">/ 100</span>
+                <span className="text-[10px] font-medium text-muted-foreground/70 tracking-wider tabular-nums mt-1">
+                  / 100
+                </span>
               </div>
             </div>
 
-            <div className="flex flex-col gap-2">
-              {fwiLabel && (
-                <span className={`data-badge ${
-                  fwiLabel.color.includes('emerald') ? 'bg-emerald-500/10 text-emerald-500' :
-                  fwiLabel.color.includes('green') ? 'bg-green-500/10 text-green-500' :
-                  fwiLabel.color.includes('yellow') ? 'bg-yellow-500/10 text-yellow-500' :
-                  fwiLabel.color.includes('orange') ? 'bg-orange-500/10 text-orange-500' :
-                  'bg-red-500/10 text-red-500'
-                } text-xs font-semibold w-fit`}>
-                  <Activity size={12} />
-                  {fwiLabel.label}
-                </span>
-              )}
+            <div className="flex flex-col gap-2.5">
+              <span
+                className="data-badge w-fit"
+                style={{ backgroundColor: band.tint, color: band.text }}
+              >
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: band.color }} />
+                {band.name}
+              </span>
 
-              <div className={`flex items-center gap-1.5 text-lg font-semibold ${
-                isPositive ? 'stat-up' : 'stat-down'
-              }`}>
-                {isPositive ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                <span>{isPositive ? '+' : ''}{delta.toFixed(1)} pts</span>
+              <div
+                className="inline-flex items-center gap-1.5 w-fit rounded-md px-2 py-1 text-base font-bold tabular-nums"
+                style={{
+                  color: isFlat ? 'hsl(var(--muted-foreground))' : isPositive ? 'hsl(var(--success))' : 'hsl(var(--error))',
+                  backgroundColor: isFlat ? 'hsl(var(--muted))' : isPositive ? 'hsl(var(--success) / 0.10)' : 'hsl(var(--error) / 0.10)',
+                }}
+              >
+                {isFlat ? <Minus size={15} /> : isPositive ? <ArrowUpRight size={15} /> : <ArrowDownRight size={15} />}
+                <span>{isPositive && !isFlat ? '+' : ''}{delta.toFixed(1)}</span>
+                <span className="text-[11px] font-medium opacity-70">pts</span>
               </div>
-              <span className="text-xs text-muted-foreground">vs 4 weeks ago</span>
+              <span className="text-[11px] text-muted-foreground -mt-0.5">vs 4 weeks ago</span>
 
               {data.context?.overallContext && (
-                <p className="text-[11px] text-muted-foreground/70 max-w-[200px] leading-relaxed hidden sm:block">
+                <p className="text-[11px] text-muted-foreground/80 max-w-[210px] leading-relaxed hidden sm:block mt-0.5">
                   {data.context.overallContext}
                 </p>
               )}
@@ -154,23 +207,23 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
           </div>
 
           {/* Right side: meta + actions */}
-          <div className="sm:ml-auto flex flex-col justify-between gap-3 sm:items-end sm:text-right">
-            <div className="space-y-1">
-              <div className="text-sm font-medium text-foreground">
+          <div className="sm:ml-auto flex flex-row sm:flex-col items-center sm:items-end justify-between gap-3 sm:text-right">
+            <div className="space-y-0.5">
+              <div className="section-label">As of</div>
+              <div className="text-sm font-semibold text-foreground tabular-nums">
                 {new Date(data.asOf).toLocaleDateString('en-US', {
                   month: 'long',
                   day: 'numeric',
                   year: 'numeric'
                 })}
               </div>
-              <div className="text-xs text-muted-foreground">Last updated</div>
             </div>
 
             <Button
               size="sm"
               variant="outline"
               onClick={onShowMethodology}
-              className="w-fit"
+              className="w-fit shrink-0"
             >
               <BookOpen size={14} className="mr-1.5" />
               How this works
@@ -178,28 +231,28 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
           </div>
         </div>
 
-        {/* Weight indicators */}
-        <div className="mt-5 pt-4 border-t border-border">
+        {/* Weight indicators: the instrument's calibration. */}
+        <div className="relative mt-5 pt-4 border-t border-hairline">
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
-              Hiring activity {Math.round((data.weights.demand ?? 0.5) * 100)}%
+              <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+              Hiring activity <span className="font-semibold text-foreground/80 tabular-nums">{Math.round((data.weights.demand ?? 0.5) * 100)}%</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-accent shrink-0" />
-              Talent availability {Math.round((data.weights.supply ?? 0.2) * 100)}%
+              <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+              Talent availability <span className="font-semibold text-foreground/80 tabular-nums">{Math.round((data.weights.supply ?? 0.2) * 100)}%</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-secondary shrink-0" />
-              Market buzz {Math.round((data.weights.culture ?? data.weights.momentum ?? 0.3) * 100)}%
+              <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0" />
+              Market buzz <span className="font-semibold text-foreground/80 tabular-nums">{Math.round((data.weights.culture ?? data.weights.momentum ?? 0.3) * 100)}%</span>
             </span>
           </div>
         </div>
 
         {/* Forward lean: the Form D Lead, directional not a forecast */}
-        <div className="mt-3 pt-3 border-t border-border">
-          <div className="flex items-start gap-2">
-            <span className="text-[10px] uppercase tracking-wide text-muted-foreground/60 mt-0.5 shrink-0">Where it's heading</span>
+        <div className="relative mt-3.5 pt-3.5 border-t border-hairline">
+          <div className="flex items-start gap-2.5">
+            <span className="section-label shrink-0 mt-0.5">Where it's heading</span>
             <p className={`text-xs ${lean.cls} leading-relaxed`}>{lean.txt}</p>
           </div>
         </div>

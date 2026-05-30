@@ -2,7 +2,6 @@ import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, Briefcase, Users, Megaphone } from 'lucide-react';
 import SparklineChart from './SparklineChart';
 import RoleBreakdown from './RoleBreakdown';
-import { fadeInUp } from '@/lib/motion';
 import { useSignalContext } from '@/hooks/useSignalContext';
 
 interface SubIndexCardsProps {
@@ -80,8 +79,12 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
         return (
           <motion.div
             key={i}
-            variants={fadeInUp}
-            className="glass-card index-card p-4 sm:p-5 hover-lift"
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.5, delay: i * 0.06, ease: [0.16, 1, 0.3, 1] }}
+            className="glass-card index-card p-4 sm:p-5 pl-5 sm:pl-6 hover-lift"
+            style={{ ['--accent-rail' as string]: index.accentColor }}
           >
             {/* Header with icon */}
             <div className="flex items-center justify-between mb-3">
@@ -89,9 +92,9 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
                 <div className="p-1.5 rounded-lg" style={{ backgroundColor: `${index.accentColor}15` }}>
                   <Icon size={14} style={{ color: index.accentColor }} />
                 </div>
-                <h3 className="font-medium text-foreground">{index.title}</h3>
+                <h3 className="font-semibold text-foreground text-[13px] tracking-tight">{index.title}</h3>
               </div>
-              <span className="text-[10px] text-muted-foreground/70 tabular-nums">
+              <span className="section-label tabular-nums">
                 {Math.round(index.weight * 100)}% weight
               </span>
             </div>
@@ -101,7 +104,7 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
               <div className="score-medium text-foreground">
                 {index.score}
               </div>
-              <div className={`flex items-center gap-1 text-sm font-semibold ${
+              <div className={`flex items-center gap-1 text-sm font-bold tabular-nums ${
                 isPositive ? 'stat-up' : 'stat-down'
               }`}>
                 {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}

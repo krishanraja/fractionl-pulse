@@ -74,7 +74,7 @@ const FractionalReadiness = ({ score, label }: FractionalReadinessProps) => {
       className="glass-card p-4 sm:p-5 h-full flex flex-col"
     >
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-foreground text-sm">Market Readiness</h3>
+        <h3 className="font-semibold text-foreground text-sm tracking-tight">Market readiness</h3>
         {label && (
           <span className={`data-badge ${
             label.color.includes('emerald') ? 'bg-emerald-500/10 text-emerald-500' :
@@ -111,10 +111,10 @@ const FractionalReadiness = ({ score, label }: FractionalReadinessProps) => {
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
-              <div className="text-2xl font-bold tabular-nums" style={{ color: gaugeColor }}>
+              <div className="text-[1.75rem] font-bold tabular-nums leading-none tracking-tight" style={{ color: gaugeColor }}>
                 {animatedValue}
               </div>
-              <div className="text-[9px] text-muted-foreground font-medium">/ 100</div>
+              <div className="text-[9px] text-muted-foreground font-medium tracking-wider mt-0.5">/ 100</div>
             </div>
           </div>
         </div>
