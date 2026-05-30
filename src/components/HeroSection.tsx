@@ -20,6 +20,17 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
   const delta = data.today.delta30d;
   const isPositive = delta >= 0;
 
+  // Forward lean from the Form D Lead: demand is the leading pillar, so its recent
+  // trajectory is a directional read on where the index is heading. Directional,
+  // not a forecast, and never with an accuracy claim (truth-discipline).
+  const demandDelta = data.today.demand?.delta30d ?? 0;
+  const lean =
+    demandDelta > 1.5
+      ? { txt: 'Demand tilting up. The Form D Lead points to firmer fractional demand over the next 1 to 3 months.', cls: 'stat-up' }
+      : demandDelta < -1.5
+      ? { txt: 'Demand softening. The Form D Lead points to cooler fractional demand over the next 1 to 3 months.', cls: 'stat-down' }
+      : { txt: 'Demand steady. The Form D Lead shows no strong directional pull right now.', cls: 'text-muted-foreground' };
+
   useEffect(() => {
     const duration = 1500;
     const steps = 60;
@@ -182,6 +193,14 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
               <span className="w-2 h-2 rounded-full bg-secondary shrink-0" />
               Market buzz {Math.round((data.weights.culture ?? data.weights.momentum ?? 0.3) * 100)}%
             </span>
+          </div>
+        </div>
+
+        {/* Forward lean: the Form D Lead, directional not a forecast */}
+        <div className="mt-3 pt-3 border-t border-border">
+          <div className="flex items-start gap-2">
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground/60 mt-0.5 shrink-0">Where it's heading</span>
+            <p className={`text-xs ${lean.cls} leading-relaxed`}>{lean.txt}</p>
           </div>
         </div>
       </div>
