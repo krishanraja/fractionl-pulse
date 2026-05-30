@@ -24,6 +24,16 @@ verify_jwt = false
 [functions.fwi-verdict]
 verify_jwt = false
 
+# Stripe webhook: Stripe POSTs with a signature (not a Supabase JWT), so the
+# gateway must not require a JWT; the function verifies the Stripe signature.
+[functions.stripe-webhook]
+verify_jwt = false
+
+# Checkout: the function validates the user's token in-code (getUser) and
+# returns a clean 401, so the gateway JWT check is disabled.
+[functions.create-checkout-session]
+verify_jwt = false
+
 # Pipeline + alerting internals stay JWT-verified (service-role only).
 [functions.ingest-signals]
 verify_jwt = true

@@ -17,8 +17,11 @@ import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useFWIData } from '@/hooks/useFWIData';
 import { staggerContainer } from '@/lib/motion';
 import { checkAlerts } from '@/lib/alerts';
+import { Link } from 'react-router-dom';
 import { SUPABASE_FUNCTIONS_URL } from '@/lib/supabase';
 import { emitEvent } from '@/lib/attribution';
+import { useEntitlement } from '@/hooks/useEntitlement';
+import { CHECKOUT_ENABLED } from '@/lib/checkout';
 import type { AlertItem } from '@/lib/types';
 
 export const getFWILabel = (score: number): { label: string; emoji: string; color: string } => {
@@ -48,6 +51,7 @@ const Index = () => {
   const [alertsExpanded, setAlertsExpanded] = useState(false);
   const { preferences } = useUserPreferences();
   const { data: fwiData, isLive, isLoading, isStale, lastUpdated, refresh } = useFWIData();
+  const { isPro } = useEntitlement();
 
   const userHasCustomWeights = preferences.weights &&
     (Math.abs(preferences.weights.demand - 0.5) > 0.01 ||
@@ -59,6 +63,19 @@ const Index = () => {
   };
 
   const fwiLabel = getFWILabel(data.today.overall);
+
+  // Pro gate: free sees the recent trend, Pro sees the full 12-month history.
+  // Only active when self-serve checkout is enabled, so default behavior is unchanged.
+  const trendLocked = CHECKOUT_ENABLED && !isPro;
+  const trendData = trendLocked
+    ? {
+        months: data.monthly.months.slice(-5),
+        overall: data.monthly.overall.slice(-5),
+        demand: data.monthly.demand.slice(-5),
+        supply: data.monthly.supply.slice(-5),
+        culture: data.monthly.culture.slice(-5),
+      }
+    : data.monthly;
 
   const alerts: AlertItem[] = isLive && preferences.alerts.enabled
     ? checkAlerts(data, preferences.alerts.threshold)
@@ -215,7 +232,15 @@ const Index = () => {
             <span className="text-[10px] text-muted-foreground hidden sm:inline">{data.context.trendSummary}</span>
           )}
         </div>
-        <TrendlineChart data={data.monthly} />
+        <TrendlineChart data={trendData} />
+        {trendLocked && (
+          <Link
+            to="/pricing"
+            className="mt-3 flex items-center justify-center gap-1.5 text-xs text-primary hover:brightness-110 border border-primary/30 rounded-lg py-2 transition"
+          >
+            Unlock the full 12-month history with Pro
+          </Link>
+        )}
       </section>
 
       {/* Movers + Readiness */}
