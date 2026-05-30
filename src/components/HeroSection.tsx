@@ -65,7 +65,7 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
             <span className="hero-title-accent"> Working Index</span>
           </h1>
           <p className="text-sm text-muted-foreground mt-1.5 max-w-lg">
-            Real-time market intelligence for fractional executives. Updated weekly from 21 data sources.
+            Market intelligence for fractional executives. Updated weekly from 21 data sources.
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">

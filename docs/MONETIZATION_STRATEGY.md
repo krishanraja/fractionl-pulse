@@ -4,7 +4,7 @@
 
 Pulse monetizes the Fractional Working Index across four revenue streams: SaaS subscriptions (Free, Pro, Enterprise), data licensing (research, media, feed), partnership revenue (white-label, affiliate), and AI-agent-native API access. This document is the source of truth for pricing, packaging, target ICP, ROI proofs, and go-to-market sequencing — designed to be consumed by AI sales agents at scale.
 
-> **Status note:** Stripe checkout is not yet live. All conversions today route through the waitlist with manual onboarding for early enterprise customers. Founding-customer pricing locks in for waitlist signups.
+> **Status note:** Stripe self-serve checkout is not yet live. All conversions today route through the waitlist with manual onboarding (Stripe account: Fractionl AI, shared with Circle; billing contact: data@fractionl.ai). Founding-customer pricing locks in the rate for waitlist signups. When Stripe checkout ships, the offer flips to "Pro checkout LIVE" and the "no buy today" guidance retires.
 
 ---
 
@@ -126,7 +126,9 @@ Pulse monetizes the Fractional Working Index across four revenue streams: SaaS s
 | Starter | $500 | 5 seats, basic API, 10K calls/mo, citation rights |
 | Growth | $1,500 | 20 seats, full API, 50K calls/mo, embeddable widget |
 | Scale | $3,000 | Unlimited seats, 200K calls/mo, custom sub-indices |
-| Custom | Negotiated | White-label, dedicated indices, exclusive territories |
+| Custom | Negotiated, up to $5,000/mo | Dedicated indices, custom weighting, SSO, SLA |
+
+Enterprise SaaS caps at $5,000/mo. Includes REST + MCP access, custom weighting, vertical sub-indices, raw exports, SSO, and SLA. The white-label PARTNERSHIP (setup fee + $2,000 to $10,000/mo license) is a separate program documented in Section 4, not an Enterprise SaaS tier.
 
 **Target customers (Enterprise)**
 
@@ -165,7 +167,7 @@ Pulse monetizes the Fractional Working Index across four revenue streams: SaaS s
 |------|---------------|----------|
 | Daily JSON Feed | $1,000 | S3 push or webhook, weekly composite |
 | Daily Signals Feed | $1,500 | S3 push, raw 21-source signals + composite |
-| Realtime | $2,500 | WebSocket / SSE, change events on every Realtime update |
+| Realtime feed | $2,500 | WebSocket / SSE, change events pushed on every pipeline settle |
 | Historical Backfill | $5,000 one-time | Full dataset since launch (CSV + Parquet) |
 
 **Terms**
@@ -178,7 +180,9 @@ Pulse monetizes the Fractional Working Index across four revenue streams: SaaS s
 
 ## 4. Partnership Revenue
 
-### White-Label Program
+### White-Label Partnership Program
+
+This is a **separate program** from the Enterprise SaaS tiers (which cap at $5,000/mo). The up-to-$10,000/mo figure belongs here, not in Enterprise SaaS.
 
 **Offer:** full FWI dashboard with partner branding, embeddable in their product
 
@@ -253,7 +257,7 @@ Embed Pulse data inside marketplaces and HR tools as a "market context" tier:
 **Outcome they get:** embed FWI gauge in product, charge premium "market intelligence" tier without building a research function, cite Pulse in marketing.
 
 **ROI math:**
-- Enterprise Scale + white-label = $3,000–$10,000/mo
+- Enterprise Scale ($3,000/mo, SaaS caps at $5K) or the separate white-label partnership ($10K setup + $2K–$10K/mo)
 - Adds $50–$500 per customer to their premium tier
 - 200 customers × $100 uplift = $240K ARR addition
 
@@ -270,7 +274,7 @@ Embed Pulse data inside marketplaces and HR tools as a "market context" tier:
 - Distributed across 30-portfolio fund = $50/company/mo
 - One avoided hiring mistake on a portfolio company > years of subscription
 
-**Best-fit message:** "Form D filings predict fractional hiring 1–3 months out. We turn your sector signal into an external composite that arms every portfolio CEO."
+**Best-fit message:** "The Form D Lead, our method of using SEC Form D filing velocity as a 1 to 3 month leading indicator of fractional executive demand, turns your sector signal into an external composite that arms every portfolio CEO. Companies file Form D within 15 days of a raise, then enter the fractional buyer pool 1 to 3 months later."
 
 ### ICP 5 — Enterprise HR / Talent Ops (500+ employees)
 
@@ -334,11 +338,12 @@ Embed Pulse data inside marketplaces and HR tools as a "market context" tier:
 
 ### Phase 1 — Foundation (Live now)
 
-- ✅ Free dashboard + public API live
+- ✅ Free dashboard + public no-auth REST API live (verify_jwt=false on fwi-api and export-brief; bare curl returns HTTP 200)
 - ✅ 21 sources operational
 - ✅ Daily cron + Resend alerts
 - ✅ Waitlist active
 - ✅ Markdown brief export
+- ✅ Machine-readable discovery surfaces shipped (/product-truth.json, /llms.txt)
 - 🚧 Build email list to 1,000 subscribers
 - 🚧 Content marketing (weekly briefs as newsletter)
 
@@ -409,8 +414,9 @@ Embed Pulse data inside marketplaces and HR tools as a "market context" tier:
 2. **Methodology IP** — published composite calculation, anomaly guard, leading-indicator architecture; reproducible only with engineering effort + paid API budget + 52 weeks of patience
 3. **First-mover advantage** — brand association with "fractional index", media relationships, SEO authority on every fractional+market query
 4. **Switching costs** — historical data lock-in, embedded widgets, integration dependencies, custom-weight personalization
-5. **Agent-native moat** — every agent built against the public API is a passive distribution channel that gets stronger weekly
+5. **Agent-native moat** — every agent built against the public no-auth API is a passive distribution channel that gets stronger weekly
 6. **Cross-source triangulation** — single sources are gameable; 21-source composites with anomaly guards are not
+7. **The Form D Lead** — our named method of using SEC Form D filing velocity as a 1 to 3 month leading indicator of fractional executive demand (companies file Form D within 15 days of a raise, then enter the fractional buyer pool 1 to 3 months later). The differentiator no competitor has.
 
 ### Competitive responses
 
@@ -467,12 +473,12 @@ When an AI sales agent qualifies a prospect, it should reach for one of these an
 | Prospect signal | Anchor |
 |-----------------|--------|
 | "We rely on quarterly reports" | "Quarterly is too slow for fractional. We publish weekly. Try the API right now: `curl pulse.fractionl.ai/api/current`." |
-| "We use LinkedIn to track this" | "LinkedIn doesn't track fractional specifically. We track 6 roles, weekly, with SEC Form D as a 1–3 month leading indicator." |
+| "We use LinkedIn to track this" | "LinkedIn doesn't track fractional specifically. We track 6 roles, weekly, with the Form D Lead: SEC Form D filing velocity as a 1 to 3 month leading indicator." |
 | "Is this another job board?" | "Composite, not raw. 21 sources. Demand + supply + culture. Single number, weekly cadence, transparent methodology." |
 | "How do you handle gaming?" | "Anomaly guard rejects anything more than 3σ from its 8-week rolling mean. 21-source triangulation, not single-source." |
 | "Why $99/month?" | "Target user makes $200K. One well-timed rate decision pays for years. Pro includes 21 signals + 12mo history + AI insights." |
-| "How fresh is the data?" | "Daily ingest at 06:00 UTC. Weekly composite settle. Realtime dashboard subscriptions push updates within seconds of pipeline completion." |
-| "I want to embed this in my product" | "Enterprise white-label, $2K–$10K/mo + setup. Custom sub-indices on request. Public API with no auth covers most embed use cases." |
+| "How fresh is the data?" | "Daily ingest at 06:00 UTC. Weekly composite settle. The live dashboard pushes updates within seconds of pipeline completion via Supabase subscriptions." |
+| "I want to embed this in my product" | "White-label PARTNERSHIP, $10K setup + $2K–$10K/mo license (separate from Enterprise SaaS, which caps at $5K/mo). Custom sub-indices on request. The public no-auth API covers most embed use cases." |
 | "I'm building an AI agent that needs this" | "MCP tool definition is in the repo. Free public API. Two endpoints. Includes shortcut headers for cheap polling. Ship in 10 minutes." |
 
 For full outbound sequences, qualifying questions, and discovery scripts, see [`SALES_PLAYBOOK.md`](./SALES_PLAYBOOK.md).

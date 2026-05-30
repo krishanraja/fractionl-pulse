@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, createElement } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { emitEvent } from '@/lib/attribution';
 
 interface AuthContextType {
   user: User | null;
@@ -64,8 +65,12 @@ export function AuthProvider(props: { children: React.ReactNode }) {
       .from('waitlist')
       .insert({ email });
     // If email already exists, treat as success (they're already on the list)
-    if (error?.code === '23505') return { error: null };
-    return { error: error?.message ?? null };
+    if (!error || error.code === '23505') {
+      // Record the conversion with first-touch attribution (no-ops until wired).
+      void emitEvent('signed_up', { email });
+      return { error: null };
+    }
+    return { error: error.message ?? null };
   };
 
   const value: AuthContextType = {

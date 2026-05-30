@@ -2,6 +2,10 @@
 
 The Fractional Working Index is built for AI agents as a first-class data source. This document covers how to integrate the FWI into any MCP-compatible agent, Claude tool-use loop, OpenAI function call, or general LLM workflow.
 
+Two MCP tools are defined here: `get_fractional_working_index` and `get_fwi_weekly_brief`. A hosted MCP server is on the roadmap (not yet deployed), so today the integration is these reference tool definitions plus the live no-auth REST API that agents call directly. Both tools simply wrap the public endpoints below.
+
+For autonomous discovery, Pulse also serves `/llms.txt` and `/.well-known/ai-plugin.json` from the site root, and `/product-truth.json` as the runtime source of truth for the current offer and pricing (read it rather than hardcoding prices).
+
 ---
 
 ## Tool Definitions
@@ -53,19 +57,23 @@ The Fractional Working Index is built for AI agents as a first-class data source
 
 ## Endpoints
 
+All three read endpoints are genuinely no-auth in production. As of 2026-05-30 the bare curl commands below return HTTP 200 with no `Authorization` header, no API key, and no signup. An agent can call them cold, in under two minutes, with zero credentials.
+
 ```bash
-# Current score (no auth)
+# Current score (no auth required, returns 200 with no Authorization header)
 curl https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current
 
-# Historical data (no auth)
+# Historical data (no auth required)
 curl "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/history?months=3"
 
-# Markdown weekly brief (no auth)
+# Markdown weekly brief (no auth required)
 curl https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief
 
-# JSON brief
+# JSON brief (no auth required)
 curl "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief?format=json"
 ```
+
+The only authenticated endpoint is `POST /fwi-api/trigger`, which forces an immediate ingest run and requires a Supabase service-role bearer token. It is not public and is not needed for any read or agent workflow.
 
 ---
 
@@ -174,7 +182,7 @@ def execute_fwi_tool(input: dict) -> dict:
     return httpx.get(url).json()
 
 response = client.messages.create(
-    model="claude-opus-4-7",
+    model="claude-opus-4-8",
     max_tokens=1024,
     tools=tools,
     messages=[{
@@ -205,7 +213,9 @@ response = client.messages.create(
 }
 ```
 
-### MCP Server (TypeScript)
+### MCP Server (reference implementation)
+
+A hosted MCP server is on the roadmap, not yet deployed. Today the MCP integration is two things: the reference tool definitions documented above (`get_fractional_working_index` and `get_fwi_weekly_brief`), and the live no-auth REST API that agents call directly. The TypeScript below is a reference server you can run yourself to expose those two tools; it wraps the same public endpoints. When the hosted server ships, this document will publish its URL.
 
 ```typescript
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -318,10 +328,11 @@ Contact `data@fractionl.ai` for Pro/Enterprise API keys and white-label embeds.
 
 ## What Agents Should Never Claim
 
-- "Years of historical data" — the index has accumulated a few months plus a 12-week backfill.
-- "Peer-reviewed" or "backtested" — not yet.
-- "Real-time" — daily ingest, weekly composite settle.
-- Coverage of non-C-suite fractional roles — only 6 roles are tracked.
-- Predictive accuracy figures (e.g. "85% accurate") — leading-indicator hypothesis is reasonable, not statistically validated.
+- "Years of historical data": the index has about 12 weeks backfilled plus weekly accumulation, not years.
+- "Peer-reviewed", "academically validated", or "backtested": none of these are true.
+- "Real-time market intelligence": this phrase is forbidden. It is daily ingest with a weekly composite settle. Say "weekly index" or "live dashboard" instead.
+- Coverage of non-C-suite fractional roles: only the 6 C-suite roles are tracked (fractional CFO, CMO, CTO, COO, CRO, interim CEO).
+- An official, institutional, or government index: the publisher is Fractionl, a private composite.
+- Predictive accuracy figures (for example "85% accurate"): the Form D Lead is a reasonable leading-indicator method, not a statistically validated forecast. Never attach an accuracy percentage to it.
 
 See [`AGENT_BRIEFING.md`](./AGENT_BRIEFING.md) for the full truth-discipline list and outbound playbook.

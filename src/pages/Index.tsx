@@ -17,6 +17,7 @@ import { useFWIData } from '@/hooks/useFWIData';
 import { staggerContainer } from '@/lib/motion';
 import { checkAlerts } from '@/lib/alerts';
 import { SUPABASE_FUNCTIONS_URL } from '@/lib/supabase';
+import { emitEvent } from '@/lib/attribution';
 import type { AlertItem } from '@/lib/types';
 
 export const getFWILabel = (score: number): { label: string; emoji: string; color: string } => {
@@ -78,7 +79,10 @@ const Index = () => {
             </span>
           </div>
           <button
-            onClick={() => window.open(`${SUPABASE_FUNCTIONS_URL}/export-brief`, '_blank')}
+            onClick={() => {
+              void emitEvent('activated', { via: 'export_brief' });
+              window.open(`${SUPABASE_FUNCTIONS_URL}/export-brief`, '_blank');
+            }}
             className="flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-500 transition-colors cursor-pointer"
           >
             <Download size={12} />

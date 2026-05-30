@@ -37,3 +37,6 @@ supabase/.temp/
 
 # Playwright MCP
 .playwright-mcp/
+
+# Upgrade working dir (internal audit + phase reports + tooling, not for the repo)
+_upgrade/

@@ -1,0 +1,32 @@
+project_id = "dtlcprcpvdomrehbejhw"
+
+# Public, no-auth agent surface. These two functions are the documented
+# agent-native API and the press/cite brief export; they must be reachable
+# with no Authorization header (the gateway defaults to verify_jwt = true,
+# which is what broke the documented bare curl: A1).
+[functions.fwi-api]
+verify_jwt = false
+
+[functions.export-brief]
+verify_jwt = false
+
+# Attribution proxy: the browser POSTs lifecycle events here with no auth header.
+# The warehouse ingest secret is held server-side (env), never in the client.
+[functions.emit-event]
+verify_jwt = false
+
+# Pipeline + alerting internals stay JWT-verified (service-role only).
+[functions.ingest-signals]
+verify_jwt = true
+
+[functions.calculate-fwi]
+verify_jwt = true
+
+[functions.generate-pulse-insights]
+verify_jwt = true
+
+[functions.backfill-historical]
+verify_jwt = true
+
+[functions.send-pipeline-alert]
+verify_jwt = true

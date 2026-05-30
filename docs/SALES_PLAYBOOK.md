@@ -9,9 +9,9 @@ This playbook complements [`AGENT_BRIEFING.md`](./AGENT_BRIEFING.md) (what to sa
 
 ## 1. The One-Liner
 
-> **The only real-time composite index for the fractional executive market. 21 data sources, weekly score, public API, MCP-ready. SEC Form D as a 1–3 month leading indicator no one else uses.**
+> **The weekly composite index for the fractional executive market. 21 data sources, weekly 0–100 score, public no-auth API, MCP-ready. The Form D Lead: SEC Form D filing velocity as a 1 to 3 month leading indicator no one else uses.**
 
-If you only have 7 seconds: lead with the index, the source count, and the leading indicator. That's the entire story.
+If you only have 7 seconds: lead with the index, the source count, and the Form D Lead. That's the entire story.
 
 ---
 
@@ -54,7 +54,7 @@ If you only have 7 seconds: lead with the index, the source count, and the leadi
 | **Stage** | Seed → Series C |
 | **Pain** | Adding "intelligence" tier without building a research function; differentiated value prop |
 | **Buying authority** | Founder + Product |
-| **Tier match** | Enterprise Growth or Scale + white-label ($1,500–$10,000/mo) |
+| **Tier match** | Enterprise Growth or Scale ($1,500–$3,000/mo, SaaS caps at $5K/mo); white-label PARTNERSHIP is separate ($10K setup + $2K–$10K/mo) |
 | **CAC target** | < $2,500 |
 | **Trigger signals** | Recently shipped a marketplace feature, raised a round, hired a data engineer, content about "talent economy" or "fractional" |
 
@@ -146,7 +146,7 @@ If you only have 7 seconds: lead with the index, the source count, and the leadi
 
 **For VC platform:**
 - "How does your fund think about workforce decisions across the portfolio?"
-- "Form D filings predict fractional hiring 1–3 months out. Have you ever connected your sector flow to a workforce signal?"
+- "The Form D Lead, our method, treats SEC Form D filing velocity as a 1 to 3 month leading indicator of fractional hiring. Have you ever connected your sector flow to a workforce signal?"
 
 **For enterprise HR:**
 - "How do you justify a fractional vs. full-time hire to finance?"
@@ -273,13 +273,13 @@ DM with the API curl + a screenshot of the response.
 
 ### Opening — universal
 
-> "Pulse publishes the only weekly composite index for the fractional executive market. Twenty-one data sources, public API, MCP-ready for AI agents. We use SEC Form D filings as a 1–3 month leading indicator that no other index uses."
+> "Pulse publishes the weekly composite index for the fractional executive market. Twenty-one data sources, public no-auth API, MCP-ready for AI agents. We use the Form D Lead, our method of treating SEC Form D filing velocity as a 1 to 3 month leading indicator that no other index uses."
 
-Stop. Let them respond. The hook is the leading-indicator line.
+Stop. Let them respond. The hook is the Form D Lead line.
 
 ### When they say "interesting, tell me more"
 
-> "Three pillars — demand, supply, culture. Demand is half the score. The leading indicator is SEC Form D — companies file 15 days after raising, then enter the fractional buyer pool 1 to 3 months later. Supply is People Data Labs profile counts, LinkedIn proxy, GoFractional listings, supply-intent search. Culture is news, prestige media, podcasts, Reddit, HN. All normalized to 0–100, weekly, transparent methodology. The dashboard is at pulse.fractionl.ai. The API is free to query right now."
+> "Three pillars — demand, supply, culture. Demand is half the score. The leading indicator is the Form D Lead — companies file SEC Form D within 15 days of a raise, then enter the fractional buyer pool 1 to 3 months later. Supply is People Data Labs profile counts, LinkedIn proxy, GoFractional listings, supply-intent search. Culture is news, prestige media, podcasts, Reddit, HN. All normalized to 0–100, weekly, transparent methodology. The dashboard is at pulse.fractionl.ai. The API is free to query right now, no auth: `curl https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current`."
 
 ### When they say "how is this different from a job board?"
 
@@ -287,7 +287,7 @@ Stop. Let them respond. The hook is the leading-indicator line.
 
 ### When they ask about price
 
-> "Free tier covers the headline score and 30-day trend. Pro is $99/mo and gives you the full sub-index breakdown, all 21 signals, 12 months of history, AI-generated insights, and custom alerts. Enterprise starts at $500/mo for API access and runs up to $3K for white-label embeds with custom weighting. Stripe checkout isn't live yet, so right now we're onboarding manually with founding-customer pricing locked in."
+> "Free tier covers the headline score and 30-day trend. Pro is $99/mo (or $79/mo billed annually) and gives you the full sub-index breakdown, all 21 signals, 12 months of history, AI-generated insight cards, and custom alerts when they ship. Enterprise SaaS runs $500 to $5,000/mo (Starter, Growth, Scale, Custom) with REST plus MCP access, custom weighting, SSO, and SLA. If you want a fully branded embed, that's our separate white-label partnership: $10K setup plus $2K to $10K/mo. Stripe self-serve checkout isn't live yet, so right now we onboard manually and founding-customer pricing locks in your rate."
 
 ### When they ask about data integrity
 
@@ -322,7 +322,7 @@ For these prospects, point them to the free dashboard and re-engage in 6 months.
 
 | Move | Anchor |
 |------|--------|
-| Anchor high before quoting Pro | "Enterprise starts at $500 and runs to $5K for white-label." Then: "Most individual operators are on Pro at $99." |
+| Anchor high before quoting Pro | "Enterprise SaaS starts at $500 and runs to $5K/mo." Then: "Most individual operators are on Pro at $99." |
 | Quote annual first | "$79/mo on annual ($948/yr) — that's $240 less than month-to-month." |
 | Reference the build cost | "Replicating this independently means $300–$1,000/mo in API fees alone, plus engineering — and 52 weeks before you have history." |
 | Use score-band timing | "FWI is at 67 right now — Growing. Last week it was 64. The Pro alert that called this would have paid for itself." |
@@ -349,15 +349,15 @@ For these prospects, point them to the free dashboard and re-engage in 6 months.
 
 ### Always-true claims (use freely)
 
-- "Only real-time composite index for the fractional executive market"
+- "The weekly composite index for the fractional executive market"
 - "21 data sources, weekly cadence"
-- "Built for AI agents — public API, MCP tool, no auth required for read endpoints"
+- "Built for AI agents — public no-auth API (bare curl returns HTTP 200), MCP tools, no auth required for read endpoints"
 - "Three pillars: demand, supply, culture"
-- "SEC Form D as a 1–3 month leading indicator no other index uses"
+- "The Form D Lead: SEC Form D filing velocity as a 1 to 3 month leading indicator no other index uses"
 - "Transparent methodology — weights, normalization, source list all published"
 - "Anomaly guard rejects signals 3σ from rolling mean"
 - "Cross-source triangulation across 3 news APIs, 2 trend providers, 4 supply sources"
-- "Daily ingest, weekly composite settle, dashboard refreshes in real time"
+- "Daily ingest, weekly composite settle, live dashboard"
 
 ### Positioning lines (newsletter, blog, ad copy)
 
@@ -371,7 +371,7 @@ For these prospects, point them to the free dashboard and re-engage in 6 months.
 
 - The week the FWI moved more than 10 points (when it happens)
 - A teardown of which sources moved the index up vs. down
-- The Form D leading indicator — how it works and why it took us this long
+- The Form D Lead — how our SEC Form D filing-velocity method works and why it took us this long
 - "What we measured before the FWI existed" (gut feel teardown)
 - The 21-source map, source by source
 - Behind-the-scenes: how the anomaly guard caught a buggy week
@@ -512,14 +512,14 @@ If the prospect's deal value would be > $5K/mo or requires custom indices, escal
 
 ## 15. Quick-Reference Card
 
-> **Pitch:** Real-time composite index for the fractional executive market. 21 sources, weekly, public API, MCP-ready. SEC Form D as a 1–3 month leading indicator no one else uses.
+> **Pitch:** The weekly composite index for the fractional executive market. 21 sources, weekly, public no-auth API, MCP-ready. The Form D Lead: SEC Form D filing velocity as a 1 to 3 month leading indicator no one else uses.
 >
 > **Live:** https://pulse.fractionl.ai
-> **API:** https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current
-> **Brief:** https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief
-> **Pricing:** Free / Pro $99 / Enterprise $500–$5K
-> **Stripe:** not yet live — waitlist + founding-customer pricing
+> **API (no auth):** https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current
+> **Brief (no auth):** https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief
+> **Pricing:** Free / Pro $99 ($79 annual) / Enterprise SaaS $500–$5K (caps at $5K) / white-label partnership $10K setup + $2K–$10K/mo (separate)
+> **Stripe:** self-serve checkout not yet live — waitlist + founding-customer pricing; flips to "Pro checkout LIVE" when it ships
 > **Roles tracked:** Fractional CFO, CMO, CTO, COO, CRO, Interim CEO
-> **Geography:** US (primary), UK (secondary)
+> **Geography:** US (primary), UK (secondary), no APAC
 >
-> **Lead the conversation with:** the index, the source count (21), and the SEC Form D leading indicator. Always close with a free public-API curl.
+> **Lead the conversation with:** the index, the source count (21), and the Form D Lead. Always close with the free no-auth API curl.
