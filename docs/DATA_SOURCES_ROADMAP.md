@@ -130,12 +130,10 @@ Every cron + manual run writes a `pipeline_runs` row with status, records insert
   - Example: `curl https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current`
 - 🟢 **Markdown brief export** — working via `/export-brief`.
 - 🟢 **Machine-readable discovery surfaces** — `/product-truth.json` and `/llms.txt` shipped this pass for agent and LLM discovery.
-- 🟢 **MCP reference tools** — two documented tools (`get_fractional_working_index`, `get_fwi_weekly_brief`). Today this is a reference implementation plus the live REST API that agents call directly.
+- 🟢 **MCP tools + hosted server** — two tools (`get_fractional_working_index`, `get_fwi_weekly_brief`) exposed by a LIVE hosted MCP server (Streamable HTTP, no auth) at `https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp`. Agents can also call the REST API directly.
+- 🟢 **`/.well-known/ai-plugin.json`** — live discovery surface (HTTP 200).
 
 ### Roadmap (not yet shipped)
-
-- 🚧 **Hosted MCP server** — a deployed MCP endpoint is on the roadmap; not yet live.
-- 🚧 **`/.well-known/ai-plugin.json`** — additional discovery surface, being added.
 - 🚧 **API key tiered auth** — `api_keys` table is provisioned; rolling out per enterprise customer.
 
 ---

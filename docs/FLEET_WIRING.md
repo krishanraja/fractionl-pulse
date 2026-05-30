@@ -43,7 +43,7 @@ This is the handoff contract for a separate Mindmaker OS session to verify that 
   - `pricing`: Free, Pro ($99/mo or $79/mo billed annually), Enterprise SaaS (caps at $5,000/mo), white-label partnership (a separate program), data feed license, citation license, affiliate.
   - `offer_now`: waitlist plus founding-customer pricing; Stripe self-serve checkout not yet live.
   - `named_method`: the Form D Lead.
-  - `agent_surfaces`: no-auth REST API (working), Markdown brief export (working), two documented MCP tools, hosted MCP server (roadmap).
+  - `agent_surfaces`: no-auth REST API (working), Markdown brief export (working), two MCP tools, hosted MCP server (live).
   - `truth_discipline`: the do-not-say list (no years of history, no peer-review or backtesting claims, no specific predictive-accuracy percentage, no "real-time market intelligence", no role beyond the 6 C-suite roles, not official or institutional, supply went live after the People Data Labs integration).
   - `current_reading`: instruction to fetch live from `/fwi-api/current` rather than trust a snapshot (the live reading near publication is about FWI 42.4, label Cooling, as of 2026-05-25, but this must be fetched live).
 - **Rule for the OS fleet:** OS agents (Maya, Leo, outbound and content agents) must **fetch `/product-truth.json` at use time** rather than relying on a hardcoded snapshot. The same rule applies to the live FWI reading: fetch `/fwi-api/current`, do not hardcode the number. This keeps fleet copy and pricing in sync with Pulse without a redeploy of the OS.

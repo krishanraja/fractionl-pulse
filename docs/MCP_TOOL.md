@@ -2,7 +2,7 @@
 
 The Fractional Working Index is built for AI agents as a first-class data source. This document covers how to integrate the FWI into any MCP-compatible agent, Claude tool-use loop, OpenAI function call, or general LLM workflow.
 
-Two MCP tools are defined here: `get_fractional_working_index` and `get_fwi_weekly_brief`. A hosted MCP server is on the roadmap (not yet deployed), so today the integration is these reference tool definitions plus the live no-auth REST API that agents call directly. Both tools simply wrap the public endpoints below.
+Two MCP tools are defined here: `get_fractional_working_index` and `get_fwi_weekly_brief`. A hosted MCP server is LIVE (Streamable HTTP, JSON-RPC 2.0, no auth): attach it by URL at `https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp`. Agents can also use the reference tool definitions below or call the live no-auth REST API directly. Both tools simply wrap the public endpoints below.
 
 For autonomous discovery, Pulse also serves `/llms.txt` and `/.well-known/ai-plugin.json` from the site root, and `/product-truth.json` as the runtime source of truth for the current offer and pricing (read it rather than hardcoding prices).
 
@@ -215,7 +215,7 @@ response = client.messages.create(
 
 ### MCP Server (reference implementation)
 
-A hosted MCP server is on the roadmap, not yet deployed. Today the MCP integration is two things: the reference tool definitions documented above (`get_fractional_working_index` and `get_fwi_weekly_brief`), and the live no-auth REST API that agents call directly. The TypeScript below is a reference server you can run yourself to expose those two tools; it wraps the same public endpoints. When the hosted server ships, this document will publish its URL.
+A hosted MCP server is LIVE at `https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp` (Streamable HTTP, JSON-RPC 2.0, no auth): any MCP host attaches it by URL. It exposes the two tools above (`get_fractional_working_index`, `get_fwi_weekly_brief`) by wrapping the public endpoints. The TypeScript below is an equivalent reference server you can also self-host.
 
 ```typescript
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
