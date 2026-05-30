@@ -17,7 +17,7 @@
 // number fresh. Fully graceful: if the API is unreachable at build time we fall
 // back to static (number-free) JSON-LD so the build never fails.
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -142,3 +142,54 @@ console.log(
     ? `prerender: injected live FWI ${score.toFixed(1)} (${label}) + Dataset JSON-LD + noscript into dist/index.html`
     : 'prerender: API unreachable at build time, injected static JSON-LD + noscript (no live number) into dist/index.html',
 );
+
+// ---- Per-role demand index pages (crawlable, distinct content per role) ----
+async function buildRolePages() {
+  let roleData = null;
+  try {
+    const res = await fetch('https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-roles', { signal: AbortSignal.timeout(15000) });
+    if (res.ok) roleData = await res.json();
+  } catch { /* skip role pages if unavailable */ }
+  if (!roleData?.roles?.length) { console.log('prerender: fwi-roles unavailable, skipped role pages'); return; }
+
+  const headTags = (title, desc, canonical, ld) =>
+    `<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">` +
+    `<title>${escape(title)}</title><meta name="description" content="${escape(desc)}">` +
+    `<link rel="canonical" href="${canonical}"><meta property="og:title" content="${escape(title)}">` +
+    `<meta property="og:description" content="${escape(desc)}"><meta property="og:image" content="${SITE}/api/og">` +
+    `<meta property="og:type" content="website"><meta property="og:url" content="${canonical}">` +
+    `<meta name="twitter:card" content="summary_large_image"><link rel="icon" href="/favicon.svg">` +
+    `<script type="application/ld+json">${JSON.stringify(ld)}</script>`;
+
+  let count = 0;
+  for (const r of roleData.roles) {
+    if (r.demand == null) continue;
+    const title = `${r.label} Demand Index: ${r.demand} (${r.band}) | Pulse`;
+    const desc = `Demand for ${r.label.toLowerCase()} roles reads ${r.demand} of 100 (${r.band}) this week, within an overall Fractional Working Index of ${roleData.overall.score} (${roleData.overall.band}). A weekly index from Fractionl.`;
+    const canonical = `${SITE}/${r.slug}`;
+    const ld = {
+      '@context': 'https://schema.org', '@type': 'Dataset',
+      name: `${r.label} Demand Index`, description: desc, url: canonical, isAccessibleForFree: true,
+      creator: { '@type': 'Organization', name: 'Fractionl' }, publisher: { '@type': 'Organization', name: 'Fractionl' },
+      variableMeasured: `${r.label} demand`, measurementTechnique: 'Mean of normalized Adzuna + SerpAPI Google Jobs demand signals for the week, plus the Form D Lead as a 1 to 3 month leading indicator.',
+      ...(roleData.asOf ? { dateModified: roleData.asOf } : {}),
+    };
+    const body = `
+    <main style="max-width:680px;margin:0 auto;padding:48px 20px;font-family:Inter,system-ui,sans-serif;color:#1e2233;line-height:1.6">
+      <a href="/" style="color:#4338ca;text-decoration:none;font-size:14px">Pulse, the Fractional Working Index</a>
+      <h1 style="font-size:30px;letter-spacing:-0.02em;margin:18px 0 4px">${escape(r.label)} Demand Index</h1>
+      <p style="font-size:44px;font-weight:700;margin:8px 0;color:#0b1020">${r.demand}<span style="font-size:18px;color:#64748b"> / 100 &middot; ${escape(r.band)}</span></p>
+      <p style="color:#475569">Demand for ${escape(r.label.toLowerCase())} roles reads <strong>${r.demand} of 100 (${escape(r.band)})</strong> for the week of ${escape(roleData.asOf || '')}, within an overall Fractional Working Index of <strong>${roleData.overall.score} (${escape(roleData.overall.band)})</strong>.</p>
+      <p style="color:#475569">This per-role demand index is the mean of normalized Adzuna and SerpAPI Google Jobs signals for the week. The Form D Lead, Pulse's named method, uses SEC Form D filing velocity as a 1 to 3 month leading indicator of fractional executive demand.</p>
+      <p style="color:#475569">See the live index and all six roles on the <a href="/" style="color:#4338ca">Pulse dashboard</a>, query the free no-auth API at <code>/functions/v1/fwi-roles</code>, or read the <a href="/feed.xml" style="color:#4338ca">weekly feed</a>. Published by <a href="https://fractionl.com" style="color:#4338ca">Fractionl</a>.</p>
+      <p style="color:#94a3b8;font-size:12px;margin-top:28px">A weekly index (daily ingest, weekly settle). Not financial advice. About 12 weeks of history and accumulating.</p>
+    </main>`;
+    const doc = `<!doctype html><html lang="en"><head>${headTags(title, desc, canonical, ld)}</head><body>${body}</body></html>`;
+    mkdirSync(join(__dirname, '..', 'dist', r.slug), { recursive: true });
+    writeFileSync(join(__dirname, '..', 'dist', r.slug, 'index.html'), doc);
+    count++;
+  }
+  console.log(`prerender: wrote ${count} per-role demand pages`);
+}
+
+await buildRolePages();

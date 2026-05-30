@@ -38,6 +38,10 @@ verify_jwt = false
 [functions.fwi-feed]
 verify_jwt = false
 
+# Public per-role demand indices.
+[functions.fwi-roles]
+verify_jwt = false
+
 # Pipeline + alerting internals stay JWT-verified (service-role only).
 [functions.ingest-signals]
 verify_jwt = true

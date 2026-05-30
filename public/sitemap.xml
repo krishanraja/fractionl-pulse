@@ -5,4 +5,11 @@
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
+  <url><loc>https://pulse.fractionl.ai/pricing</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://pulse.fractionl.ai/fractional-cfo</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pulse.fractionl.ai/fractional-cmo</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pulse.fractionl.ai/fractional-cto</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pulse.fractionl.ai/fractional-coo</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pulse.fractionl.ai/fractional-cro</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pulse.fractionl.ai/fractional-ceo</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 </urlset>
