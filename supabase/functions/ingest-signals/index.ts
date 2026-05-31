@@ -674,32 +674,33 @@ async function collectPodchaserSignal(_date: string): Promise<SignalResult> {
 }
 
 async function collectRedditSignal(_date: string): Promise<SignalResult> {
-  console.log('[Reddit] Collecting community discourse via Reddit JSON API...');
+  // Reddit's free .json endpoint now serves HTML to unauthenticated/datacenter requests
+  // (verified 2026-05-31; the old collector silently returned 0 while reporting success).
+  // Measure community discourse via Brave web search (site:reddit.com) instead.
+  if (!BRAVE_API_KEY) {
+    return { source: 'reddit', signal_type: 'momentum', category: 'community_discourse',
+      raw_value: 0, normalized_value: 10, success: false, error: 'No BRAVE_API_KEY' };
+  }
+  console.log('[Reddit] Collecting community discourse via Brave site:reddit.com...');
   try {
-    const queries = ['fractional+executive', 'fractional+CFO', 'fractional+CMO'];
-    let allPosts: any[] = [];
-    for (const q of queries) {
-      try {
-        const url = `https://www.reddit.com/search.json?q=${q}&sort=relevance&t=month&limit=25`;
-        const response = await fetchWithRetry(url, {
-          headers: { 'User-Agent': 'FWI-Pulse/1.0 data@fractionl.ai' }
-        }, 2, 8000);
-        if (!response.ok) continue;
-        const data = await response.json();
-        const children = data?.data?.children || [];
-        allPosts.push(...children.map((c: any) => c.data));
-      } catch { /* individual query failure is ok */ }
+    const terms = ['fractional executive', 'fractional CFO', 'fractional CMO'];
+    let total = 0;
+    const sampleTitles: string[] = [];
+    for (const term of terms) {
+      const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(`site:reddit.com "${term}"`)}&count=20&result_filter=web`;
+      const response = await fetchWithRetry(url, { headers: { 'X-Subscription-Token': BRAVE_API_KEY } }, 2, 8000);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      const results = data.web?.results || [];
+      total += safeNumber(results.length, 0);
+      for (const r of results.slice(0, 2)) if (r.title) sampleTitles.push(r.title);
     }
-    const uniquePosts = [...new Map(allPosts.map(p => [p.id, p])).values()];
-    const avgScore = uniquePosts.length > 0
-      ? uniquePosts.reduce((s: number, p: any) => s + safeNumber(p.score, 0), 0) / uniquePosts.length : 0;
-    const subreddits = [...new Set(uniquePosts.map((p: any) => p.subreddit).filter(Boolean))];
-    const normalized = normalizeRedditActivity(uniquePosts.length, avgScore);
-    console.log(`[Reddit] ${uniquePosts.length} posts, avg score ${avgScore.toFixed(1)} -> ${normalized}`);
+    const normalized = normalizeRedditActivity(total, total);
+    console.log(`[Reddit] ${total} reddit results via Brave -> ${normalized}`);
     return {
       source: 'reddit', signal_type: 'momentum', category: 'community_discourse',
-      raw_value: uniquePosts.length, normalized_value: normalized,
-      metadata: { avg_score: Math.round(avgScore), subreddits: subreddits.slice(0, 10), window: 'past_month' },
+      raw_value: total, normalized_value: normalized,
+      metadata: { via: 'brave_site_search', sample_titles: sampleTitles.slice(0, 5), window: 'recent' },
       success: true
     };
   } catch (error) {
