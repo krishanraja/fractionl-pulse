@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
-import { Bell, ChevronDown, X, Download } from 'lucide-react';
+import { MessageCircleQuestion } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
-import VerdictLine from '@/components/VerdictLine';
+import AskIndexModal from '@/components/AskIndexModal';
 import HeroSection from '@/components/HeroSection';
 import SubIndexCards from '@/components/SubIndexCards';
 import MarketSnapshot from '@/components/MarketSnapshot';
@@ -16,13 +15,9 @@ import MethodologyDrawer from '@/components/MethodologyDrawer';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useFWIData } from '@/hooks/useFWIData';
 import { staggerContainer } from '@/lib/motion';
-import { checkAlerts } from '@/lib/alerts';
 import { Link } from 'react-router-dom';
-import { SUPABASE_FUNCTIONS_URL } from '@/lib/supabase';
-import { emitEvent } from '@/lib/attribution';
 import { useEntitlement } from '@/hooks/useEntitlement';
 import { CHECKOUT_ENABLED } from '@/lib/checkout';
-import type { AlertItem } from '@/lib/types';
 
 export const getFWILabel = (score: number): { label: string; emoji: string; color: string } => {
   if (score >= 75) return { label: 'Surging', emoji: '🚀', color: 'text-emerald-400' };
@@ -32,25 +27,12 @@ export const getFWILabel = (score: number): { label: string; emoji: string; colo
   return { label: 'Contracting', emoji: '⚠️', color: 'text-red-400' };
 };
 
-function formatRelativeTime(dateStr: string | null): string {
-  if (!dateStr) return 'recently';
-  const diffMs = Date.now() - new Date(dateStr + 'T00:00:00Z').getTime();
-  const hours = Math.floor(diffMs / (1000 * 60 * 60));
-  if (hours < 1) return 'just now';
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days === 1) return 'yesterday';
-  if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
 const Index = () => {
   const [showMethodology, setShowMethodology] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [alertsDismissed, setAlertsDismissed] = useState(false);
-  const [alertsExpanded, setAlertsExpanded] = useState(false);
+  const [askOpen, setAskOpen] = useState(false);
   const { preferences } = useUserPreferences();
-  const { data: fwiData, isLive, isLoading, isStale, lastUpdated, refresh } = useFWIData();
+  const { data: fwiData, isLoading, refresh } = useFWIData();
   const { isPro } = useEntitlement();
 
   const userHasCustomWeights = preferences.weights &&
@@ -76,70 +58,6 @@ const Index = () => {
         culture: data.monthly.culture.slice(-5),
       }
     : data.monthly;
-
-  const alerts: AlertItem[] = isLive && preferences.alerts.enabled
-    ? checkAlerts(data, preferences.alerts.threshold)
-    : [];
-
-  const renderStatusBanner = () => {
-    if (isLive && !isStale) {
-      return (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl pl-3.5 pr-3 py-2.5 flex items-center justify-between bg-emerald-500/[0.07] border border-emerald-500/20"
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="pulse-dot bg-emerald-500 shrink-0" style={{ color: '#10b981' }} />
-            <span className="text-emerald-700 text-xs font-semibold tracking-wide">Live</span>
-            <span className="text-emerald-700/50 text-xs hidden xs:inline">·</span>
-            <span className="text-emerald-700/70 text-xs truncate">
-              Updated {formatRelativeTime(lastUpdated)}
-            </span>
-          </div>
-          <button
-            onClick={() => {
-              void emitEvent('activated', { via: 'export_brief' });
-              window.open(`${SUPABASE_FUNCTIONS_URL}/export-brief`, '_blank');
-            }}
-            className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/15 rounded-lg px-2.5 py-1.5 transition-colors cursor-pointer shrink-0"
-          >
-            <Download size={12} />
-            <span className="hidden sm:inline">Export Brief</span>
-          </button>
-        </motion.div>
-      );
-    }
-    if (isLive && isStale) {
-      return (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 bg-orange-500/[0.07] border border-orange-500/20"
-        >
-          <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
-          <span className="text-orange-700 text-xs font-semibold tracking-wide">Stale</span>
-          <span className="text-orange-700/50 text-xs hidden xs:inline">·</span>
-          <span className="text-orange-700/70 text-xs truncate">
-            Last updated {formatRelativeTime(lastUpdated)}
-          </span>
-        </motion.div>
-      );
-    }
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="rounded-xl px-3.5 py-2.5 flex items-start gap-2.5 bg-amber-500/[0.07] border border-amber-500/20"
-      >
-        <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 mt-1" />
-        <div className="min-w-0">
-          <span className="text-amber-700 text-xs font-semibold tracking-wide">Awaiting first run</span>
-          <p className="text-amber-700/70 text-xs leading-relaxed mt-0.5">The pipeline has not run yet. Scores will appear after the first weekly run.</p>
-        </div>
-      </motion.div>
-    );
-  };
 
   const renderDashboardSkeleton = () => (
     <motion.div
@@ -194,66 +112,7 @@ const Index = () => {
       animate="show"
       className="container-width space-y-5 py-5"
     >
-      {renderStatusBanner()}
-
-      {/* Collapsible alerts */}
-      <AnimatePresence>
-        {alerts.length > 0 && !alertsDismissed && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-          >
-            <Collapsible open={alertsExpanded} onOpenChange={setAlertsExpanded}>
-              <div className="rounded-lg border border-orange-500/20 bg-orange-500/5">
-                <CollapsibleTrigger asChild>
-                  <button className="w-full px-4 py-2 flex items-center justify-between gap-2 text-xs cursor-pointer">
-                    <span className="flex items-center gap-2 min-w-0">
-                      <Bell size={13} className="text-orange-500 shrink-0" />
-                      <span className="text-orange-500 font-medium shrink-0">
-                        {alerts.length} alert{alerts.length > 1 ? 's' : ''}
-                      </span>
-                      <span className="text-muted-foreground truncate">
-                        {alerts.map(a => a.label).join(', ')}
-                      </span>
-                    </span>
-                    <span className="flex items-center gap-1 shrink-0">
-                      <ChevronDown size={14} className={`text-muted-foreground transition-transform ${alertsExpanded ? 'rotate-180' : ''}`} />
-                      <X
-                        size={14}
-                        onClick={(e) => { e.stopPropagation(); setAlertsDismissed(true); }}
-                        className="text-muted-foreground hover:text-foreground ml-1"
-                      />
-                    </span>
-                  </button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="px-4 pb-2.5 space-y-1.5 border-t border-orange-500/10 pt-2">
-                    {alerts.map((alert, i) => (
-                      <div
-                        key={i}
-                        className={`flex items-center gap-2 text-xs ${
-                          alert.direction === 'up' ? 'text-emerald-500' : 'text-red-500'
-                        }`}
-                      >
-                        <span className="font-medium">{alert.label}</span>
-                        <span className="opacity-70">
-                          {alert.direction === 'up' ? '+' : ''}{alert.delta.toFixed(1)} pts to {alert.score}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </CollapsibleContent>
-              </div>
-            </Collapsible>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* The Verdict Line: the magic moment leads the dashboard */}
-      <VerdictLine />
-
-      {/* Hero */}
+      {/* Hero — the Fractional Working Index title leads the page */}
       <HeroSection
         data={data}
         fwiLabel={fwiLabel}
@@ -308,11 +167,6 @@ const Index = () => {
           <FractionalReadiness score={data.today.overall} label={fwiLabel} />
         </aside>
       </div>
-
-      {/* AI Insights preview */}
-      <section className="glass-card p-4 sm:p-5">
-        <AIInsights compact />
-      </section>
     </motion.div>
   );
 
@@ -360,6 +214,21 @@ const Index = () => {
         onOpenChange={setShowMethodology}
         weights={data.weights}
       />
+
+      {/* Floating "Ask the index" trigger — opens the overlay instead of taking page space.
+          Offset above the mobile bottom nav; sits bottom-right on desktop. */}
+      {activeTab === 'dashboard' && (
+        <button
+          onClick={() => setAskOpen(true)}
+          aria-label="Ask the index"
+          className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 h-12 w-12 sm:h-auto sm:w-auto sm:px-4 sm:py-3 rounded-full bg-primary text-primary-foreground shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all flex items-center justify-center gap-2"
+        >
+          <MessageCircleQuestion size={20} className="shrink-0" />
+          <span className="hidden sm:inline text-sm font-semibold">Ask the index</span>
+        </button>
+      )}
+
+      <AskIndexModal open={askOpen} onOpenChange={setAskOpen} />
     </AppShell>
   );
 };
