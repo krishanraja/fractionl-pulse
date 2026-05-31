@@ -10,9 +10,11 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-// Canonical methodology weights. These are what the dashboard displays as each
-// sub-index's "% weight". The actual blend uses effectiveWeights below, which only
-// differs on the rare day with zero supply signals (redistributed away from supply).
+// Canonical methodology weights. The blend uses effectiveWeights (below), which equals
+// these on a normal day and only differs on the rare zero-supply day (redistributed away
+// from supply). The EFFECTIVE set is what gets persisted to fwi_scores.weights so that any
+// client recompute reconciles with the published overall_score; the canonical set is kept
+// in metadata.display_weights for reference.
 const WEIGHTS = {
   demand: 0.50,    // Adzuna + SerpAPI fractional jobs + SEC Form D leading indicator
   supply: 0.20,    // SerpAPI + Brave LinkedIn talent proxies, GoFractional, supply-intent trends
@@ -187,14 +189,14 @@ serve(async (req) => {
       demand_score: demandScore,
       supply_score: finalSupplyScore,
       momentum_score: momentumScore,
-      weights: WEIGHTS,
+      weights: effectiveWeights,
       confidence: confidence,
       notes: `${getFWILabel(overallScore)} - ${uniqueSources.length} sources${hasSupplyData ? '' : ' (supply excluded)'}`,
       metadata: {
         signals_used: signals.length,
         sources: Array.from(new Set(signals.map(s => s.source))),
         has_supply_data: hasSupplyData,
-        effective_weights: effectiveWeights,
+        display_weights: WEIGHTS,
         methodology: 'Job postings + SEC filings + search trends + news coverage',
         prior_week: priorWeek ? {
           date: priorWeek.date,

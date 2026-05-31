@@ -161,6 +161,16 @@ async function throttleHost(host: string): Promise<void> {
   if (wait > 0) await new Promise(resolve => setTimeout(resolve, wait));
 }
 
+// Parse a Retry-After header (seconds OR an HTTP-date), capped, else null.
+function parseRetryAfter(value: string | null): number | null {
+  if (!value) return null;
+  const secs = parseInt(value, 10);
+  if (Number.isFinite(secs) && secs > 0) return Math.min(secs * 1000, 10000);
+  const when = Date.parse(value);
+  if (Number.isFinite(when)) return Math.min(Math.max(when - Date.now(), 0), 10000);
+  return null;
+}
+
 async function fetchWithRetry(
   url: string,
   options: RequestInit = {},
@@ -169,9 +179,11 @@ async function fetchWithRetry(
 ): Promise<Response> {
   let host = '';
   try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { /* non-URL input, no throttle */ }
+  // Reserve ONE host slot per call (not per attempt) so a retrying call cannot
+  // keep advancing the shared per-host counter and starve sibling collectors.
+  await throttleHost(host);
   let lastError: Error | null = null;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    await throttleHost(host);
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -182,10 +194,8 @@ async function fetchWithRetry(
       lastError = new Error(`HTTP ${response.status}`);
       // 429 = rate limited. Honor Retry-After when present, else exponential backoff.
       if (response.status === 429 && attempt < maxRetries) {
-        const retryAfter = parseInt(response.headers.get('retry-after') || '', 10);
-        const backoff = Number.isFinite(retryAfter) && retryAfter > 0
-          ? Math.min(retryAfter * 1000, 10000)
-          : Math.min(Math.pow(2, attempt) * 1000, 8000);
+        const backoff = parseRetryAfter(response.headers.get('retry-after'))
+          ?? Math.min(Math.pow(2, attempt) * 1000, 8000);
         console.log(`[Retry] 429 from ${host}, waiting ${backoff}ms (attempt ${attempt + 1})...`);
         await new Promise(resolve => setTimeout(resolve, backoff));
         continue;
@@ -201,6 +211,30 @@ async function fetchWithRetry(
     }
   }
   throw lastError || new Error('fetchWithRetry exhausted');
+}
+
+// Per-collector soft timeout: resolves to `fallback` if the collector has not
+// finished within ms, so one slow or rate-limited vendor can never block the whole
+// run. This replaces the old single global deadline that discarded EVERY source's
+// results on a timeout. The collector keeps running in the background; its late
+// result is ignored. Collectors never reject (they catch internally), so the
+// catch arm here is just defensive.
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T, label: string): Promise<T> {
+  return new Promise<T>((resolve) => {
+    let settled = false;
+    const t = setTimeout(() => {
+      if (!settled) { settled = true; console.warn(`[Timeout] ${label} exceeded ${ms}ms, degrading to fallback`); resolve(fallback); }
+    }, ms);
+    p.then(
+      (v) => { if (!settled) { settled = true; clearTimeout(t); resolve(v); } },
+      () => { if (!settled) { settled = true; clearTimeout(t); resolve(fallback); } },
+    );
+  });
+}
+
+// Fallback SignalResult for the timeout of a single-result collector.
+function failedSignal(source: string, signal_type: SignalResult['signal_type'], category: string): SignalResult {
+  return { source, signal_type, category, raw_value: 0, normalized_value: 0, success: false, error: 'collector timeout' };
 }
 
 // --- Normalization functions ---
@@ -740,7 +774,7 @@ async function collectBraveWebMentionsSignal(date: string): Promise<SignalResult
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       counts.push(safeNumber(data.web?.totalResults ?? data.web?.results?.length, 0));
-      if (i < BRAVE_WEB_SEARCH_TERMS.length - 1) await new Promise(r => setTimeout(r, 1100));
+      // Inter-call spacing is handled centrally by throttleHost (per-host 1.2s for Brave).
     }
     const avg = counts.reduce((a, b) => a + b, 0) / counts.length;
     return {
@@ -865,7 +899,7 @@ async function collectBraveTalentSupply(_date: string): Promise<SignalResult[]> 
       results.push({
         source: 'brave_talent', signal_type: 'supply', category: role.category,
         raw_value: count, normalized_value: normalizeSupplyCount(count),
-        metadata: { query: q, geo: 'us', proxy: 'linkedin_profiles' }, success: true
+        metadata: { query: q, geo: 'us', proxy: 'brave_web_linkedin', note: 'coarse liveness proxy: Brave result count is page-capped, not a true profile total' }, success: true
       });
       console.log(`[Brave Talent] "${role.phrase}": ~${count} profiles`);
     } catch (error) {
@@ -883,7 +917,7 @@ async function collectBraveTalentSupply(_date: string): Promise<SignalResult[]> 
       source: 'brave_talent', signal_type: 'supply', category: 'aggregate',
       raw_value: totalProfiles,
       normalized_value: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
-      metadata: { total_profiles: totalProfiles, proxy: 'linkedin_profiles' }, success: true
+      metadata: { results_returned: totalProfiles, proxy: 'brave_web_linkedin', note: 'SerpAPI-independent supply liveness backstop; coarse, page-capped' }, success: true
     });
   }
   return results;
@@ -1069,16 +1103,15 @@ async function collectCensusACS(_date: string): Promise<SignalResult> {
     // redirect:'manual' so a bad/missing key surfaces as a 3xx error instead of being
     // followed to an HTML 200 page that then breaks JSON parsing.
     const url = `https://api.census.gov/data/${YEAR}/acs/acs5?get=B19053_001E,B19053_002E&for=us:1&key=${CENSUS_API_KEY}`;
-    const response = await fetchWithRetry(url, { redirect: 'manual' }, 2, 10000);
-    if (response.status >= 300 && response.status < 400) {
-      const keyErr = response.headers.get('X-DataWebAPI-KeyError');
-      throw new Error(`Census key rejected (HTTP ${response.status}, X-DataWebAPI-KeyError=${keyErr})`);
-    }
+    // A bad/missing key 302s to an HTML missing_key page that itself returns 200; let the
+    // redirect follow, then the content-type / leading-'<' guard below catches it with a
+    // clear error instead of letting response.json() choke on '<'.
+    const response = await fetchWithRetry(url, {}, 2, 10000);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const ct = response.headers.get('content-type') || '';
     const body = await response.text();
     if (!ct.includes('json') || body.trimStart().startsWith('<')) {
-      throw new Error(`Non-JSON response from Census (content-type="${ct}", starts "${body.slice(0, 30).replace(/\s+/g, ' ')}")`);
+      throw new Error(`Non-JSON response from Census (likely bad/missing key; content-type="${ct}", starts "${body.slice(0, 30).replace(/\s+/g, ' ')}")`);
     }
     const data = JSON.parse(body);
     const row = data[1];
@@ -1276,43 +1309,21 @@ serve(async (req) => {
       metadata: { target_date: today } })
     .select().single();
 
-  try {
-    // Retired collectors (2026-05-30): collectGoogleTrendsSignal + collectSupplyTrendsSignal
-    // (Apify, 120s pollers, 100% failing, redundant with the SerpAPI equivalents),
-    // collectPDLSupplySignals (HTTP 404), collectNYTSignal (HTTP 401). Removing them both
-    // ends the failure noise AND keeps total runtime well under the wall-clock limit that
-    // was stranding daily runs as "running". collectBraveTalentSupply added as a
-    // SerpAPI-independent supply backbone.
-    const collectAll = Promise.all([
-      collectAdzunaSignals(today),
-      collectSerpApiJobsSignals(today),
-      collectSecEdgarSignal(today),
-      collectSerpApiTrendsSignal(today),
-      collectNewsApiSignal(today),
-      collectMediastackSignal(today),
-      collectGuardianSignal(today),
-      collectPodchaserSignal(today),
-      collectRedditSignal(today),
-      collectHNSignal(today),
-      collectBraveNewsSignal(today),
-      collectBraveWebMentionsSignal(today),
-      collectSerpApiLinkedInSupply(today),
-      collectBraveTalentSupply(today),
-      collectGoFractionalSupply(today),
-      collectSerpApiSupplyTrends(today),
-      collectFredContext(today),
-      collectCensusACS(today),
-      collectBLSSignals(today),
-      collectWikipediaPageviews(today),
-      collectOpenAlex(today)
-    ]);
+  // Per-run reset of the throttle counters so a prior warm invocation's leftover
+  // slot reservation cannot stall this run's first call to each host.
+  for (const k in hostNextSlot) delete hostNextSlot[k];
 
-    // Self-abort below the pg_cron caller timeout so a slow collector can never strand the
-    // run row at status='running' — on timeout we fall to the catch block and mark it 'error'.
-    const COLLECTION_DEADLINE_MS = 75000;
-    const deadline = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('collection deadline exceeded (75s)')), COLLECTION_DEADLINE_MS)
-    );
+  try {
+    // Retired collectors (2026-05-30): google_trends + supply_trends (Apify), people_data_labs
+    // (404), nyt (401). collectBraveTalentSupply added as a SerpAPI-independent supply backbone.
+    //
+    // Each collector is wrapped in its OWN soft timeout that degrades to a safe fallback. This
+    // replaces the old single global deadline: a slow or rate-limited vendor (e.g. a SerpAPI 429
+    // storm) now degrades just that source instead of discarding the whole run. Total wall-clock
+    // is bounded by the slowest single collector (<= PER_COLLECTOR_MS), comfortably under the
+    // pg_cron caller timeout, so the run always completes and the pipeline_runs row always closes.
+    const PER_COLLECTOR_MS = 55000;
+    const t = <T>(p: Promise<T>, fb: T, label: string) => withTimeout(p, PER_COLLECTOR_MS, fb, label);
     const [
       adzunaResults,
       serpApiJobsResults,
@@ -1335,7 +1346,29 @@ serve(async (req) => {
       blsResults,
       wikipediaPageviewsResult,
       openAlexResult
-    ] = await Promise.race([collectAll, deadline]) as Awaited<typeof collectAll>;
+    ] = await Promise.all([
+      t(collectAdzunaSignals(today), [] as SignalResult[], 'adzuna'),
+      t(collectSerpApiJobsSignals(today), [] as SignalResult[], 'serpapi_jobs'),
+      t(collectSecEdgarSignal(today), failedSignal('sec_edgar', 'demand', 'vc_pipeline'), 'sec_edgar'),
+      t(collectSerpApiTrendsSignal(today), failedSignal('serpapi_trends', 'momentum', 'search_interest'), 'serpapi_trends'),
+      t(collectNewsApiSignal(today), failedSignal('newsapi', 'momentum', 'media_coverage'), 'newsapi'),
+      t(collectMediastackSignal(today), failedSignal('mediastack', 'momentum', 'media_coverage'), 'mediastack'),
+      t(collectGuardianSignal(today), failedSignal('guardian', 'momentum', 'prestige_media'), 'guardian'),
+      t(collectPodchaserSignal(today), failedSignal('podchaser', 'momentum', 'audio_culture'), 'podchaser'),
+      t(collectRedditSignal(today), failedSignal('reddit', 'momentum', 'community_discourse'), 'reddit'),
+      t(collectHNSignal(today), failedSignal('hn', 'momentum', 'community_discourse'), 'hn'),
+      t(collectBraveNewsSignal(today), failedSignal('brave_news', 'momentum', 'media_coverage'), 'brave_news'),
+      t(collectBraveWebMentionsSignal(today), failedSignal('brave_web', 'momentum', 'web_discourse'), 'brave_web'),
+      t(collectSerpApiLinkedInSupply(today), [] as SignalResult[], 'serpapi_linkedin'),
+      t(collectBraveTalentSupply(today), [] as SignalResult[], 'brave_talent'),
+      t(collectGoFractionalSupply(today), failedSignal('gofractional', 'supply', 'marketplace'), 'gofractional'),
+      t(collectSerpApiSupplyTrends(today), failedSignal('serpapi_supply_trends', 'supply', 'supply_intent'), 'serpapi_supply_trends'),
+      t(collectFredContext(today), [] as SignalResult[], 'fred'),
+      t(collectCensusACS(today), failedSignal('census_acs', 'context', 'self_employment'), 'census_acs'),
+      t(collectBLSSignals(today), [] as SignalResult[], 'bls'),
+      t(collectWikipediaPageviews(today), failedSignal('wikipedia_pageviews', 'momentum', 'wiki_interest'), 'wikipedia_pageviews'),
+      t(collectOpenAlex(today), failedSignal('openalex', 'context', 'research_interest'), 'openalex')
+    ]);
 
     const allSignals: SignalResult[] = [
       ...adzunaResults,
@@ -1427,19 +1460,24 @@ serve(async (req) => {
       }).eq('id', runData.id);
     }
 
-    const allSourceNames = Object.keys(SOURCE_CONFIDENCE_WEIGHTS);
+    // Batched into two uniform-column upserts (healthy / failed) instead of ~21 sequential
+    // round-trips, so this tail work stays well under the caller timeout. The failed batch
+    // omits last_success on purpose so a source's prior last_success is preserved.
     const now = new Date().toISOString();
-    for (const src of allSourceNames) {
+    const healthyRows: any[] = [];
+    const failedRows: any[] = [];
+    for (const src of Object.keys(SOURCE_CONFIDENCE_WEIGHTS)) {
       const srcSignals = allSignals.filter(s => s.source === src);
       if (srcSignals.length === 0) continue;
-      const anySuccess = srcSignals.some(s => s.success);
       const errors = srcSignals.filter(s => !s.success);
-      await supabase.from('data_source_health').upsert({
-        source: src, last_checked: now,
-        ...(anySuccess ? { last_success: now, status: 'healthy', error_count: 0 } : { status: 'failed', error_count: errors.length }),
-        metadata: { last_error: errors[0]?.error || null }, updated_at: now,
-      }, { onConflict: 'source' });
+      if (srcSignals.some(s => s.success)) {
+        healthyRows.push({ source: src, last_checked: now, last_success: now, status: 'healthy', error_count: 0, metadata: { last_error: null }, updated_at: now });
+      } else {
+        failedRows.push({ source: src, last_checked: now, status: 'failed', error_count: errors.length, metadata: { last_error: errors[0]?.error || null }, updated_at: now });
+      }
     }
+    if (healthyRows.length > 0) await supabase.from('data_source_health').upsert(healthyRows, { onConflict: 'source' });
+    if (failedRows.length > 0) await supabase.from('data_source_health').upsert(failedRows, { onConflict: 'source' });
 
     console.log('[Pipeline] Triggering FWI calculation...');
     let fwiResult: any = { error: 'FWI calculation not attempted' };
