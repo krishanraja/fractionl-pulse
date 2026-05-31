@@ -1,6 +1,7 @@
-import { LayoutDashboard, Zap, BrainCircuit, Database, Settings } from 'lucide-react';
+import { LayoutDashboard, Zap, BrainCircuit, Database, Settings, Radar } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { RADAR_ENABLED } from '@/lib/radar';
 
 interface BottomNavProps {
   activeTab: string;
@@ -13,6 +14,7 @@ const BottomNav = ({ activeTab, onTabChange, onSettingsClick }: BottomNavProps) 
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'signals', label: 'Signals', icon: Zap },
     { id: 'insights', label: 'AI', icon: BrainCircuit },
+    ...(RADAR_ENABLED ? [{ id: 'radar', label: 'Radar', icon: Radar }] : []),
     { id: 'data', label: 'Sources', icon: Database },
   ];
 

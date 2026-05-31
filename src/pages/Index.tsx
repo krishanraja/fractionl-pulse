@@ -10,6 +10,7 @@ import TrendlineChart from '@/components/TrendlineChart';
 import SignalsTable from '@/components/SignalsTable';
 import FractionalReadiness from '@/components/FractionalReadiness';
 import AIInsights from '@/components/AIInsights';
+import ContentRadar from '@/components/ContentRadar';
 import DataHealthCard from '@/components/DataHealthCard';
 import MethodologyDrawer from '@/components/MethodologyDrawer';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
@@ -192,6 +193,8 @@ const Index = () => {
     </motion.div>
   );
 
+  const renderRadar = () => <ContentRadar />;
+
   const renderData = () => (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="container-width py-5">
       <div className="glass-card p-4 sm:p-5">
@@ -206,6 +209,7 @@ const Index = () => {
         {activeTab === 'dashboard' && (isLoading ? renderDashboardSkeleton() : renderDashboard())}
         {activeTab === 'signals' && renderSignals()}
         {activeTab === 'insights' && renderInsights()}
+        {activeTab === 'radar' && renderRadar()}
         {activeTab === 'data' && renderData()}
       </AnimatePresence>
 

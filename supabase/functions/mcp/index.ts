@@ -44,6 +44,23 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: 'get_content_radar',
+    description:
+      'Get the Fractional Content Radar: this week\'s RISING topics, breakout QUESTIONS, and ready-to-write content ANGLES for the fractional executive audience, with the source receipts that triggered each topic. This is what to publish about this week. Truth-discipline: surfaces relative weekly movement (not absolute search volume); first meaningful velocity from week 2; derived from a multi-source blend (search rising-queries, People-Also-Ask, news, Reddit, Hacker News, podcasts, job postings).',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'get_content_brief',
+    description:
+      'Get the weekly Fractional Content Radar brief: ranked rising topics with scores, breakout questions, priority angles with suggested format and rationale, and a "skip these (saturated)" list. Returns Markdown by default (ready to paste into a content plan) or JSON.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        format: { type: 'string', enum: ['markdown', 'json'], description: 'Output format. Default markdown.' },
+      },
+    },
+  },
 ];
 
 function rpcResult(id: unknown, result: unknown) {
@@ -73,6 +90,17 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<un
   if (name === 'get_fwi_weekly_brief') {
     const format = args?.format === 'json' ? 'json' : 'markdown';
     const res = await fetch(`${FUNCTIONS_BASE}/export-brief?format=${format}`, { signal: AbortSignal.timeout(15000) });
+    const body = await res.text();
+    return textContent(body);
+  }
+  if (name === 'get_content_radar') {
+    const res = await fetch(`${FUNCTIONS_BASE}/content-api/radar`, { signal: AbortSignal.timeout(15000) });
+    const body = await res.text();
+    return textContent(body);
+  }
+  if (name === 'get_content_brief') {
+    const format = args?.format === 'json' ? 'json' : 'markdown';
+    const res = await fetch(`${FUNCTIONS_BASE}/content-api/brief?format=${format}`, { signal: AbortSignal.timeout(15000) });
     const body = await res.text();
     return textContent(body);
   }
@@ -115,7 +143,7 @@ serve(async (req) => {
         protocolVersion: (params?.protocolVersion as string) || PROTOCOL_VERSION,
         capabilities: { tools: { listChanged: false } },
         serverInfo: SERVER_INFO,
-        instructions: 'Pulse publishes the Fractional Working Index (FWI). Use get_fractional_working_index for the score/history and get_fwi_weekly_brief for the cite-ready brief. Never claim real-time data, backtesting, years of history, or a predictive accuracy percentage.',
+        instructions: 'Pulse publishes the Fractional Working Index (FWI) and the Fractional Content Radar. Use get_fractional_working_index for the market-health score/history and get_fwi_weekly_brief for the cite-ready market brief. Use get_content_radar / get_content_brief for this week\'s rising content topics, breakout questions, and ready-to-write angles for fractional-exec content planning. Never claim real-time data, backtesting, years of history, or a predictive accuracy percentage.',
       }));
     }
     if (method === 'ping') return json(rpcResult(id, {}));
