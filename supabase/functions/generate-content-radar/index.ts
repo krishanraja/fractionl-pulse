@@ -91,12 +91,15 @@ Be specific and grounded in the signals. No fluff.`;
     const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, messages: [{ role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.4, max_tokens: 3500 }),
+      body: JSON.stringify({ model: MODEL, messages: [{ role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.4, max_tokens: 4096 }),
+      signal: AbortSignal.timeout(60000),
     });
     if (!aiRes.ok) throw new Error(`OpenAI: ${await aiRes.text()}`);
     const aiData = await aiRes.json();
+    const rawContent = aiData.choices?.[0]?.message?.content || '';
+    const truncated = aiData.choices?.[0]?.finish_reason === 'length';
     let parsed: any = {};
-    try { parsed = JSON.parse(aiData.choices[0].message.content); } catch { parsed = {}; }
+    try { parsed = JSON.parse(rawContent); } catch (e) { console.error('[ContentRadar] JSON parse failed', truncated ? '(response truncated at max_tokens)' : '', (e as Error).message); parsed = {}; }
     const llmTopics: any[] = Array.isArray(parsed.topics) ? parsed.topics : [];
     const llmQuestions: any[] = Array.isArray(parsed.questions) ? parsed.questions : [];
     const saturated: string[] = Array.isArray(parsed.saturated) ? parsed.saturated.slice(0, 6) : [];
@@ -110,7 +113,7 @@ Be specific and grounded in the signals. No fluff.`;
     type Scored = { label: string; slug: string; taxonomy: string; summary: string; role: string; angles: any[]; docCount: number; engagement: number; sources: string[]; isBreakout: boolean; examples: any[]; rawScore: number; velocity: number; novelty: number; };
     const scored: Scored[] = [];
     for (const tp of llmTopics) {
-      const idxs: number[] = (Array.isArray(tp.doc_indices) ? tp.doc_indices : []).filter((n: any) => Number.isInteger(n) && n >= 0 && n < ranked.length);
+      const idxs: number[] = [...new Set<number>((Array.isArray(tp.doc_indices) ? tp.doc_indices : []).filter((n: any) => Number.isInteger(n) && n >= 0 && n < ranked.length))];
       const members = idxs.map(i => ranked[i]);
       const docCount = Math.max(members.length, 1);
       const engagement = members.reduce((s, m) => s + (m.engagement || 0), 0);
@@ -121,7 +124,9 @@ Be specific and grounded in the signals. No fluff.`;
       const thisScore = docCount + Math.log10(1 + engagement);
       const prev = prevBySlug[slug];
       const prevScore = prev ? (prev.doc_count || 0) + Math.log10(1 + (prev.total_engagement || 0)) : 0;
-      const velocity = thisScore - prevScore;
+      // No prior-week row for this slug means there is no real week-over-week delta yet
+      // (velocity only becomes meaningful from week 2); report 0 rather than the raw score.
+      const velocity = prev ? thisScore - prevScore : 0;
       scored.push({ label: tp.label || slug, slug, taxonomy: tp.taxonomy || 'other', summary: tp.summary || '', role: tp.role || 'general', angles: Array.isArray(tp.angles) ? tp.angles.slice(0, 3) : [], docCount, engagement, sources, isBreakout, examples, rawScore: thisScore, velocity, novelty: 0 });
     }
 
@@ -147,28 +152,34 @@ Be specific and grounded in the signals. No fluff.`;
     }
     scored.sort((a, b) => (b as any).radar_score - (a as any).radar_score);
 
-    // Persist topics (replace this week's non-seed rows for idempotency).
-    await supabase.from('content_topics').delete().eq('week_start', weekStart).eq('is_seed', false);
-    const topicRows = scored.map(s => ({
+    // Dedup by slug (the unique key) so a repeated slug from the LLM cannot crash the upsert
+    // (ON CONFLICT cannot affect the same row twice). Keep the highest-scored instance.
+    const bySlug = new Map<string, Scored>();
+    for (const s of scored) if (!bySlug.has(s.slug)) bySlug.set(s.slug, s);
+    const topics = [...bySlug.values()];
+
+    // Build all rows BEFORE any delete, then write with error checks so a failure surfaces
+    // (throws -> the prior good week is preserved by the brief never-overwrite discipline).
+    const topicRows = topics.map(s => ({
       week_start: weekStart, label: s.label, slug: s.slug, taxonomy: s.taxonomy, summary: s.summary, role: s.role,
       doc_count: s.docCount, total_engagement: s.engagement, velocity: Math.round(s.velocity * 100) / 100, novelty: Math.round(s.novelty * 100) / 100,
       radar_score: (s as any).radar_score, is_breakout: s.isBreakout, is_seed: false, angles: s.angles, sources: s.sources, example_docs: s.examples,
     }));
-    if (topicRows.length) await supabase.from('content_topics').upsert(topicRows, { onConflict: 'week_start,slug' });
-
-    // Persist questions.
-    await supabase.from('content_questions').delete().eq('week_start', weekStart);
     const qRows = llmQuestions.filter(q => q && q.question).slice(0, 40).map(q => ({
       week_start: weekStart, question: String(q.question).slice(0, 280), topic_slug: q.topic_slug || null, is_new: q.is_new !== false, source_count: 1,
     }));
-    if (qRows.length) await supabase.from('content_questions').insert(qRows);
+
+    await supabase.from('content_topics').delete().eq('week_start', weekStart).eq('is_seed', false);
+    if (topicRows.length) { const { error } = await supabase.from('content_topics').upsert(topicRows, { onConflict: 'week_start,slug' }); if (error) throw error; }
+    await supabase.from('content_questions').delete().eq('week_start', weekStart);
+    if (qRows.length) { const { error } = await supabase.from('content_questions').insert(qRows); if (error) throw error; }
 
     // Confidence = share of expected sources that produced docs this week.
     const activeSources = new Set(docs.map(d => d.source));
     const confidence = Math.round((EXPECTED_SOURCES.filter(s => activeSources.has(s)).length / EXPECTED_SOURCES.length) * 100) / 100;
 
     // Compose the brief deterministically (grounded; angles already came from the LLM).
-    const topN = scored.slice(0, 5);
+    const topN = topics.slice(0, 5);
     const briefJson = {
       week_start: weekStart,
       rising_topics: topN.map(s => ({ label: s.label, slug: s.slug, radar_score: (s as any).radar_score, velocity: Math.round(s.velocity * 100) / 100, is_breakout: s.isBreakout, summary: s.summary, role: s.role, why: s.examples.map(e => e.text).slice(0, 3), sources: s.sources })),

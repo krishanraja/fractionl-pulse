@@ -402,7 +402,10 @@ async function harvestMarketplaces(): Promise<ContentDoc[]> {
   const docs: ContentDoc[] = [];
   // Lightweight count-only scrape via the Apify generic web-scraper. Aggregate counts only,
   // robots-respecting; we store a single 'listing' doc per marketplace as a supply-movement signal.
-  for (const m of MARKETPLACES) {
+  // Scrape each marketplace CONCURRENTLY and bounded, so one slow Apify run cannot starve the
+  // others (the sequential version returned 0 for all). Every fetch goes through fetchWithRetry
+  // (timeout + retry); the whole collector is still capped by the orchestrator's 60s withTimeout.
+  const scrapeOne = async (m: { name: string; url: string }): Promise<ContentDoc[]> => {
     try {
       const runRes = await fetchWithRetry(`https://api.apify.com/v2/acts/apify~web-scraper/runs?token=${APIFY_API_KEY}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -412,21 +415,24 @@ async function harvestMarketplaces(): Promise<ContentDoc[]> {
           maxPagesPerCrawl: 1,
         }),
       }, 1, 12000);
-      if (!runRes.ok) continue;
+      if (!runRes.ok) return [];
       const run = await runRes.json();
       const runId = run.data.id, datasetId = run.data.defaultDatasetId;
       let status = 'READY', polls = 0;
-      while (status !== 'SUCCEEDED' && status !== 'FAILED' && polls < 8) {
-        await new Promise(r => setTimeout(r, 5000));
-        const sr = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${APIFY_API_KEY}`);
+      while (status !== 'SUCCEEDED' && status !== 'FAILED' && polls < 6) {
+        await new Promise(r => setTimeout(r, 4000));
+        const sr = await fetchWithRetry(`https://api.apify.com/v2/actor-runs/${runId}?token=${APIFY_API_KEY}`, {}, 1, 8000);
         status = (await sr.json()).data.status; polls++;
       }
-      if (status !== 'SUCCEEDED') continue;
-      const items = await (await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_KEY}`)).json();
+      if (status !== 'SUCCEEDED') return [];
+      const dsRes = await fetchWithRetry(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_KEY}`, {}, 1, 8000);
+      const items = await dsRes.json();
       const count = safeNumber((Array.isArray(items) ? items[0]?.count : 0), 0);
-      if (count > 0) docs.push({ source: 'marketplace', doc_type: 'listing', text: `${m.name}: ${count} fractional listings`, url: m.url, engagement: count, raw: { marketplace: m.name, count } });
-    } catch (e) { console.error(`[Marketplace ${m.name}]`, (e as Error).message); }
-  }
+      return count > 0 ? [{ source: 'marketplace', doc_type: 'listing', text: `${m.name}: ${count} fractional listings`, url: m.url, engagement: count, raw: { marketplace: m.name, count } }] : [];
+    } catch (e) { console.error(`[Marketplace ${m.name}]`, (e as Error).message); return []; }
+  };
+  const settled = await Promise.allSettled(MARKETPLACES.map(scrapeOne));
+  for (const r of settled) if (r.status === 'fulfilled') docs.push(...r.value);
   return docs;
 }
 
@@ -507,11 +513,14 @@ serve(async (req) => {
       }).eq('id', runData.id);
     }
 
-    // Best-effort: trigger the radar generation right after harvest.
+    // Best-effort: trigger the radar generation right after harvest. The run row is already
+    // 'success' above, so a slow radar call here can never strand the harvest run; the timeout
+    // bounds total wall-clock under the pg_cron caller timeout. The weekly pg_cron also has a
+    // safety path: generate-content-radar is idempotent and can be re-invoked for the week.
     let radar: any = { skipped: true };
     try {
       const auth = req.headers.get('Authorization') || `Bearer ${SUPABASE_SERVICE_KEY}`;
-      const r = await fetch(`${SUPABASE_URL}/functions/v1/generate-content-radar?week_start=${weekStart}`, { headers: { Authorization: auth } });
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/generate-content-radar?week_start=${weekStart}`, { headers: { Authorization: auth }, signal: AbortSignal.timeout(70000) });
       radar = r.ok ? await r.json() : { error: `HTTP ${r.status}` };
     } catch (e) { radar = { error: (e as Error).message }; }
 
