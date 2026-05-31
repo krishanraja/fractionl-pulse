@@ -28,6 +28,10 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 const SKIP_SOURCES = (Deno.env.get('SKIP_CONTENT_SOURCES') || '').split(',').map(s => s.trim()).filter(Boolean);
 const shouldSkip = (s: string) => SKIP_SOURCES.includes(s);
 
+// Per-source diagnostics surfaced in the response to explain 0-doc sources (key state + last error).
+const SRC_DIAG: Record<string, string> = {};
+const diag = (k: string, v: string) => { SRC_DIAG[k] = v; };
+
 // ---- Fractional vocabulary (the curated niche the whole product is tuned to) ----
 const ROLES = [
   { phrase: 'fractional CFO', role: 'cfo' },
@@ -244,14 +248,15 @@ async function harvestNews(): Promise<ContentDoc[]> {
       if (res.ok) { const d = await res.json(); for (const a of (d.data || [])) if (a.title) docs.push({ source: 'mediastack', doc_type: 'headline', text: a.title, url: a.url, raw: { src: a.source } }); }
     } catch (e) { console.error('[News/mediastack]', (e as Error).message); }
   }
-  // Guardian
+  // Guardian (90-day window — fractional-exec coverage in prestige media is sparse).
   if (GUARDIAN_API_KEY && !shouldSkip('guardian')) {
     try {
-      const from = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+      const from = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
       const url = `https://content.guardianapis.com/search?q=%22fractional%20executive%22%20OR%20%22fractional%20CFO%22&from-date=${from}&page-size=20&api-key=${GUARDIAN_API_KEY}`;
       const res = await fetchWithRetry(url, {}, 2, 10000);
-      if (res.ok) { const d = await res.json(); for (const a of (d.response?.results || [])) if (a.webTitle) docs.push({ source: 'guardian', doc_type: 'headline', text: a.webTitle, url: a.webUrl }); }
-    } catch (e) { console.error('[News/guardian]', (e as Error).message); }
+      if (res.ok) { const d = await res.json(); diag('guardian', `total=${d.response?.total ?? '?'}`); for (const a of (d.response?.results || [])) if (a.webTitle) docs.push({ source: 'guardian', doc_type: 'headline', text: a.webTitle, url: a.webUrl }); }
+      else diag('guardian', `HTTP ${res.status}`);
+    } catch (e) { console.error('[News/guardian]', (e as Error).message); diag('guardian', 'err: ' + (e as Error).message); }
   }
   // Brave News
   if (BRAVE_API_KEY && !shouldSkip('brave_news')) {
@@ -280,28 +285,31 @@ async function harvestBraveWeb(): Promise<ContentDoc[]> {
   return docs;
 }
 
+// Reddit's free .json endpoint now serves HTML to unauthenticated/datacenter requests
+// (verified 2026-05-31), so harvest Reddit thread titles via Brave web search (site:reddit.com)
+// instead. Same audience questions/discourse, a working vendor (reuses BRAVE_API_KEY). The
+// SUBREDDITS list is retained as documentation of the communities of interest.
 async function harvestReddit(): Promise<ContentDoc[]> {
-  if (shouldSkip('reddit')) return [];
+  if (!BRAVE_API_KEY || shouldSkip('reddit')) { diag('reddit', BRAVE_API_KEY ? 'skipped' : 'no BRAVE_API_KEY'); return []; }
   const docs: ContentDoc[] = [];
-  const ua = 'FractionlPulse/1.0 content-radar (data@fractionl.ai)';
-  for (const sub of SUBREDDITS) {
+  let resultsSeen = 0;
+  for (const { phrase, role } of ROLES.slice(0, 5)) {
     try {
-      const url = `https://www.reddit.com/r/${sub}/search.json?q=fractional&restrict_sr=1&sort=top&t=week&limit=25`;
-      const res = await fetchWithRetry(url, { headers: { 'User-Agent': ua } }, 2, 9000);
+      const q = `site:reddit.com "${phrase}"`;
+      const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(q)}&count=15&result_filter=web`;
+      const res = await fetchWithRetry(url, { headers: { 'X-Subscription-Token': BRAVE_API_KEY } });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const d = await res.json();
-      for (const c of (d?.data?.children || [])) {
-        const p = c.data || {};
-        if (!p.title) continue;
-        docs.push({
-          source: 'reddit', doc_type: isQuestion(p.title) ? 'question' : 'post_title',
-          text: p.title, url: p.permalink ? `https://www.reddit.com${p.permalink}` : undefined,
-          engagement: safeNumber(p.score, 0), raw: { subreddit: p.subreddit, comments: p.num_comments },
-        });
+      resultsSeen += (d.web?.results || []).length;
+      for (const r of (d.web?.results || [])) {
+        // Brave appends " : r/sub" / " - Reddit" to Reddit result titles; strip it to the thread title.
+        const title = (r.title || '').replace(/\s*:\s*r\/[\w-]+.*$/i, '').replace(/\s*[-|]\s*Reddit\s*$/i, '').trim();
+        if (!title) continue;
+        docs.push({ source: 'reddit', doc_type: isQuestion(title) ? 'question' : 'post_title', text: title, url: r.url, raw: { via: 'brave_site_search', seed: phrase, role } });
       }
-      await new Promise(r => setTimeout(r, 1200)); // unauth ~10/min
-    } catch (e) { console.error(`[Reddit r/${sub}]`, (e as Error).message); }
+    } catch (e) { console.error(`[Reddit via Brave ${phrase}]`, (e as Error).message); diag('reddit', 'err: ' + (e as Error).message); }
   }
+  if (!('reddit' in SRC_DIAG)) diag('reddit', `brave_results=${resultsSeen} docs=${docs.length}`);
   return docs;
 }
 
@@ -326,18 +334,21 @@ async function harvestHN(): Promise<ContentDoc[]> {
 }
 
 async function harvestPodchaser(): Promise<ContentDoc[]> {
-  if (!PODCHASER_API_KEY || shouldSkip('podchaser')) return [];
+  if (!PODCHASER_API_KEY || shouldSkip('podchaser')) { diag('podchaser', PODCHASER_API_KEY ? 'skipped' : 'no PODCHASER_API_KEY'); return []; }
   const docs: ContentDoc[] = [];
   try {
-    const query = `{ podcasts(searchTerm: "fractional executive", first: 30) { data { title } } }`;
+    // Match the proven FWI ingest query shape exactly (paginatorInfo + first:50).
+    const query = `{ podcasts(searchTerm: "fractional executive", first: 50) { paginatorInfo { total } data { title } } }`;
     const res = await fetchWithRetry('https://api.podchaser.com/graphql', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${PODCHASER_API_KEY}` },
       body: JSON.stringify({ query }),
     }, 2, 10000);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const d = await res.json();
+    if (d.errors) diag('podchaser', 'gql_err: ' + JSON.stringify(d.errors).slice(0, 140));
+    else diag('podchaser', `total=${d.data?.podcasts?.paginatorInfo?.total ?? '?'} returned=${(d.data?.podcasts?.data || []).length}`);
     for (const p of (d.data?.podcasts?.data || [])) if (p.title) docs.push({ source: 'podchaser', doc_type: 'podcast_title', text: p.title });
-  } catch (e) { console.error('[Podchaser]', (e as Error).message); }
+  } catch (e) { console.error('[Podchaser]', (e as Error).message); diag('podchaser', 'err: ' + (e as Error).message); }
   return docs;
 }
 
@@ -398,7 +409,7 @@ async function harvestYouTube(): Promise<ContentDoc[]> {
 }
 
 async function harvestMarketplaces(): Promise<ContentDoc[]> {
-  if (!APIFY_API_KEY || shouldSkip('marketplace')) return [];
+  if (!APIFY_API_KEY || shouldSkip('marketplace')) { diag('marketplace', APIFY_API_KEY ? 'skipped' : 'no APIFY_API_KEY'); return []; }
   const docs: ContentDoc[] = [];
   // Lightweight count-only scrape via the Apify generic web-scraper. Aggregate counts only,
   // robots-respecting; we store a single 'listing' doc per marketplace as a supply-movement signal.
@@ -433,6 +444,7 @@ async function harvestMarketplaces(): Promise<ContentDoc[]> {
   };
   const settled = await Promise.allSettled(MARKETPLACES.map(scrapeOne));
   for (const r of settled) if (r.status === 'fulfilled') docs.push(...r.value);
+  diag('marketplace', `key=${APIFY_API_KEY ? 'set' : 'none'} docs=${docs.length}`);
   return docs;
 }
 
@@ -524,7 +536,7 @@ serve(async (req) => {
       radar = r.ok ? await r.json() : { error: `HTTP ${r.status}` };
     } catch (e) { radar = { error: (e as Error).message }; }
 
-    return new Response(JSON.stringify({ success: true, week_start: weekStart, docs_collected: allDocs.length, docs_stored: rows.length, by_source: bySource, radar }), {
+    return new Response(JSON.stringify({ success: true, week_start: weekStart, docs_collected: allDocs.length, docs_stored: rows.length, by_source: bySource, diag: SRC_DIAG, radar }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
