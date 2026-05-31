@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS public.content_signals (
   rising_label text,                        -- e.g. '+250%' or 'Breakout' (Google rising bucket)
   rising_value numeric,                     -- extracted_value when present
   engagement numeric,                       -- reddit score / hn points / youtube views / null
-  text_hash text NOT NULL,                  -- md5(lower(trim(text))) for dedup
+  text_hash text NOT NULL,                  -- FNV-1a 32-bit hex of lower(trim(text)), computed in the edge fn, for dedup
   topic_id uuid,                            -- assigned during clustering, null until clustered
   raw jsonb DEFAULT '{}'::jsonb             -- provenance: query that found it, subreddit, etc.
 );

@@ -99,9 +99,11 @@ const ContentRadar = () => {
             </p>
           </div>
         </div>
-        <button onClick={downloadBrief} className="flex items-center gap-1.5 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/15 rounded-lg px-2.5 py-1.5 transition-colors shrink-0">
-          <Download size={13} /> Brief
-        </button>
+        {!locked && (
+          <button onClick={downloadBrief} className="flex items-center gap-1.5 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/15 rounded-lg px-2.5 py-1.5 transition-colors shrink-0">
+            <Download size={13} /> Brief
+          </button>
+        )}
       </div>
 
       {/* Rising topics */}
