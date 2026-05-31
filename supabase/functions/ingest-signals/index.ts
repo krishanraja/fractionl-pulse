@@ -18,6 +18,8 @@ const FRED_API_KEY = Deno.env.get('FRED_API_KEY') || '';
 const SERP_API_KEY = Deno.env.get('SERP_API_KEY') || '';
 const MEDIASTACK_API_KEY = Deno.env.get('MEDIASTACK_API_KEY') || '';
 const PODCHASER_API_KEY = Deno.env.get('PODCHASER_API_KEY') || '';
+const PODCHASER_CLIENT_ID = Deno.env.get('PODCHASER_CLIENT_ID') || '';
+const PODCHASER_CLIENT_SECRET = Deno.env.get('PODCHASER_CLIENT_SECRET') || '';
 const GUARDIAN_API_KEY = Deno.env.get('GUARDIAN_API_KEY') || '';
 const NYT_API_KEY = Deno.env.get('NYT_API_KEY') || '';
 const CENSUS_API_KEY = Deno.env.get('CENSUS_API_KEY') || '';
@@ -642,18 +644,32 @@ async function collectNYTSignal(date: string): Promise<SignalResult> {
   }
 }
 
+// Podchaser uses OAuth client-credentials: exchange client_id+secret for a short-lived
+// access token each run (auto-refreshing, so it can never silently expire like a hardcoded key).
+async function getPodchaserToken(): Promise<string> {
+  const r = await fetchWithRetry('https://api.podchaser.com/graphql', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: `mutation { requestAccessToken(input:{grant_type: CLIENT_CREDENTIALS, client_id:"${PODCHASER_CLIENT_ID}", client_secret:"${PODCHASER_CLIENT_SECRET}"}) { access_token } }` }),
+  }, 1, 10000);
+  const j = await r.json();
+  const tok = j?.data?.requestAccessToken?.access_token;
+  if (!tok) throw new Error('token: ' + (j?.errors?.[0]?.message || 'no access_token'));
+  return tok;
+}
+
 async function collectPodchaserSignal(_date: string): Promise<SignalResult> {
-  if (!PODCHASER_API_KEY) {
-    console.log('[Podchaser] No key, skipping');
+  if (!PODCHASER_CLIENT_ID || !PODCHASER_CLIENT_SECRET) {
+    console.log('[Podchaser] No client creds, skipping');
     return { source: 'podchaser', signal_type: 'momentum', category: 'audio_culture',
-      raw_value: 0, normalized_value: 5, success: false, error: 'No PODCHASER_API_KEY' };
+      raw_value: 0, normalized_value: 5, success: false, error: 'No Podchaser client creds' };
   }
   console.log('[Podchaser] Collecting podcast mentions...');
   try {
+    const token = await getPodchaserToken();
     const query = `{ podcasts(searchTerm: "fractional executive", first: 50) { paginatorInfo { total } data { title } } }`;
     const response = await fetchWithRetry('https://api.podchaser.com/graphql', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${PODCHASER_API_KEY}` },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify({ query })
     }, 2, 10000);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
