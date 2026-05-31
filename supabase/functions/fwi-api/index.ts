@@ -108,7 +108,7 @@ async function handleCurrentFWI(): Promise<Response> {
           weight: weights.supply,
           sources: weights.supply === 0
             ? []
-            : ['People Data Labs profile counts', 'SerpAPI LinkedIn supply proxy', 'GoFractional marketplace listings', 'Supply-side search intent (Google Trends + SerpAPI)'],
+            : ['SerpAPI LinkedIn supply proxy', 'Brave LinkedIn talent proxy', 'GoFractional marketplace listings', 'Supply-side search intent (SerpAPI)'],
           status: weights.supply === 0 ? 'excluded' : 'live',
           note: weights.supply === 0
             ? 'No supply data available this week — weight redistributed to demand and culture'
@@ -117,7 +117,7 @@ async function handleCurrentFWI(): Promise<Response> {
         culture: {
           score: latest.momentum_score,
           weight: weights.culture,
-          sources: ['Google Trends search interest', 'NewsAPI + Mediastack + Brave News media coverage', 'Guardian + NYT prestige media', 'Podchaser podcast mentions', 'Reddit + HN community discourse', 'Brave Web discourse monitoring'],
+          sources: ['Search interest trends (SerpAPI)', 'NewsAPI + Mediastack + Brave News media coverage', 'Guardian prestige media', 'Podchaser podcast mentions', 'Reddit + HN community discourse', 'Brave Web discourse monitoring', 'Wikipedia article interest'],
         },
       },
     },
@@ -137,34 +137,34 @@ async function handleCurrentFWI(): Promise<Response> {
       supply: {
         description: 'Availability and growth of fractional executive talent pool from multiple sources',
         sources: [
-          'People Data Labs professional profile counts',
           'SerpAPI LinkedIn profile index (site:linkedin.com/in proxy)',
+          'Brave LinkedIn talent proxy (SerpAPI-independent backstop)',
           'GoFractional marketplace listings (via Apify scraper)',
-          'Supply-side search intent via Google Trends and SerpAPI',
+          'Supply-side search intent via SerpAPI Trends',
         ],
       },
       culture: {
         description: 'Market awareness and momentum signals from 10+ sources',
         sources: [
-          'Google Trends search interest (SerpAPI primary, Apify fallback)',
+          'Search interest trends (SerpAPI)',
           'NewsAPI article volume (28-day)',
           'Mediastack news cross-check',
           'The Guardian prestige media (90-day)',
-          'New York Times Article Search (90-day)',
           'Podchaser podcast mentions',
-          'Reddit community discourse (via Apify)',
+          'Reddit community discourse',
           'Hacker News tech discourse (Algolia API)',
           'Brave News coverage',
           'Brave Web discourse volume',
+          'Wikipedia article pageviews',
         ],
       },
       context: {
         description: 'Macro economic context signals (not used in composite score)',
         sources: [
-          'FRED JOLTS Job Openings',
-          'FRED Unemployment Rate',
-          'FRED Initial Jobless Claims',
+          'BLS JOLTS job openings, unemployment and wages',
+          'FRED macro series (JOLTS, unemployment, jobless claims)',
           'Census ACS self-employment data',
+          'OpenAlex academic and thought-leadership coverage',
         ],
       },
     },
