@@ -7,9 +7,12 @@ interface SparklineChartProps {
   data: number[];
   months: string[];
   color: string;
+  /** Optional shared y-domain so multiple sparklines are comparable on one scale. */
+  yMin?: number;
+  yMax?: number;
 }
 
-const SparklineChart = ({ data, months, color }: SparklineChartProps) => {
+const SparklineChart = ({ data, months, color, yMin, yMax }: SparklineChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
 
@@ -83,7 +86,12 @@ const SparklineChart = ({ data, months, color }: SparklineChartProps) => {
             display: false,
             grid: {
               display: false
-            }
+            },
+            // When a shared domain is supplied, all sparklines render on the same
+            // scale so their heights are directly comparable (a flat-but-high
+            // series no longer looks as dramatic as a volatile low one).
+            min: yMin,
+            max: yMax,
           }
         },
         elements: {
@@ -103,7 +111,7 @@ const SparklineChart = ({ data, months, color }: SparklineChartProps) => {
         chartRef.current.destroy();
       }
     };
-  }, [data, months, color]);
+  }, [data, months, color, yMin, yMax]);
 
   return <canvas ref={canvasRef} className="sparkline" />;
 };

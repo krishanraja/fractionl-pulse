@@ -18,6 +18,22 @@ const SOURCE_COUNTS: Record<string, { count: number; examples: string }> = {
 const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
   const signalContext = useSignalContext();
 
+  // Shared y-domain across the three sub-index sparklines so they sit on one
+  // comparable scale instead of each auto-scaling to its own min/max (which made
+  // a flat-but-high series look as dramatic as a volatile low one). Padded ±5 and
+  // clamped to 0-100 to keep some breathing room while staying honest.
+  const allSparkValues = [
+    ...data.monthly.demand,
+    ...data.monthly.supply,
+    ...data.monthly.culture,
+  ].filter((v: number) => Number.isFinite(v));
+  const sparkMin = allSparkValues.length
+    ? Math.max(0, Math.floor(Math.min(...allSparkValues)) - 5)
+    : 0;
+  const sparkMax = allSparkValues.length
+    ? Math.min(100, Math.ceil(Math.max(...allSparkValues)) + 5)
+    : 100;
+
   const indices = [
     {
       key: 'demand',
@@ -127,6 +143,8 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
                   data={index.sparklineData}
                   months={data.monthly.months}
                   color={index.colorName}
+                  yMin={sparkMin}
+                  yMax={sparkMax}
                 />
               </div>
             )}

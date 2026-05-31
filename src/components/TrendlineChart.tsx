@@ -166,9 +166,12 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
               padding: 8,
             },
             border: { display: false },
-            beginAtZero: false,
-            min: 20,
-            max: 90,
+            // Fixed 0-100 so the absolute level and band position read honestly
+            // and every week is comparable (was clamped to 20-90, which
+            // exaggerated moves and misrepresented where a score sits in its band).
+            beginAtZero: true,
+            min: 0,
+            max: 100,
           }
         },
         interaction: {
