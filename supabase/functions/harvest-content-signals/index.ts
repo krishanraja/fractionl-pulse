@@ -20,6 +20,8 @@ const NEWS_API_KEY = Deno.env.get('NEWS_API_KEY') || '';
 const MEDIASTACK_API_KEY = Deno.env.get('MEDIASTACK_API_KEY') || '';
 const GUARDIAN_API_KEY = Deno.env.get('GUARDIAN_API_KEY') || '';
 const PODCHASER_API_KEY = Deno.env.get('PODCHASER_API_KEY') || '';
+const PODCHASER_CLIENT_ID = Deno.env.get('PODCHASER_CLIENT_ID') || '';
+const PODCHASER_CLIENT_SECRET = Deno.env.get('PODCHASER_CLIENT_SECRET') || '';
 const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY') || '';
 const APIFY_API_KEY = Deno.env.get('APIFY_API_KEY') || '';
 
@@ -333,14 +335,29 @@ async function harvestHN(): Promise<ContentDoc[]> {
   return docs;
 }
 
+// Podchaser uses OAuth client-credentials: exchange client_id+secret for a short-lived
+// access token each run (auto-refreshing, so it can never silently expire like a hardcoded key).
+async function getPodchaserToken(): Promise<string> {
+  const r = await fetchWithRetry('https://api.podchaser.com/graphql', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: `mutation { requestAccessToken(input:{grant_type: CLIENT_CREDENTIALS, client_id:"${PODCHASER_CLIENT_ID}", client_secret:"${PODCHASER_CLIENT_SECRET}"}) { access_token } }` }),
+  }, 1, 10000);
+  const j = await r.json();
+  const tok = j?.data?.requestAccessToken?.access_token;
+  if (!tok) throw new Error('token: ' + (j?.errors?.[0]?.message || 'no access_token'));
+  return tok;
+}
+
 async function harvestPodchaser(): Promise<ContentDoc[]> {
-  if (!PODCHASER_API_KEY || shouldSkip('podchaser')) { diag('podchaser', PODCHASER_API_KEY ? 'skipped' : 'no PODCHASER_API_KEY'); return []; }
+  const haveCreds = PODCHASER_CLIENT_ID && PODCHASER_CLIENT_SECRET;
+  if (!haveCreds || shouldSkip('podchaser')) { diag('podchaser', haveCreds ? 'skipped' : 'no Podchaser client creds'); return []; }
   const docs: ContentDoc[] = [];
   try {
+    const token = await getPodchaserToken();
     // Match the proven FWI ingest query shape exactly (paginatorInfo + first:50).
     const query = `{ podcasts(searchTerm: "fractional executive", first: 50) { paginatorInfo { total } data { title } } }`;
     const res = await fetchWithRetry('https://api.podchaser.com/graphql', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${PODCHASER_API_KEY}` },
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify({ query }),
     }, 2, 10000);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
