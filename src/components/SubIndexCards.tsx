@@ -96,8 +96,7 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
           <motion.div
             key={i}
             initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.2 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: i * 0.06, ease: [0.16, 1, 0.3, 1] }}
             className="glass-card index-card p-4 sm:p-5 pl-5 sm:pl-6 hover-lift"
             style={{ ['--accent-rail' as string]: index.accentColor }}
