@@ -42,6 +42,13 @@ verify_jwt = false
 [functions.fwi-roles]
 verify_jwt = false
 
+# Public Content Radar API + RSS (no-auth agent/syndication surface).
+[functions.content-api]
+verify_jwt = false
+
+[functions.content-feed]
+verify_jwt = false
+
 # Pipeline + alerting internals stay JWT-verified (service-role only).
 [functions.ingest-signals]
 verify_jwt = true
@@ -56,4 +63,14 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.send-pipeline-alert]
+verify_jwt = true
+
+# Content Radar internals (service-role / cron only).
+[functions.harvest-content-signals]
+verify_jwt = true
+
+[functions.generate-content-radar]
+verify_jwt = true
+
+[functions.send-content-brief]
 verify_jwt = true
