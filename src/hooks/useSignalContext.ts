@@ -48,13 +48,13 @@ async function fetchSignalContext(): Promise<SignalContext> {
 
   // --- Supply ---
   const supplyParts: string[] = [];
-  const pdlAgg = find('people_data_labs', 'aggregate');
-  const serpLinkedInAgg = find('serpapi_linkedin', 'aggregate');
+  // SerpAPI LinkedIn is primary; Brave talent proxy is the fallback so the supply card
+  // stays populated even when SerpAPI is rate-limited.
+  const linkedInAgg = find('serpapi_linkedin', 'aggregate') || find('brave_talent', 'aggregate');
   const goFractional = find('gofractional');
-  const supplyTrends = find('supply_trends') || find('serpapi_supply_trends');
+  const supplyTrends = find('serpapi_supply_trends');
 
-  if (pdlAgg?.raw_value) supplyParts.push(`${Math.round(pdlAgg.raw_value).toLocaleString()} PDL profiles`);
-  if (serpLinkedInAgg?.raw_value) supplyParts.push(`~${Math.round(serpLinkedInAgg.raw_value).toLocaleString()} LinkedIn`);
+  if (linkedInAgg?.raw_value) supplyParts.push(`~${Math.round(linkedInAgg.raw_value).toLocaleString()} LinkedIn`);
   if (goFractional?.raw_value) {
     const rate = goFractional.metadata?.median_hourly_rate;
     supplyParts.push(
@@ -69,7 +69,6 @@ async function fetchSignalContext(): Promise<SignalContext> {
   const news = find('newsapi');
   const mediastack = find('mediastack');
   const guardian = find('guardian');
-  const nyt = find('nyt');
   const podchaser = find('podchaser');
   const reddit = find('reddit');
   const hn = find('hn');
@@ -81,7 +80,7 @@ async function fetchSignalContext(): Promise<SignalContext> {
   const totalArticles = (news?.raw_value || 0) + (mediastack?.raw_value || 0) + (braveNews?.raw_value || 0);
   if (totalArticles > 0) cultureParts.push(`${Math.round(totalArticles)} news articles`);
 
-  const prestigeCount = (guardian?.raw_value || 0) + (nyt?.raw_value || 0);
+  const prestigeCount = (guardian?.raw_value || 0);
   if (prestigeCount > 0) cultureParts.push(`${prestigeCount} prestige media hits`);
 
   if (podchaser?.raw_value) cultureParts.push(`${Math.round(podchaser.raw_value)} podcasts`);

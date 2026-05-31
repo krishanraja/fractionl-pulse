@@ -10,11 +10,13 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-// Updated weights based on verified defensible signal methodology
+// Canonical methodology weights. These are what the dashboard displays as each
+// sub-index's "% weight". The actual blend uses effectiveWeights below, which only
+// differs on the rare day with zero supply signals (redistributed away from supply).
 const WEIGHTS = {
-  demand: 0.50,    // Adzuna fractional jobs + SEC Form D leading indicator
-  supply: 0.20,    // People Data Labs + supply-side search interest
-  culture: 0.30    // Google Trends + NewsAPI + Brave Search culture signals
+  demand: 0.50,    // Adzuna + SerpAPI fractional jobs + SEC Form D leading indicator
+  supply: 0.20,    // SerpAPI + Brave LinkedIn talent proxies, GoFractional, supply-intent trends
+  culture: 0.30    // SerpAPI Trends + NewsAPI/Mediastack/Brave/Guardian + Reddit/HN + Wikipedia
 };
 
 const ROLE_NAMES: Record<string, string> = {
@@ -162,14 +164,16 @@ serve(async (req) => {
     console.log(`[FWI] Component scores - Demand: ${demandScore}, Supply: ${finalSupplyScore}, Momentum: ${momentumScore}`);
     console.log(`[FWI] Overall FWI: ${overallScore} (${getFWILabel(overallScore)})`);
 
-    // Data completeness weights aligned with ingest-signals SOURCE_CONFIDENCE_WEIGHTS
+    // Data completeness weights aligned with ingest-signals SOURCE_CONFIDENCE_WEIGHTS.
+    // Kept in lockstep: retired google_trends/nyt/people_data_labs/supply_trends, added
+    // brave_talent + the native free sources (bls/wikipedia_pageviews/openalex).
     const SOURCE_COMPLETENESS_WEIGHTS: Record<string, number> = {
-      adzuna: 0.14, serpapi_jobs: 0.08, google_trends: 0.08, serpapi_trends: 0.06,
-      sec_edgar: 0.10, newsapi: 0.05, brave_news: 0.04, brave_web: 0.03,
-      mediastack: 0.03, guardian: 0.02, nyt: 0.02, podchaser: 0.02,
-      reddit: 0.02, hn: 0.01, people_data_labs: 0.10, serpapi_linkedin: 0.06,
-      gofractional: 0.05, supply_trends: 0.04, serpapi_supply_trends: 0.03,
-      fred: 0.01, census_acs: 0.01,
+      adzuna: 0.12, serpapi_jobs: 0.07, serpapi_trends: 0.05,
+      sec_edgar: 0.09, newsapi: 0.04, brave_news: 0.03, brave_web: 0.03,
+      mediastack: 0.03, guardian: 0.02, podchaser: 0.02,
+      reddit: 0.02, hn: 0.01, serpapi_linkedin: 0.05, brave_talent: 0.05,
+      gofractional: 0.04, serpapi_supply_trends: 0.03,
+      fred: 0.01, census_acs: 0.01, bls: 0.04, wikipedia_pageviews: 0.06, openalex: 0.02,
     };
     const uniqueSources = [...new Set(signals.map(s => s.source))];
     const totalWeight = Object.values(SOURCE_COMPLETENESS_WEIGHTS).reduce((a, b) => a + b, 0);
@@ -183,13 +187,14 @@ serve(async (req) => {
       demand_score: demandScore,
       supply_score: finalSupplyScore,
       momentum_score: momentumScore,
-      weights: effectiveWeights,
+      weights: WEIGHTS,
       confidence: confidence,
       notes: `${getFWILabel(overallScore)} - ${uniqueSources.length} sources${hasSupplyData ? '' : ' (supply excluded)'}`,
       metadata: {
         signals_used: signals.length,
         sources: Array.from(new Set(signals.map(s => s.source))),
         has_supply_data: hasSupplyData,
+        effective_weights: effectiveWeights,
         methodology: 'Job postings + SEC filings + search trends + news coverage',
         prior_week: priorWeek ? {
           date: priorWeek.date,

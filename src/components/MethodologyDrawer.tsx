@@ -48,7 +48,7 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
               </div>
               <span className="text-sm text-muted-foreground">{(weights.supply * 100).toFixed(0)}% of score</span>
             </div>
-            <p className="text-xs text-muted-foreground pl-5">People Data Labs professional profiles, SerpAPI LinkedIn search proxy, GoFractional marketplace listings, and supply-intent Google Trends (searches like "become fractional executive").</p>
+            <p className="text-xs text-muted-foreground pl-5">SerpAPI and Brave LinkedIn profile proxies (a redundant pair so the reading survives a single-vendor outage), GoFractional marketplace listings, and supply-intent search trends (searches like "become fractional executive").</p>
           </div>
 
           <div className="p-3 bg-muted/20 rounded-lg space-y-1">
@@ -59,7 +59,7 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
               </div>
               <span className="text-sm text-muted-foreground">{(weights.culture * 100).toFixed(0)}% of score</span>
             </div>
-            <p className="text-xs text-muted-foreground pl-5">Google Trends search interest, NewsAPI + Mediastack + Brave News coverage, Guardian + NYT prestige media mentions, Podchaser podcast episodes, Reddit + Hacker News community discourse.</p>
+            <p className="text-xs text-muted-foreground pl-5">Search-interest trends, NewsAPI + Mediastack + Brave News coverage, Guardian prestige media mentions, Podchaser podcast episodes, Reddit + Hacker News community discourse, and Wikipedia article interest.</p>
           </div>
         </div>
       </div>
@@ -68,15 +68,15 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
         <h4 className="font-medium mb-2 text-foreground text-sm uppercase tracking-wide">21 data sources</h4>
         <div className="grid grid-cols-2 gap-1.5 text-xs text-muted-foreground">
           <span>Adzuna Jobs</span><span>SerpAPI Google Jobs</span>
-          <span>SEC EDGAR Form D</span><span>Google Trends (demand)</span>
-          <span>SerpAPI Trends</span><span>NewsAPI</span>
-          <span>Mediastack</span><span>Brave News</span>
-          <span>Brave Web Search</span><span>The Guardian</span>
-          <span>NY Times</span><span>Podchaser</span>
+          <span>SEC EDGAR Form D</span><span>SerpAPI Trends</span>
+          <span>NewsAPI</span><span>Mediastack</span>
+          <span>Brave News</span><span>Brave Web Search</span>
+          <span>The Guardian</span><span>Podchaser</span>
           <span>Reddit</span><span>Hacker News</span>
-          <span>People Data Labs</span><span>SerpAPI LinkedIn</span>
-          <span>GoFractional</span><span>Supply Trends (Apify)</span>
-          <span>SerpAPI Supply Trends</span><span>FRED Macro Data</span>
+          <span>SerpAPI LinkedIn</span><span>Brave Talent Proxy</span>
+          <span>GoFractional</span><span>SerpAPI Supply Trends</span>
+          <span>BLS (JOLTS)</span><span>Wikipedia Pageviews</span>
+          <span>OpenAlex Research</span><span>FRED Macro Data</span>
           <span>Census ACS</span>
         </div>
       </div>
@@ -116,9 +116,9 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
       </div>
 
       <div className="bg-gradient-to-r from-primary/10 to-secondary/10 p-4 rounded-lg border border-primary/20">
-        <h4 className="font-medium mb-1 text-foreground">Updated weekly</h4>
+        <h4 className="font-medium mb-1 text-foreground">Updated daily</h4>
         <p className="text-sm text-muted-foreground">
-          The pipeline runs every Monday at 6am UTC via Vercel Cron. Each week's reading is stored permanently in Supabase, building genuine historical depth.
+          The pipeline runs every morning at 6am UTC via Supabase scheduled jobs, with a weekly Monday baseline. Each reading is stored permanently in Supabase, building genuine historical depth.
         </p>
       </div>
 

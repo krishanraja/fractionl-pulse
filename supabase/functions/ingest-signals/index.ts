@@ -20,6 +20,7 @@ const MEDIASTACK_API_KEY = Deno.env.get('MEDIASTACK_API_KEY') || '';
 const PODCHASER_API_KEY = Deno.env.get('PODCHASER_API_KEY') || '';
 const GUARDIAN_API_KEY = Deno.env.get('GUARDIAN_API_KEY') || '';
 const NYT_API_KEY = Deno.env.get('NYT_API_KEY') || '';
+const CENSUS_API_KEY = Deno.env.get('CENSUS_API_KEY') || '';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
@@ -32,6 +33,7 @@ const SOURCE_COST_ESTIMATE: Record<string, number> = {
   mediastack: 0, nyt: 0, podchaser: 0,
   people_data_labs: 0.06, reddit: 0, gofractional: 0.01,
   google_trends: 0.01, supply_trends: 0.01,
+  bls: 0, wikipedia_pageviews: 0, openalex: 0,
 };
 
 function shouldSkip(source: string): boolean {
@@ -72,29 +74,56 @@ const BRAVE_WEB_SEARCH_TERMS = [
   'fractional CTO startup',
 ];
 
+// Note: google_trends, supply_trends (both Apify), people_data_labs (HTTP 404), and
+// nyt (HTTP 401) were retired 2026-05-30 — they had been failing every run for weeks and
+// are fully covered by serpapi_trends / serpapi_supply_trends / serpapi_linkedin + brave_talent
+// / guardian respectively. Removing them keeps the confidence denominator honest.
 const SOURCE_CONFIDENCE_WEIGHTS: Record<string, number> = {
-  adzuna: 0.14,
-  serpapi_jobs: 0.08,
-  google_trends: 0.08,
-  serpapi_trends: 0.06,
-  sec_edgar: 0.10,
-  newsapi: 0.05,
-  brave_news: 0.04,
+  adzuna: 0.12,
+  serpapi_jobs: 0.07,
+  serpapi_trends: 0.05,
+  sec_edgar: 0.09,
+  newsapi: 0.04,
+  brave_news: 0.03,
   brave_web: 0.03,
   mediastack: 0.03,
   guardian: 0.02,
-  nyt: 0.02,
   podchaser: 0.02,
   reddit: 0.02,
   hn: 0.01,
-  people_data_labs: 0.10,
-  serpapi_linkedin: 0.06,
-  gofractional: 0.05,
-  supply_trends: 0.04,
+  serpapi_linkedin: 0.05,
+  brave_talent: 0.05,
+  gofractional: 0.04,
   serpapi_supply_trends: 0.03,
   fred: 0.01,
   census_acs: 0.01,
+  bls: 0.04,
+  wikipedia_pageviews: 0.06,
+  openalex: 0.02,
 };
+
+const WIKIPEDIA_PAGES = [
+  'Chief_financial_officer',
+  'Chief_marketing_officer',
+  'Chief_technology_officer',
+  'Self-employment',
+  'Independent_contractor',
+  'Fractional_ownership',
+];
+
+const BLS_SERIES = [
+  { id: 'JTS000000000000000JOL', name: 'JOLTS Job Openings', category: 'job_openings', baseline: 7000 },
+  { id: 'LNS14000000', name: 'Unemployment Rate', category: 'unemployment', baseline: 4.0 },
+  { id: 'CES0500000003', name: 'Avg Hourly Earnings (Private)', category: 'wages', baseline: 35 },
+];
+
+const OPENALEX_PHRASES = [
+  '"fractional CFO"',
+  '"fractional CMO"',
+  '"fractional CTO"',
+  '"fractional executive"',
+  '"interim executive"',
+];
 
 interface SignalResult {
   source: string;
@@ -113,21 +142,55 @@ function safeNumber(value: unknown, fallback: number): number {
   return num;
 }
 
+// Per-host rate limiter. Several collectors hit the same rate-limited vendor
+// (SerpAPI, Brave) concurrently via Promise.all; without spacing they trigger
+// 429 storms (this is exactly what floored the supply index May 8-18 2026).
+// throttleHost serializes requests to these hosts with a minimum interval.
+const HOST_MIN_INTERVAL_MS: Record<string, number> = {
+  'serpapi.com': 1500,
+  'api.search.brave.com': 1200,
+};
+const hostNextSlot: Record<string, number> = {};
+async function throttleHost(host: string): Promise<void> {
+  const minInterval = HOST_MIN_INTERVAL_MS[host];
+  if (!minInterval) return;
+  const now = Date.now();
+  const slot = Math.max(now, hostNextSlot[host] || 0);
+  hostNextSlot[host] = slot + minInterval;
+  const wait = slot - now;
+  if (wait > 0) await new Promise(resolve => setTimeout(resolve, wait));
+}
+
 async function fetchWithRetry(
   url: string,
   options: RequestInit = {},
   maxRetries = 3,
   timeoutMs = 10000
 ): Promise<Response> {
+  let host = '';
+  try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { /* non-URL input, no throttle */ }
   let lastError: Error | null = null;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    await throttleHost(host);
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
       const response = await fetch(url, { ...options, signal: controller.signal });
       clearTimeout(timeout);
-      if (response.ok || response.status < 500) return response;
+      // Success, or a non-retryable client error (any 4xx except 429): return as-is.
+      if (response.ok || (response.status < 500 && response.status !== 429)) return response;
       lastError = new Error(`HTTP ${response.status}`);
+      // 429 = rate limited. Honor Retry-After when present, else exponential backoff.
+      if (response.status === 429 && attempt < maxRetries) {
+        const retryAfter = parseInt(response.headers.get('retry-after') || '', 10);
+        const backoff = Number.isFinite(retryAfter) && retryAfter > 0
+          ? Math.min(retryAfter * 1000, 10000)
+          : Math.min(Math.pow(2, attempt) * 1000, 8000);
+        console.log(`[Retry] 429 from ${host}, waiting ${backoff}ms (attempt ${attempt + 1})...`);
+        await new Promise(resolve => setTimeout(resolve, backoff));
+        continue;
+      }
+      // 5xx: fall through to the backoff below and retry.
     } catch (error) {
       lastError = error;
     }
@@ -770,6 +833,62 @@ async function collectSerpApiLinkedInSupply(_date: string): Promise<SignalResult
   return results;
 }
 
+// SerpAPI-independent supply source. When SerpAPI rate-limits (429), the LinkedIn
+// profile-count proxy disappears and supply collapses toward its floor (~10) — this
+// is what happened May 8-18 2026. Brave is a different vendor with a separate quota,
+// so it keeps a real talent-pool reading alive when SerpAPI is down. Reuses the proven
+// Brave web-search pattern; host throttling/429 retry is handled in fetchWithRetry.
+async function collectBraveTalentSupply(_date: string): Promise<SignalResult[]> {
+  if (!BRAVE_API_KEY) {
+    console.log('[Brave Talent] No BRAVE_API_KEY, skipping');
+    return [];
+  }
+  console.log('[Brave Talent] Collecting LinkedIn fractional-exec supply proxy...');
+  const results: SignalResult[] = [];
+  const roles = [
+    { phrase: 'fractional CFO', category: 'cfo' },
+    { phrase: 'fractional CMO', category: 'cmo' },
+    { phrase: 'fractional CTO', category: 'cto' },
+    { phrase: 'fractional COO', category: 'coo' },
+  ];
+  let totalProfiles = 0;
+
+  for (const role of roles) {
+    try {
+      const q = `site:linkedin.com/in "${role.phrase}"`;
+      const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(q)}&count=20&result_filter=web`;
+      const response = await fetchWithRetry(url, { headers: { 'X-Subscription-Token': BRAVE_API_KEY } });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      const count = safeNumber(data.web?.totalResults ?? data.web?.results?.length, 0);
+      totalProfiles += count;
+      results.push({
+        source: 'brave_talent', signal_type: 'supply', category: role.category,
+        raw_value: count, normalized_value: normalizeSupplyCount(count),
+        metadata: { query: q, geo: 'us', proxy: 'linkedin_profiles' }, success: true
+      });
+      console.log(`[Brave Talent] "${role.phrase}": ~${count} profiles`);
+    } catch (error) {
+      console.error(`[Brave Talent] ${role.phrase} failed:`, error.message);
+      results.push({
+        source: 'brave_talent', signal_type: 'supply', category: role.category,
+        raw_value: 0, normalized_value: 10, success: false, error: error.message
+      });
+    }
+  }
+
+  if (results.some(r => r.success)) {
+    const scores = results.filter(r => r.success).map(r => r.normalized_value);
+    results.push({
+      source: 'brave_talent', signal_type: 'supply', category: 'aggregate',
+      raw_value: totalProfiles,
+      normalized_value: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
+      metadata: { total_profiles: totalProfiles, proxy: 'linkedin_profiles' }, success: true
+    });
+  }
+  return results;
+}
+
 async function collectGoFractionalSupply(_date: string): Promise<SignalResult> {
   if (!APIFY_API_KEY) {
     return { source: 'gofractional', signal_type: 'supply', category: 'marketplace',
@@ -798,7 +917,9 @@ async function collectGoFractionalSupply(_date: string): Promise<SignalResult> {
     const datasetId = runData.data.defaultDatasetId;
     let status = 'READY';
     let pollCount = 0;
-    while (status !== 'SUCCEEDED' && status !== 'FAILED' && pollCount < 18) {
+    // Capped at 10 polls (~50s) so this Apify scraper cannot push the whole pipeline
+    // past the edge-function wall-clock / pg_cron caller timeout (see orchestrator deadline).
+    while (status !== 'SUCCEEDED' && status !== 'FAILED' && pollCount < 10) {
       await new Promise(resolve => setTimeout(resolve, 5000));
       const sr = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${APIFY_API_KEY}`);
       status = (await sr.json()).data.status;
@@ -934,11 +1055,32 @@ async function collectFredContext(_date: string): Promise<SignalResult[]> {
 
 async function collectCensusACS(_date: string): Promise<SignalResult> {
   console.log('[Census ACS] Collecting self-employment data...');
+  // The Census Data API now requires a key on ALL data queries: keyless requests 302 to
+  // an HTML "missing_key" page that returns 200, which broke response.json() with the
+  // "Unexpected token '<'" error seen since 2026-05-12. Skip cleanly if no key is set.
+  if (!CENSUS_API_KEY) {
+    console.warn('[Census ACS] No CENSUS_API_KEY; the Census API rejects keyless data queries. Skipping.');
+    return { source: 'census_acs', signal_type: 'context', category: 'self_employment',
+      raw_value: 0, normalized_value: 50, success: false, error: 'missing CENSUS_API_KEY' };
+  }
+  const YEAR = '2023';
   try {
-    const url = 'https://api.census.gov/data/2023/acs/acs1?get=B19053_001E,B19053_002E&for=us:1';
-    const response = await fetchWithRetry(url, {}, 2, 10000);
+    // acs5 (5-year) is more reliable than acs1 for an unattended collector.
+    // redirect:'manual' so a bad/missing key surfaces as a 3xx error instead of being
+    // followed to an HTML 200 page that then breaks JSON parsing.
+    const url = `https://api.census.gov/data/${YEAR}/acs/acs5?get=B19053_001E,B19053_002E&for=us:1&key=${CENSUS_API_KEY}`;
+    const response = await fetchWithRetry(url, { redirect: 'manual' }, 2, 10000);
+    if (response.status >= 300 && response.status < 400) {
+      const keyErr = response.headers.get('X-DataWebAPI-KeyError');
+      throw new Error(`Census key rejected (HTTP ${response.status}, X-DataWebAPI-KeyError=${keyErr})`);
+    }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
+    const ct = response.headers.get('content-type') || '';
+    const body = await response.text();
+    if (!ct.includes('json') || body.trimStart().startsWith('<')) {
+      throw new Error(`Non-JSON response from Census (content-type="${ct}", starts "${body.slice(0, 30).replace(/\s+/g, ' ')}")`);
+    }
+    const data = JSON.parse(body);
     const row = data[1];
     const totalHouseholds = safeNumber(row?.[0], 0);
     const selfEmployedHouseholds = safeNumber(row?.[1], 0);
@@ -948,13 +1090,171 @@ async function collectCensusACS(_date: string): Promise<SignalResult> {
       source: 'census_acs', signal_type: 'context', category: 'self_employment',
       raw_value: selfEmployedHouseholds, normalized_value: 50,
       metadata: { total_households: totalHouseholds, self_employed_households: selfEmployedHouseholds,
-        self_employment_pct: pct, year: 2023 },
+        self_employment_pct: pct, year: Number(YEAR), dataset: 'acs5' },
       success: true
     };
   } catch (error) {
     console.error('[Census ACS] Failed:', error.message);
     return { source: 'census_acs', signal_type: 'context', category: 'self_employment',
       raw_value: 0, normalized_value: 50, success: false, error: error.message };
+  }
+}
+
+// ============================================================
+// FREE NATIVE SOURCES (added 2026-05-11)
+// ============================================================
+
+async function collectBLSSignals(_date: string): Promise<SignalResult[]> {
+  console.log('[BLS] Collecting JOLTS + unemployment + wages from public BLS API...');
+  const results: SignalResult[] = [];
+  try {
+    const year = new Date().getUTCFullYear();
+    const response = await fetchWithRetry('https://api.bls.gov/publicAPI/v2/timeseries/data/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        seriesid: BLS_SERIES.map(s => s.id),
+        startyear: String(year - 1),
+        endyear: String(year),
+      }),
+    }, 2, 15000);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (data.status !== 'REQUEST_SUCCEEDED') {
+      throw new Error(`BLS status=${data.status}: ${(data.message || []).join('; ')}`);
+    }
+    for (const seriesDef of BLS_SERIES) {
+      const series = (data.Results?.series || []).find((s: any) => s.seriesID === seriesDef.id);
+      const latest = series?.data?.[0];
+      if (!latest) {
+        results.push({
+          source: 'bls', signal_type: 'context', category: seriesDef.category,
+          raw_value: 0, normalized_value: 50, success: false,
+          error: `No data for ${seriesDef.id}`,
+        });
+        continue;
+      }
+      const value = safeNumber(latest.value, 0);
+      const ratio = value / seriesDef.baseline;
+      const normalized = Math.max(5, Math.min(100, Math.round(50 * ratio)));
+      results.push({
+        source: 'bls', signal_type: 'context', category: seriesDef.category,
+        raw_value: value, normalized_value: normalized,
+        metadata: {
+          series_id: seriesDef.id, series_name: seriesDef.name,
+          period: `${latest.periodName} ${latest.year}`, baseline: seriesDef.baseline,
+        },
+        success: true,
+      });
+      console.log(`[BLS] ${seriesDef.name}: ${value} (${latest.periodName} ${latest.year})`);
+    }
+  } catch (error) {
+    console.error('[BLS] Failed:', error.message);
+    results.push({
+      source: 'bls', signal_type: 'context', category: 'aggregate',
+      raw_value: 0, normalized_value: 50, success: false, error: error.message,
+    });
+  }
+  return results;
+}
+
+async function collectWikipediaPageviews(date: string): Promise<SignalResult> {
+  console.log('[Wikipedia Pageviews] Collecting interest signals from Wikimedia API...');
+  try {
+    const endDate = new Date(date);
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - 7);
+    const fmt = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
+    const startStr = fmt(startDate);
+    const endStr = fmt(endDate);
+    const ua = 'fractionl-pulse/1.0 (https://pulse.fractionl.ai; krishanraja@gmail.com)';
+    const perPage: Record<string, number> = {};
+
+    const fetches = WIKIPEDIA_PAGES.map(async (page) => {
+      try {
+        const url = `https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/all-agents/${page}/daily/${startStr}/${endStr}`;
+        const res = await fetchWithRetry(url, { headers: { 'User-Agent': ua } }, 2, 10000);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const totalViews = (data.items || []).reduce((sum: number, it: any) => sum + safeNumber(it.views, 0), 0);
+        perPage[page] = totalViews;
+      } catch (err) {
+        perPage[page] = 0;
+        console.warn(`[Wikipedia Pageviews] ${page} failed: ${err.message}`);
+      }
+    });
+    await Promise.all(fetches);
+
+    const totalViews = Object.values(perPage).reduce((a, b) => a + b, 0);
+    if (totalViews === 0) throw new Error('No pageviews collected across any article');
+    const avgDaily = totalViews / 7;
+    const normalized = Math.min(100, Math.max(5, Math.round(Math.log10(avgDaily + 1) / Math.log10(2000) * 100)));
+
+    return {
+      source: 'wikipedia_pageviews', signal_type: 'momentum', category: 'wiki_interest',
+      raw_value: Math.round(avgDaily),
+      normalized_value: normalized,
+      metadata: {
+        window_days: 7, total_views_7d: totalViews,
+        pages: WIKIPEDIA_PAGES, per_page: perPage,
+      },
+      success: true,
+    };
+  } catch (error) {
+    console.error('[Wikipedia Pageviews] Failed:', error.message);
+    return {
+      source: 'wikipedia_pageviews', signal_type: 'momentum', category: 'wiki_interest',
+      raw_value: 0, normalized_value: 20, success: false, error: error.message,
+    };
+  }
+}
+
+async function collectOpenAlex(_date: string): Promise<SignalResult> {
+  console.log('[OpenAlex] Collecting academic + thought-leadership coverage...');
+  try {
+    let totalWorks = 0;
+    const perPhrase: Record<string, number> = {};
+    const since = new Date();
+    since.setUTCFullYear(since.getUTCFullYear() - 1);
+    const sinceStr = since.toISOString().slice(0, 10);
+
+    const fetches = OPENALEX_PHRASES.map(async (phrase) => {
+      try {
+        const encoded = encodeURIComponent(phrase);
+        const url = `https://api.openalex.org/works?search=${encoded}&filter=from_publication_date:${sinceStr},concepts.id:C144133560|C162324750|C39389867&per-page=1&mailto=krishanraja@gmail.com`;
+        const res = await fetchWithRetry(url, {}, 2, 10000);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const count = safeNumber(data.meta?.count, 0);
+        perPhrase[phrase] = count;
+        totalWorks += count;
+      } catch (err) {
+        perPhrase[phrase] = 0;
+        console.warn(`[OpenAlex] ${phrase} failed: ${err.message}`);
+      }
+    });
+    await Promise.all(fetches);
+
+    if (totalWorks === 0 && Object.values(perPhrase).every(v => v === 0)) {
+      throw new Error('Zero works across all phrases (likely network or filter mismatch)');
+    }
+    const normalized = Math.min(100, Math.max(10, Math.round(Math.log10(totalWorks + 1) / Math.log10(500) * 100)));
+    return {
+      source: 'openalex', signal_type: 'context', category: 'research_interest',
+      raw_value: totalWorks,
+      normalized_value: normalized,
+      metadata: {
+        window: 'last_12_months', phrases: OPENALEX_PHRASES, per_phrase: perPhrase,
+        concept_filter: 'Business OR Economics OR Management',
+      },
+      success: true,
+    };
+  } catch (error) {
+    console.error('[OpenAlex] Failed:', error.message);
+    return {
+      source: 'openalex', signal_type: 'context', category: 'research_interest',
+      raw_value: 0, normalized_value: 25, success: false, error: error.message,
+    };
   }
 }
 
@@ -977,74 +1277,88 @@ serve(async (req) => {
     .select().single();
 
   try {
-    const [
-      adzunaResults,
-      serpApiJobsResults,
-      edgarResult,
-      serpApiTrendsResult,
-      trendsResult,
-      newsResult,
-      mediastackResult,
-      guardianResult,
-      nytResult,
-      podchaserResult,
-      redditResult,
-      hnResult,
-      braveNewsResult,
-      braveWebResult,
-      pdlResults,
-      serpApiLinkedInResults,
-      goFractionalResult,
-      supplyTrendsResult,
-      serpApiSupplyTrendsResult,
-      fredResults,
-      censusResult
-    ] = await Promise.all([
+    // Retired collectors (2026-05-30): collectGoogleTrendsSignal + collectSupplyTrendsSignal
+    // (Apify, 120s pollers, 100% failing, redundant with the SerpAPI equivalents),
+    // collectPDLSupplySignals (HTTP 404), collectNYTSignal (HTTP 401). Removing them both
+    // ends the failure noise AND keeps total runtime well under the wall-clock limit that
+    // was stranding daily runs as "running". collectBraveTalentSupply added as a
+    // SerpAPI-independent supply backbone.
+    const collectAll = Promise.all([
       collectAdzunaSignals(today),
       collectSerpApiJobsSignals(today),
       collectSecEdgarSignal(today),
       collectSerpApiTrendsSignal(today),
-      collectGoogleTrendsSignal(today),
       collectNewsApiSignal(today),
       collectMediastackSignal(today),
       collectGuardianSignal(today),
-      collectNYTSignal(today),
       collectPodchaserSignal(today),
       collectRedditSignal(today),
       collectHNSignal(today),
       collectBraveNewsSignal(today),
       collectBraveWebMentionsSignal(today),
-      collectPDLSupplySignals(today),
       collectSerpApiLinkedInSupply(today),
+      collectBraveTalentSupply(today),
       collectGoFractionalSupply(today),
-      collectSupplyTrendsSignal(today),
       collectSerpApiSupplyTrends(today),
       collectFredContext(today),
-      collectCensusACS(today)
+      collectCensusACS(today),
+      collectBLSSignals(today),
+      collectWikipediaPageviews(today),
+      collectOpenAlex(today)
     ]);
+
+    // Self-abort below the pg_cron caller timeout so a slow collector can never strand the
+    // run row at status='running' — on timeout we fall to the catch block and mark it 'error'.
+    const COLLECTION_DEADLINE_MS = 75000;
+    const deadline = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('collection deadline exceeded (75s)')), COLLECTION_DEADLINE_MS)
+    );
+    const [
+      adzunaResults,
+      serpApiJobsResults,
+      edgarResult,
+      serpApiTrendsResult,
+      newsResult,
+      mediastackResult,
+      guardianResult,
+      podchaserResult,
+      redditResult,
+      hnResult,
+      braveNewsResult,
+      braveWebResult,
+      serpApiLinkedInResults,
+      braveTalentResults,
+      goFractionalResult,
+      serpApiSupplyTrendsResult,
+      fredResults,
+      censusResult,
+      blsResults,
+      wikipediaPageviewsResult,
+      openAlexResult
+    ] = await Promise.race([collectAll, deadline]) as Awaited<typeof collectAll>;
 
     const allSignals: SignalResult[] = [
       ...adzunaResults,
       ...serpApiJobsResults,
       edgarResult,
       serpApiTrendsResult,
-      trendsResult,
       newsResult,
       mediastackResult,
       guardianResult,
-      nytResult,
       podchaserResult,
       redditResult,
       hnResult,
       braveNewsResult,
       braveWebResult,
-      ...pdlResults,
       ...serpApiLinkedInResults,
+      ...braveTalentResults,
       goFractionalResult,
-      supplyTrendsResult,
       serpApiSupplyTrendsResult,
       ...fredResults,
-      censusResult
+      censusResult,
+      ...blsResults,
+      wikipediaPageviewsResult,
+      openAlexResult
     ];
 
     const successfulSignals = allSignals.filter(s => s.success);
