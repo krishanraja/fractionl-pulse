@@ -25,6 +25,8 @@ export async function startCheckout(plan: 'monthly' | 'annual', fwiScore?: numbe
           utm_source: touch.utm_source ?? '',
           utm_medium: touch.utm_medium ?? '',
           utm_campaign: touch.utm_campaign ?? '',
+          utm_content: touch.utm_content ?? '',
+          utm_term: touch.utm_term ?? '',
           fwi_score: fwiScore ?? '',
         },
       }),
