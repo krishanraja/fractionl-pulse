@@ -99,6 +99,7 @@ serve(async (req) => {
         user_id: userId, anonymous_id: obj.metadata?.anonymous_id, stripe_customer_id: customerId,
         stripe_subscription_id: subId, amount_cents: obj.amount_total, currency: obj.currency || 'usd',
         utm_source: obj.metadata?.utm_source, utm_medium: obj.metadata?.utm_medium, utm_campaign: obj.metadata?.utm_campaign,
+        utm_content: obj.metadata?.utm_content, utm_term: obj.metadata?.utm_term,
         metadata: { price_id: priceId, fwi_score_at_purchase: obj.metadata?.fwi_score_at_purchase },
       });
     } else if (type === 'customer.subscription.updated') {
@@ -126,6 +127,27 @@ serve(async (req) => {
           });
         }
       }
+    } else if (type === 'charge.refunded') {
+      // Refunds carry charge metadata, not our subscription metadata, so resolve
+      // the Pulse attribution from the customer we stamped at checkout.
+      const customerId = obj.customer;
+      const customer = customerId ? await stripeGet(`customers/${customerId}`) : null;
+      if (!customer || !isPulse(customer)) return new Response('ignored (not pulse)', { status: 200 });
+      // Best-effort subscription id from the refunded charge's invoice.
+      let refundSubId = null;
+      if (obj.invoice) {
+        const inv = await stripeGet(`invoices/${obj.invoice}`);
+        refundSubId = inv?.subscription || null;
+      }
+      const cmeta = customer.metadata || {};
+      await emit('refunded', `pulse:refunded:${obj.id}`, {
+        anonymous_id: cmeta.anonymous_id,
+        stripe_customer_id: customerId, stripe_subscription_id: refundSubId,
+        amount_cents: obj.amount_refunded, currency: obj.currency || 'usd',
+        utm_source: cmeta.utm_source, utm_medium: cmeta.utm_medium, utm_campaign: cmeta.utm_campaign,
+        utm_content: cmeta.utm_content, utm_term: cmeta.utm_term,
+        metadata: { fwi_score_at_purchase: cmeta.fwi_score_at_purchase, charge_id: obj.id },
+      });
     }
     return new Response(JSON.stringify({ status: 'ok' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   } catch (err) {

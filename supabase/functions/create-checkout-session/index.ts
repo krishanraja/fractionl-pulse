@@ -34,6 +34,21 @@ async function stripe(path: string, params: Record<string, string>) {
   return j;
 }
 
+async function fetchFwiScore(): Promise<string> {
+  // Best-effort live read of the current FWI from the public read endpoint, so
+  // fwi_score_at_purchase is the real index value at the moment of intent rather
+  // than a number the client supplied. Checkout must never fail because this did.
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/fwi-api/current`);
+    if (!res.ok) return '';
+    const j = await res.json();
+    const overall = j?.score?.overall;
+    return overall === undefined || overall === null ? '' : String(overall);
+  } catch {
+    return '';
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
@@ -57,8 +72,32 @@ serve(async (req) => {
   const price = plan === 'annual' ? PRICE_ANNUAL : PRICE_MONTHLY;
   if (!price) return json({ error: 'price_unavailable' }, 503);
 
+  // Read the FWI live at session creation (client value is only a fallback).
+  const fwiScore = (await fetchFwiScore()) || String(attribution.fwi_score || '');
+
+  // Attribution stamped on every Stripe object so the purchase joins back to the
+  // original landed event by anonymous_id, and Pulse stays separable from Circle.
+  const meta: Record<string, string> = {
+    app: 'pulse',
+    stripe_account: 'fractionl_ai',
+    supabase_user_id: user.id,
+    anonymous_id: String(attribution.anonymous_id || ''),
+    utm_source: String(attribution.utm_source || ''),
+    utm_medium: String(attribution.utm_medium || ''),
+    utm_campaign: String(attribution.utm_campaign || ''),
+    utm_content: String(attribution.utm_content || ''),
+    utm_term: String(attribution.utm_term || ''),
+    fwi_score_at_purchase: fwiScore,
+  };
+  // For the Customer, drop empty values so a repeat checkout never clobbers a
+  // good first-touch value with a blank.
+  const customerMeta: Record<string, string> = Object.fromEntries(
+    Object.entries(meta).filter(([, v]) => v !== ''),
+  );
+
   try {
-    // Find or create the Stripe customer for this user.
+    // Find or create the Stripe customer for this user, stamping attribution
+    // onto the customer in both the create and the reuse path.
     let customerId = '';
     const search = await fetch(`https://api.stripe.com/v1/customers/search?query=${encodeURIComponent(`metadata['supabase_user_id']:'${user.id}'`)}`, {
       headers: { Authorization: `Bearer ${STRIPE_KEY}` },
@@ -66,24 +105,15 @@ serve(async (req) => {
     const found = await search.json();
     if (found?.data?.length) customerId = found.data[0].id;
     if (!customerId) {
-      const cust = await stripe('customers', {
-        email: user.email || '',
-        'metadata[supabase_user_id]': user.id,
-        'metadata[app]': 'pulse',
-      });
+      const createParams: Record<string, string> = { email: user.email || '' };
+      for (const [k, v] of Object.entries(customerMeta)) createParams[`metadata[${k}]`] = v;
+      const cust = await stripe('customers', createParams);
       customerId = cust.id;
+    } else {
+      const updateParams: Record<string, string> = {};
+      for (const [k, v] of Object.entries(customerMeta)) updateParams[`metadata[${k}]`] = v;
+      if (Object.keys(updateParams).length) await stripe(`customers/${customerId}`, updateParams);
     }
-
-    const meta: Record<string, string> = {
-      app: 'pulse',
-      stripe_account: 'fractionl_ai',
-      supabase_user_id: user.id,
-      anonymous_id: String(attribution.anonymous_id || ''),
-      utm_source: String(attribution.utm_source || ''),
-      utm_medium: String(attribution.utm_medium || ''),
-      utm_campaign: String(attribution.utm_campaign || ''),
-      fwi_score_at_purchase: String(attribution.fwi_score || ''),
-    };
 
     const params: Record<string, string> = {
       mode: 'subscription',

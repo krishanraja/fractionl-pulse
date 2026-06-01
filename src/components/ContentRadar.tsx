@@ -3,8 +3,7 @@ import { Radar, TrendingUp, TrendingDown, Sparkles, Copy, Lock, Download, HelpCi
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useContentRadar, type RadarTopic } from '@/hooks/useContentRadar';
-import { useEntitlement } from '@/hooks/useEntitlement';
-import { CHECKOUT_ENABLED } from '@/lib/checkout';
+import { useProGate } from '@/lib/entitlements';
 import { SUPABASE_FUNCTIONS_URL } from '@/lib/supabase';
 import { emitEvent } from '@/lib/attribution';
 import { staggerContainer, fadeInUp } from '@/lib/motion';
@@ -50,8 +49,7 @@ function TopicCard({ t, index }: { t: RadarTopic; index: number }) {
 
 const ContentRadar = () => {
   const { radar, isLoading } = useContentRadar();
-  const { isPro } = useEntitlement();
-  const locked = CHECKOUT_ENABLED && !isPro;
+  const { locked } = useProGate();
 
   if (isLoading) {
     return (

@@ -17,8 +17,7 @@ import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useFWIData } from '@/hooks/useFWIData';
 import { staggerContainer } from '@/lib/motion';
 import { Link } from 'react-router-dom';
-import { useEntitlement } from '@/hooks/useEntitlement';
-import { CHECKOUT_ENABLED } from '@/lib/checkout';
+import { useProGate } from '@/lib/entitlements';
 
 export const getFWILabel = (score: number): { label: string; emoji: string; color: string } => {
   if (score >= 75) return { label: 'Surging', emoji: '🚀', color: 'text-emerald-400' };
@@ -34,7 +33,9 @@ const Index = () => {
   const [askOpen, setAskOpen] = useState(false);
   const { preferences } = useUserPreferences();
   const { data: fwiData, isLoading, refresh } = useFWIData();
-  const { isPro } = useEntitlement();
+  // Single Pro gate: free sees the recent trend, Pro sees the full 12-month
+  // history. Inactive (nothing locked) until self-serve checkout is enabled.
+  const { locked: trendLocked } = useProGate();
 
   const userHasCustomWeights = preferences.weights &&
     (Math.abs(preferences.weights.demand - 0.5) > 0.01 ||
@@ -47,9 +48,6 @@ const Index = () => {
 
   const fwiLabel = getFWILabel(data.today.overall);
 
-  // Pro gate: free sees the recent trend, Pro sees the full 12-month history.
-  // Only active when self-serve checkout is enabled, so default behavior is unchanged.
-  const trendLocked = CHECKOUT_ENABLED && !isPro;
   const trendData = trendLocked
     ? {
         months: data.monthly.months.slice(-5),
@@ -113,7 +111,7 @@ const Index = () => {
       animate="show"
       className="container-width space-y-5 py-5"
     >
-      {/* Hero — the Fractional Working Index title leads the page */}
+      {/* Hero: the Fractional Working Index title leads the page */}
       <HeroSection
         data={data}
         fwiLabel={fwiLabel}
@@ -219,7 +217,7 @@ const Index = () => {
         weights={data.weights}
       />
 
-      {/* Floating "Ask the index" trigger — opens the overlay instead of taking page space.
+      {/* Floating "Ask the index" trigger: opens the overlay instead of taking page space.
           Offset above the mobile bottom nav; sits bottom-right on desktop. */}
       {activeTab === 'dashboard' && (
         <button

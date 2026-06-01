@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Check, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CHECKOUT_ENABLED, startCheckout } from '@/lib/checkout';
+import { useEntitlement } from '@/hooks/useEntitlement';
 
 const TIERS = [
   {
@@ -37,10 +38,21 @@ const TIERS = [
 
 const Pricing = () => {
   const [busy, setBusy] = useState(false);
+  const { isPro } = useEntitlement();
+  // Read Pro pricing live from the product-truth manifest rather than hardcoding
+  // the copy. Falls back to the static tier price if the fetch fails.
+  const [proPriceLive, setProPriceLive] = useState<string | null>(null);
+  useEffect(() => {
+    fetch('/product-truth.json')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (j?.offers?.pro?.price) setProPriceLive(j.offers.pro.price); })
+      .catch(() => { /* keep the static fallback */ });
+  }, []);
 
   const onCta = async (tier: (typeof TIERS)[number]) => {
     if (tier.name === 'Enterprise') { window.location.href = 'mailto:data@fractionl.ai?subject=Pulse%20Enterprise'; return; }
     if (!tier.plan) return;
+    if (isPro) return; // already entitled: pass through, nothing to buy
     if (!CHECKOUT_ENABLED) { window.location.href = '/login'; return; } // waitlist until checkout is on
     setBusy(true);
     await startCheckout(tier.plan);
@@ -78,8 +90,14 @@ const Pricing = () => {
               )}
               <h2 className="text-base font-semibold text-foreground">{tier.name}</h2>
               <div className="mt-1.5 mb-4">
-                <span className="text-2xl font-bold text-foreground">{tier.price}</span>
-                <span className="text-xs text-muted-foreground">{tier.cadence}</span>
+                {tier.name === 'Pro' && proPriceLive ? (
+                  <span className="text-lg font-bold text-foreground">{proPriceLive}</span>
+                ) : (
+                  <>
+                    <span className="text-2xl font-bold text-foreground">{tier.price}</span>
+                    <span className="text-xs text-muted-foreground">{tier.cadence}</span>
+                  </>
+                )}
               </div>
               <ul className="space-y-2 flex-1">
                 {tier.features.map((f) => (
@@ -90,11 +108,17 @@ const Pricing = () => {
               </ul>
               <Button
                 onClick={() => onCta(tier)}
-                disabled={busy || tier.name === 'Free'}
+                disabled={busy || tier.name === 'Free' || (isPro && !!tier.plan)}
                 variant={tier.highlight ? 'default' : 'outline'}
                 className="w-full mt-5"
               >
-                {tier.name === 'Free' ? 'Current plan' : !CHECKOUT_ENABLED && tier.plan ? 'Join the waitlist' : tier.cta}
+                {tier.name === 'Free'
+                  ? 'Current plan'
+                  : isPro && tier.plan
+                    ? 'Current plan'
+                    : !CHECKOUT_ENABLED && tier.plan
+                      ? 'Join the waitlist'
+                      : tier.cta}
               </Button>
             </motion.div>
           ))}
