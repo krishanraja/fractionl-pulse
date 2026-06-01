@@ -13,9 +13,11 @@
 //
 // React (createRoot) only owns #root, so the <head> JSON-LD and the <noscript>
 // block are never touched at runtime and there is no duplicate visible content.
-// Re-run on every deploy (the daily cron triggers a redeploy) to keep the baked
-// number fresh. Fully graceful: if the API is unreachable at build time we fall
-// back to static (number-free) JSON-LD so the build never fails.
+// Runs on every deploy; the baked number is also refreshed daily by the Supabase
+// pg_cron job `pulse-daily-redeploy` (supabase/migrations/009_redeploy_cron.sql),
+// which pings the Vercel deploy hook at 06:40 UTC after the daily ingest. Fully
+// graceful: if the API is unreachable at build time we fall back to static
+// (number-free) JSON-LD so the build never fails.
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
