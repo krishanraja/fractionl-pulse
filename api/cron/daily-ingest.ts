@@ -3,6 +3,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const CRON_SECRET = process.env.CRON_SECRET || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+// Optional Vercel Deploy Hook URL. When set, a successful daily ingest fires a
+// rebuild so scripts/prerender.mjs re-bakes the fresh FWI number into the static
+// HTML daily (not only on code deploys). No-ops when unset.
+const VERCEL_DEPLOY_HOOK_URL = process.env.VERCEL_DEPLOY_HOOK_URL || '';
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 5000;
@@ -61,6 +65,23 @@ async function sendAlert(
   }
 }
 
+// Pings the Vercel Deploy Hook (if configured) to trigger a production rebuild,
+// which re-runs scripts/prerender.mjs and re-bakes the current FWI number into
+// the static HTML. The hook URL is itself the secret, so no extra auth headers.
+// Best-effort: failures are surfaced but never fail the cron run.
+async function triggerDeployHook(): Promise<{ triggered: boolean; ok?: boolean; error?: string }> {
+  if (!VERCEL_DEPLOY_HOOK_URL) {
+    return { triggered: false };
+  }
+  const res = await callWithRetry(
+    VERCEL_DEPLOY_HOOK_URL,
+    { 'Content-Type': 'application/json' },
+    'vercel-deploy-hook',
+    1,
+  );
+  return { triggered: true, ok: res.ok, error: res.error };
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const authHeader = req.headers['authorization'];
   if (authHeader !== `Bearer ${CRON_SECRET}` && !req.headers['x-vercel-cron']) {
@@ -89,6 +110,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
   }
 
+  // Refresh the build-time prerendered FWI number by triggering a Vercel rebuild.
+  // Only when ingest succeeded (a failed run would re-bake a stale/identical number);
+  // no-ops unless VERCEL_DEPLOY_HOOK_URL is set.
+  let deploy: { triggered: boolean; ok?: boolean; error?: string } = { triggered: false };
+  if (ingest.ok) {
+    deploy = await triggerDeployHook();
+  }
+
   // Record the pipeline run result for health monitoring
   try {
     await fetch(`${SUPABASE_URL}/rest/v1/pipeline_runs`, {
@@ -111,6 +140,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ingest_attempts: ingest.attempts,
           insights_generated: insights.ok,
           insights_attempts: insights.attempts,
+          deploy_triggered: deploy.triggered,
+          deploy_ok: deploy.ok ?? null,
         },
       }),
     });
@@ -136,6 +167,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
+  // Independent of the insights outcome: warn if the deploy hook was configured
+  // but did not fire, since the prerendered FWI number will stay stale until the
+  // next code deploy.
+  if (deploy.triggered && deploy.ok === false) {
+    await sendAlert('warning', `Deploy hook failed for ${today}`, {
+      'Date': today,
+      'Detail': 'Daily ingest succeeded but the Vercel deploy hook did not fire; the prerendered FWI number may stay stale until the next code deploy.',
+      'Error': deploy.error || 'Unknown',
+    });
+  }
+
   const status = ingest.ok ? 200 : 500;
   return res.status(status).json({
     success: ingest.ok,
@@ -151,6 +193,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     insights: {
       ok: insights.ok,
       attempts: insights.attempts,
+    },
+    deploy: {
+      triggered: deploy.triggered,
+      ok: deploy.ok,
     },
     triggered_at: new Date().toISOString(),
   });
