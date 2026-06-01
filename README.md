@@ -70,7 +70,7 @@ Full ICP, outcomes, objection handling, and outbound hooks are in [`docs/SALES_P
 - **Weekly market intelligence brief** as Markdown export (`/export-brief`) for press, newsletters, agents
 - **Live dashboard** at `pulse.fractionl.ai` (live dashboard, weekly index) built on React Query + Supabase subscriptions
 - **About 12 weeks of backfilled history** (and accumulating weekly) for trendlines
-- **Daily Vercel cron** (06:00 UTC) + redundant weekly Monday cron, with retry logic and Resend email alerts on failure; optionally pings a Vercel Deploy Hook to re-bake the prerendered FWI number daily
+- **Daily Vercel cron** (06:00 UTC) + redundant weekly Monday cron, with retry logic and Resend email alerts on failure
 - **Per-source health monitoring** surfaced in the dashboard
 - **Waitlist & auth system** powered by Supabase Auth
 
@@ -265,7 +265,6 @@ npm run dev
 |-----|---------|
 | `SUPABASE_SERVICE_ROLE_KEY` | Authenticates cron trigger to Supabase |
 | `CRON_SECRET` | Verifies Vercel Cron requests |
-| `VERCEL_DEPLOY_HOOK_URL` | Optional. Deploy Hook the daily cron pings after a successful ingest to re-bake the prerendered FWI number daily (Project Settings → Git → Deploy Hooks). Unset = disabled. |
 
 ---
 
