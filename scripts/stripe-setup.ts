@@ -5,10 +5,12 @@
  * annual 94800), idempotently: each price is looked up by a stable lookup_key
  * before anything is created, so re-running is safe and never duplicates.
  * Every object is stamped app=pulse + stripe_account=fractionl_ai so Pulse
- * revenue stays separable from Circle on the shared account.
+ * revenue stays separable from Circle on the shared account. Re-running also
+ * reconciles that metadata onto objects created by an earlier version.
  *
  * Run: PULSE_STRIPE_SECRET_KEY=sk_test_... npx tsx scripts/stripe-setup.ts
- * (Use a TEST key first to verify, then a live key for production.)
+ * (Use a TEST key first to verify, then a live key for production. Note that
+ * test-mode and live-mode produce different price IDs.)
  *
  * Prints the resulting price IDs and the exact `supabase secrets set` command
  * to wire them into the create-checkout-session function. The secret key is
@@ -17,7 +19,12 @@
 
 const STRIPE_KEY = process.env.PULSE_STRIPE_SECRET_KEY || '';
 
-const PRODUCT_LOOKUP = { app: 'pulse', stripe_account: 'fractionl_ai', pulse_product: 'pro' };
+// The stable separability triple stamped onto every object Pulse creates.
+const PULSE_META: Record<string, string> = {
+  app: 'pulse',
+  stripe_account: 'fractionl_ai',
+  pulse_product: 'pro',
+};
 const MONTHLY_LOOKUP_KEY = 'pulse_pro_monthly';
 const ANNUAL_LOOKUP_KEY = 'pulse_pro_annual';
 const MONTHLY_AMOUNT = 9900; // 99 USD / month
@@ -25,6 +32,8 @@ const ANNUAL_AMOUNT = 94800; // 79 USD / month billed annually = 948 USD / year
 
 interface StripeObject {
   id: string;
+  metadata?: Record<string, string>;
+  product?: StripeObject;
   [key: string]: unknown;
 }
 
@@ -65,36 +74,36 @@ async function findPriceByLookupKey(lookupKey: string): Promise<StripeObject | n
   return body?.data?.length ? (body.data[0] as StripeObject) : null;
 }
 
-async function findOrCreateProduct(): Promise<StripeObject> {
-  // Products have no lookup_key, so match on our stable metadata triple.
-  const query = `metadata['app']:'${PRODUCT_LOOKUP.app}' AND metadata['pulse_product']:'${PRODUCT_LOOKUP.pulse_product}'`;
-  const found = await stripeGet(`products/search?query=${encodeURIComponent(query)}&limit=1`);
-  if (found?.data?.length) {
-    console.log(`Reusing existing product ${found.data[0].id}`);
-    return found.data[0] as StripeObject;
-  }
+// Add any missing separability metadata to an existing object. A no-op when the
+// object already carries the full triple (as freshly created ones do).
+async function reconcileMetadata(resource: 'products' | 'prices', obj: StripeObject): Promise<void> {
+  const current = obj.metadata || {};
+  const missing = Object.entries(PULSE_META).filter(([k, v]) => current[k] !== v);
+  if (!missing.length) return;
+  const params: Record<string, string> = {};
+  for (const [k, v] of missing) params[`metadata[${k}]`] = v;
+  await stripePost(`${resource}/${obj.id}`, params);
+  console.log(`Reconciled metadata on ${obj.id}: ${missing.map(([k]) => k).join(', ')}`);
+}
+
+async function createProduct(): Promise<StripeObject> {
   const product = await stripePost('products', {
     name: 'Pulse Pro',
     description: 'Pulse Pro: full sub-index breakdown, 12-month history, all signals, AI insight cards, custom weight tuning, and brief export.',
-    'metadata[app]': PRODUCT_LOOKUP.app,
-    'metadata[stripe_account]': PRODUCT_LOOKUP.stripe_account,
-    'metadata[pulse_product]': PRODUCT_LOOKUP.pulse_product,
+    'metadata[app]': PULSE_META.app,
+    'metadata[stripe_account]': PULSE_META.stripe_account,
+    'metadata[pulse_product]': PULSE_META.pulse_product,
   });
   console.log(`Created product ${product.id}`);
   return product;
 }
 
-async function ensurePrice(
+async function createPrice(
   lookupKey: string,
   unitAmount: number,
   interval: 'month' | 'year',
   productId: string,
 ): Promise<StripeObject> {
-  const existing = await findPriceByLookupKey(lookupKey);
-  if (existing) {
-    console.log(`Reusing existing price ${existing.id} (${lookupKey})`);
-    return existing;
-  }
   const price = await stripePost('prices', {
     product: productId,
     currency: 'usd',
@@ -102,9 +111,9 @@ async function ensurePrice(
     'recurring[interval]': interval,
     lookup_key: lookupKey,
     nickname: lookupKey === MONTHLY_LOOKUP_KEY ? 'Pulse Pro Monthly' : 'Pulse Pro Annual',
-    'metadata[app]': 'pulse',
-    'metadata[stripe_account]': 'fractionl_ai',
-    'metadata[pulse_product]': 'pro',
+    'metadata[app]': PULSE_META.app,
+    'metadata[stripe_account]': PULSE_META.stripe_account,
+    'metadata[pulse_product]': PULSE_META.pulse_product,
   });
   console.log(`Created price ${price.id} (${lookupKey}, ${unitAmount} usd / ${interval})`);
   return price;
@@ -116,26 +125,32 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Short-circuit on the prices themselves: if both already exist we never touch
-  // the product, so a successful run is fully idempotent on re-run.
+  // Look up by lookup_key first so a re-run reuses rather than duplicates.
   const existingMonthly = await findPriceByLookupKey(MONTHLY_LOOKUP_KEY);
   const existingAnnual = await findPriceByLookupKey(ANNUAL_LOOKUP_KEY);
 
-  let productId =
-    (existingMonthly?.product as StripeObject | undefined)?.id ||
-    (existingAnnual?.product as StripeObject | undefined)?.id ||
-    '';
-  if (!productId) {
-    productId = (await findOrCreateProduct()).id;
+  // Reuse the product the existing prices already point at, else create one.
+  let product =
+    (existingMonthly?.product as StripeObject | undefined) ||
+    (existingAnnual?.product as StripeObject | undefined) ||
+    null;
+  if (product) {
+    console.log(`Reusing product ${product.id} from an existing price`);
   } else {
-    console.log(`Reusing product ${productId} from an existing price`);
+    product = await createProduct();
   }
+  await reconcileMetadata('products', product);
 
-  const monthly = existingMonthly || (await ensurePrice(MONTHLY_LOOKUP_KEY, MONTHLY_AMOUNT, 'month', productId));
-  const annual = existingAnnual || (await ensurePrice(ANNUAL_LOOKUP_KEY, ANNUAL_AMOUNT, 'year', productId));
+  const monthly = existingMonthly || (await createPrice(MONTHLY_LOOKUP_KEY, MONTHLY_AMOUNT, 'month', product.id));
+  if (existingMonthly) console.log(`Reusing existing price ${monthly.id} (${MONTHLY_LOOKUP_KEY})`);
+  await reconcileMetadata('prices', monthly);
+
+  const annual = existingAnnual || (await createPrice(ANNUAL_LOOKUP_KEY, ANNUAL_AMOUNT, 'year', product.id));
+  if (existingAnnual) console.log(`Reusing existing price ${annual.id} (${ANNUAL_LOOKUP_KEY})`);
+  await reconcileMetadata('prices', annual);
 
   console.log('\n==================== Pulse Pro pricing ready ====================');
-  console.log(`Product            : ${productId}`);
+  console.log(`Product            : ${product.id}`);
   console.log(`Monthly price id   : ${monthly.id}  (${MONTHLY_AMOUNT} usd / month)`);
   console.log(`Annual price id    : ${annual.id}  (${ANNUAL_AMOUNT} usd / year)`);
   console.log('\nSet these as Supabase secrets for create-checkout-session:');
