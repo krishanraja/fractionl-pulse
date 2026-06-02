@@ -1453,7 +1453,20 @@ serve(async (req) => {
     const rejected = successfulSignals.length - validatedSignals.length;
     if (rejected > 0) console.log(`[Anomaly Guard] Rejected ${rejected} outlier signal(s)`);
 
-    const signalRecords = validatedSignals.map(signal => ({
+    // Defensive layer: never persist a supply reading that measured nothing (raw_value 0).
+    // A collector can return HTTP 200 with an empty body (success === true) yet contain no
+    // profiles/listings; that is the soft-failure that floored the talent-availability index.
+    // calculate-fwi also excludes these, but dropping them here keeps the signals table clean
+    // so an empty reading can never influence the supply average.
+    const cleanedSignals = validatedSignals.filter(signal => {
+      if (signal.signal_type === 'supply' && (signal.raw_value == null || signal.raw_value <= 0)) {
+        console.log(`[Persist] dropping empty supply signal ${signal.source}/${signal.category} (raw_value=${signal.raw_value})`);
+        return false;
+      }
+      return true;
+    });
+
+    const signalRecords = cleanedSignals.map(signal => ({
       date: today, source: signal.source, signal_type: signal.signal_type,
       category: signal.category, normalized_value: signal.normalized_value,
       raw_value: signal.raw_value, metadata: signal.metadata || {}

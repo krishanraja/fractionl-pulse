@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Chart, registerables } from 'chart.js';
+import 'chartjs-adapter-date-fns';
 import { useMediaQuery } from '@/hooks/use-mobile';
 
 Chart.register(...registerables);
@@ -7,12 +8,18 @@ Chart.register(...registerables);
 interface TrendlineChartProps {
   data: {
     months: string[];
+    /** Full ISO dates for a real time axis; falls back to months if absent. */
+    dates?: string[];
+    /** Per-point pipeline confidence (0-1) for honest low-confidence styling. */
+    confidence?: number[];
     overall: number[];
     demand: number[];
-    supply: number[];
+    supply: (number | null)[];
     culture: number[];
   };
 }
+
+const LOW_CONFIDENCE = 0.6;
 
 const TrendlineChart = ({ data }: TrendlineChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -34,36 +41,54 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
     const mainHover = isMobile ? 5 : 7;
     const subHover = isMobile ? 4 : 5;
 
+    // Real ISO dates so irregular reading cadence (daily vs weekly) is drawn to scale
+    // on a time axis, instead of forcing every point to equal width and mislabelling
+    // daily data as months.
+    const iso = data.dates && data.dates.length === data.overall.length
+      ? data.dates
+      : data.months.map(m => `${m}-01`);
+    const conf = data.confidence ?? [];
+    const isLowConf = (i: number) => conf.length === iso.length && conf[i] < LOW_CONFIDENCE;
+    // {x: ISO date, y} points for the time scale. Typed as any[] because Chart.js's default
+    // point type expects a numeric x, while the time scale parses ISO-string x at runtime.
+    const toPoints = (series: (number | null)[]): any[] =>
+      iso.map((d, i) => ({ x: d, y: series[i] ?? null }));
+
     chartRef.current = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: data.months.map(month => {
-          const date = new Date(month + '-01');
-          return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
-        }),
         datasets: [
           {
             label: 'Overall FWI',
-            data: data.overall,
+            data: toPoints(data.overall),
             borderColor: '#7C3AED',
             backgroundColor: 'rgba(124, 58, 237, 0.08)',
             borderWidth: isMobile ? 2.5 : 3,
             fill: true,
-            tension: 0.35,
-            pointBackgroundColor: '#7C3AED',
-            pointBorderColor: '#FFFFFF',
+            tension: 0.15,
+            // Hollow + smaller markers on low-confidence readings so a shaky day
+            // reads as shaky rather than authoritative.
+            pointBackgroundColor: (c) => (isLowConf(c.dataIndex) ? '#FFFFFF' : '#7C3AED'),
+            pointBorderColor: '#7C3AED',
             pointBorderWidth: isMobile ? 1.5 : 2,
-            pointRadius: mainPt,
+            pointRadius: (c) => (isLowConf(c.dataIndex) ? mainPt - 1.5 : mainPt),
             pointHoverRadius: mainHover,
+            // Dim + dash the connecting segment when either endpoint is low-confidence.
+            segment: {
+              borderColor: (s) =>
+                isLowConf(s.p0DataIndex) || isLowConf(s.p1DataIndex) ? 'rgba(124,58,237,0.35)' : undefined,
+              borderDash: (s) =>
+                isLowConf(s.p0DataIndex) || isLowConf(s.p1DataIndex) ? [4, 4] : undefined,
+            },
           },
           {
-            label: 'Demand',
-            data: data.demand,
+            label: 'Hiring activity',
+            data: toPoints(data.demand),
             borderColor: '#3B82F6',
             backgroundColor: 'transparent',
             borderWidth: isMobile ? 1.5 : 2,
             fill: false,
-            tension: 0.35,
+            tension: 0.15,
             pointBackgroundColor: '#3B82F6',
             pointBorderColor: '#FFFFFF',
             pointBorderWidth: 1,
@@ -71,13 +96,16 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
             pointHoverRadius: subHover,
           },
           {
-            label: 'Supply',
-            data: data.supply,
+            label: 'Talent availability',
+            data: toPoints(data.supply),
             borderColor: '#8B5CF6',
             backgroundColor: 'transparent',
             borderWidth: isMobile ? 1.5 : 2,
             fill: false,
-            tension: 0.35,
+            tension: 0.15,
+            // Never bridge a gap: an unmeasured day stays a break in the line, not a
+            // straight slide between two distant readings.
+            spanGaps: false,
             pointBackgroundColor: '#8B5CF6',
             pointBorderColor: '#FFFFFF',
             pointBorderWidth: 1,
@@ -86,13 +114,13 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
             borderDash: [4, 4],
           },
           {
-            label: 'Culture',
-            data: data.culture,
+            label: 'Market buzz',
+            data: toPoints(data.culture),
             borderColor: '#10B981',
             backgroundColor: 'transparent',
             borderWidth: isMobile ? 1.5 : 2,
             fill: false,
-            tension: 0.35,
+            tension: 0.15,
             pointBackgroundColor: '#10B981',
             pointBorderColor: '#FFFFFF',
             pointBorderWidth: 1,
@@ -134,9 +162,8 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
             bodyFont: { size: 12, family: 'Inter' },
             callbacks: {
               title: (context) => {
-                const monthIndex = context[0].dataIndex;
-                const date = new Date(data.months[monthIndex] + '-01');
-                return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                const ts = context[0].parsed.x;
+                return new Date(ts).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
               },
               label: (context) => `  ${context.dataset.label}: ${context.parsed.y.toFixed(1)}`
             }
@@ -144,6 +171,11 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
         },
         scales: {
           x: {
+            type: 'time',
+            time: {
+              tooltipFormat: 'MMM d, yyyy',
+              displayFormats: { day: 'MMM d', week: 'MMM d', month: "MMM ''yy" },
+            },
             grid: {
               display: true,
               color: 'rgba(148, 163, 184, 0.08)',
@@ -152,6 +184,8 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
               font: { size: isMobile ? 10 : 11, family: 'Inter' },
               color: '#94a3b8',
               maxRotation: isMobile ? 45 : 0,
+              autoSkip: true,
+              maxTicksLimit: isMobile ? 5 : 8,
             },
             border: { display: false },
           },

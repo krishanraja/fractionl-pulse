@@ -119,7 +119,17 @@ serve(async (req) => {
       }
 
       if (signalsByType[type]) {
-        signalsByType[type].push(value);
+        // Supply readings only count when something was actually measured. A source that
+        // returns zero profiles/listings (raw_value 0) — e.g. an API that responded 200 but
+        // empty, or a degraded day — carries no information and must not drag the
+        // talent-availability average toward an artificial floor (this is what produced the
+        // flat "10.00" supply stretch). Such empties are excluded so the day reads as
+        // unmeasured (null) rather than a fake crash.
+        if (type === 'supply' && (signal.raw_value == null || signal.raw_value <= 0)) {
+          console.log(`[FWI] excluding empty supply signal ${signal.source}/${signal.category} (raw_value=${signal.raw_value})`);
+        } else {
+          signalsByType[type].push(value);
+        }
       }
 
       detailedSignals[`${signal.source}_${signal.category}`] = {
@@ -134,16 +144,23 @@ serve(async (req) => {
       console.log(`[FWI] ${signal.source}/${signal.category} (${type}): ${value}`);
     }
 
-    // Calculate type averages
-    const avgScore = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 50;
-    
-    const demandScore = Math.round(avgScore(signalsByType.demand) * 10) / 10;
-    const supplyScore = Math.round(avgScore(signalsByType.supply) * 10) / 10;
-    const momentumScore = Math.round(avgScore(signalsByType.momentum) * 10) / 10;
+    // Calculate type averages. Returns null for an empty component instead of a magic
+    // baseline — a missing reading must never be silently filled with 50 (or 0), because
+    // that fabricates a data point the dashboard would render as real.
+    const mean = (arr: number[]): number | null =>
+      arr.length ? Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 10) / 10 : null;
 
-    // If no supply signals exist, redistribute supply weight proportionally to demand and culture
-    const hasSupplyData = signalsByType.supply.length > 0;
-    const finalSupplyScore = hasSupplyData ? supplyScore : 0;
+    // Demand and culture are broad, redundant source stacks — effectively always present.
+    // (ingest-signals already refuses to publish a day with < 2 successful sources.)
+    const demandScore = mean(signalsByType.demand) ?? 0;
+    const momentumScore = mean(signalsByType.momentum) ?? 0;
+
+    // Supply is the fragile sub-index. With no valid supply signal the day is genuinely
+    // unmeasured → supply_score is NULL (not 0, not 50). The weight is redistributed so the
+    // overall score stays honest, and the chart shows a gap rather than a phantom crash.
+    const supplyScore = mean(signalsByType.supply);
+    const hasSupplyData = supplyScore != null;
+    const finalSupplyScore: number | null = supplyScore;
 
     let effectiveWeights = { ...WEIGHTS };
     if (!hasSupplyData) {
@@ -159,7 +176,7 @@ serve(async (req) => {
     // Calculate composite FWI score
     const overallScore = Math.round(
       (demandScore * effectiveWeights.demand +
-       finalSupplyScore * effectiveWeights.supply +
+       (finalSupplyScore ?? 0) * effectiveWeights.supply +
        momentumScore * effectiveWeights.culture) * 10
     ) / 10;
 
@@ -196,6 +213,12 @@ serve(async (req) => {
         signals_used: signals.length,
         sources: Array.from(new Set(signals.map(s => s.source))),
         has_supply_data: hasSupplyData,
+        data_quality: {
+          supply: hasSupplyData ? 'measured' : 'unmeasured',
+          supply_signal_count: signalsByType.supply.length,
+          demand_signal_count: signalsByType.demand.length,
+          culture_signal_count: signalsByType.momentum.length,
+        },
         display_weights: WEIGHTS,
         methodology: 'Job postings + SEC filings + search trends + news coverage',
         prior_week: priorWeek ? {
@@ -334,7 +357,7 @@ serve(async (req) => {
         supply: {
           sources: signals.filter(s => s.signal_type === 'supply').map(s => `${s.source}/${s.category}`),
           average: finalSupplyScore,
-          note: finalSupplyScore === 50 ? 'Using baseline - direct supply data pending' : null
+          note: hasSupplyData ? null : 'No reliable supply reading — talent availability omitted (null) and its weight redistributed'
         },
         culture: {
           sources: signals.filter(s => s.signal_type === 'momentum').map(s => `${s.source}/${s.category}`),

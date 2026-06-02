@@ -51,6 +51,8 @@ const Index = () => {
   const trendData = trendLocked
     ? {
         months: data.monthly.months.slice(-5),
+        dates: data.monthly.dates.slice(-5),
+        confidence: data.monthly.confidence.slice(-5),
         overall: data.monthly.overall.slice(-5),
         demand: data.monthly.demand.slice(-5),
         supply: data.monthly.supply.slice(-5),

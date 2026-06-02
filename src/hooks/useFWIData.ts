@@ -19,9 +19,11 @@ const BASELINE: FWIData = {
   weights: { demand: 0.5, supply: 0.2, culture: 0.3 },
   monthly: {
     months: trailingMonths(12),
+    dates: trailingMonths(12).map(m => `${m}-01`),
+    confidence: [0,0,0,0,0,0,0,0,0,0,0,0],
     overall: [0,0,0,0,0,0,0,0,0,0,0,0],
     demand:  [0,0,0,0,0,0,0,0,0,0,0,0],
-    supply:  [0,0,0,0,0,0,0,0,0,0,0,0],
+    supply:  [null,null,null,null,null,null,null,null,null,null,null,null],
     culture: [0,0,0,0,0,0,0,0,0,0,0,0],
   },
   today: {
@@ -98,7 +100,7 @@ interface FWIResult {
 async function fetchFWIData(): Promise<FWIResult> {
   const { data: scoresDesc, error: scoreError } = await supabase
     .from('fwi_scores')
-    .select('date, overall_score, demand_score, supply_score, momentum_score, weights, metadata')
+    .select('date, overall_score, demand_score, supply_score, momentum_score, weights, confidence, metadata')
     .order('date', { ascending: false })
     .limit(26);
 
@@ -123,7 +125,9 @@ async function fetchFWIData(): Promise<FWIResult> {
     .order('change_pct', { ascending: false })
     .limit(5);
 
-  const hasRealSupply = scores.some(s => (s.metadata as any)?.has_supply_data === true);
+  // A non-null supply_score is now the source of truth for "we have a real reading"
+  // (placeholder/floor values were nulled out in cleanup and are never written going forward).
+  const hasRealSupply = scores.some(s => s.supply_score != null);
 
   const latest = scores[scores.length - 1];
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -147,9 +151,12 @@ async function fetchFWIData(): Promise<FWIResult> {
     },
     monthly: {
       months: scores.map(s => s.date.slice(0, 7)),
+      dates: scores.map(s => s.date),
+      confidence: scores.map(s => typeof s.confidence === 'number' ? s.confidence : 0),
       overall: scores.map(s => Math.round(s.overall_score * 10) / 10),
       demand:  scores.map(s => Math.round(s.demand_score * 10) / 10),
-      supply:  scores.map(s => Math.round(s.supply_score * 10) / 10),
+      // null supply_score = unmeasured → kept as null so the chart shows a gap, not a crash to 0.
+      supply:  scores.map(s => s.supply_score == null ? null : Math.round(s.supply_score * 10) / 10),
       culture: scores.map(s => Math.round(s.momentum_score * 10) / 10),
     },
     today: {
@@ -160,8 +167,11 @@ async function fetchFWIData(): Promise<FWIResult> {
         delta30d: prev && !prevIsRecent ? roundDelta(latest.demand_score, prev.demand_score) : 0,
       },
       supply: {
-        score: Math.round(latest.supply_score * 10) / 10,
-        delta30d: prev && !prevIsRecent ? roundDelta(latest.supply_score, prev.supply_score) : 0,
+        score: latest.supply_score == null ? null : Math.round(latest.supply_score * 10) / 10,
+        // delta only meaningful when both endpoints are real readings.
+        delta30d: prev && !prevIsRecent && latest.supply_score != null && prev.supply_score != null
+          ? roundDelta(latest.supply_score, prev.supply_score)
+          : 0,
       },
       culture: {
         score: Math.round(latest.momentum_score * 10) / 10,

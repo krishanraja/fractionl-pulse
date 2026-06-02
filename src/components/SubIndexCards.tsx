@@ -117,14 +117,18 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
             {/* Score + delta row */}
             <div className="flex items-end justify-between mb-1">
               <div className="score-medium text-foreground">
-                {index.score}
+                {index.score == null ? <span className="text-muted-foreground/60">—</span> : index.score}
               </div>
-              <div className={`flex items-center gap-1 text-sm font-bold tabular-nums ${
-                isPositive ? 'stat-up' : 'stat-down'
-              }`}>
-                {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                {isPositive ? '+' : ''}{index.delta.toFixed(1)}
-              </div>
+              {index.score == null ? (
+                <div className="text-[11px] font-medium text-muted-foreground/70">No reliable reading</div>
+              ) : (
+                <div className={`flex items-center gap-1 text-sm font-bold tabular-nums ${
+                  isPositive ? 'stat-up' : 'stat-down'
+                }`}>
+                  {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                  {isPositive ? '+' : ''}{index.delta.toFixed(1)}
+                </div>
+              )}
             </div>
 
             {/* Raw context from live signals */}

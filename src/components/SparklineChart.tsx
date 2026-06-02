@@ -4,7 +4,7 @@ import { Chart, registerables } from 'chart.js';
 Chart.register(...registerables);
 
 interface SparklineChartProps {
-  data: number[];
+  data: (number | null)[];
   months: string[];
   color: string;
   /** Optional shared y-domain so multiple sparklines are comparable on one scale. */
@@ -43,7 +43,9 @@ const SparklineChart = ({ data, months, color, yMin, yMax }: SparklineChartProps
           backgroundColor: `${colorMap[color] || '#6C40FF'}20`,
           borderWidth: 2,
           fill: true,
-          tension: 0.4,
+          tension: 0.3,
+          // Unmeasured points (null) stay gaps rather than being bridged into a fake slope.
+          spanGaps: false,
           pointRadius: 0,
           pointHoverRadius: 4,
         }]

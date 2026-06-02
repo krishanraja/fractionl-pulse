@@ -18,9 +18,15 @@ export interface FWIData {
 
 export interface MonthlyData {
   months: string[];
+  /** Full ISO dates (yyyy-MM-dd) aligned to every series, so charts can plot on a
+   *  real time axis instead of treating irregular readings as evenly-spaced months. */
+  dates: string[];
+  /** Per-reading pipeline confidence (0-1), aligned to the series, for honest styling. */
+  confidence: number[];
   overall: number[];
   demand: number[];
-  supply: number[];
+  /** null = talent availability was not reliably measured that day (gap, not a crash). */
+  supply: (number | null)[];
   culture: number[];
 }
 
@@ -28,7 +34,8 @@ export interface TodayData {
   overall: number;
   delta30d: number;
   demand: { score: number; delta30d: number };
-  supply: { score: number; delta30d: number };
+  /** score is null when supply has no reliable reading; delta30d is 0 in that case. */
+  supply: { score: number | null; delta30d: number };
   culture: { score: number; delta30d: number };
 }
 
@@ -68,9 +75,18 @@ export function calcComposite(
   data: TodayData, 
   weights: { demand: number; supply: number; culture: number }
 ): number {
+  // When supply has no reliable reading, redistribute its weight across the
+  // measured components so the composite reflects only real data (never a 0/50 stand-in).
+  const hasSupply = data.supply.score != null;
+  const w = hasSupply
+    ? weights
+    : (() => {
+        const remaining = weights.demand + weights.culture;
+        return { demand: weights.demand / remaining, supply: 0, culture: weights.culture / remaining };
+      })();
   return Math.round(
-    ((data.demand.score * weights.demand) + 
-     (data.supply.score * weights.supply) + 
-     (data.culture.score * weights.culture)) * 10
+    ((data.demand.score * w.demand) +
+     ((data.supply.score ?? 0) * w.supply) +
+     (data.culture.score * w.culture)) * 10
   ) / 10;
 }
