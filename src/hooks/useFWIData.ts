@@ -129,6 +129,24 @@ async function fetchFWIData(): Promise<FWIResult> {
   // (placeholder/floor values were nulled out in cleanup and are never written going forward).
   const hasRealSupply = scores.some(s => s.supply_score != null);
 
+  // Frame the *charted* series to the most recent unbroken run of real talent-supply
+  // readings. The supply sources have stretches where nothing was collected
+  // (supply_score = null); rather than bridge those gaps with invented points, we display
+  // the recent continuous window so the chart is gapless using only measured data. The
+  // headline scores and 30-day deltas below still use the full history (`scores`), so a
+  // genuine delta that reaches back past the displayed window is preserved.
+  const supplyWindowStart = (() => {
+    if (scores[scores.length - 1].supply_score == null) return 0; // latest unmeasured → don't trim
+    let start = scores.length - 1;
+    while (start > 0 && scores[start - 1].supply_score != null) start--;
+    return start;
+  })();
+  const hasInteriorGap = scores.slice(0, supplyWindowStart).some(s => s.supply_score == null);
+  // Only trim when it removes a real gap and still leaves a usable window.
+  const displayScores = hasInteriorGap && scores.length - supplyWindowStart >= 3
+    ? scores.slice(supplyWindowStart)
+    : scores;
+
   const latest = scores[scores.length - 1];
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const prev = scores.length >= 2
@@ -150,14 +168,16 @@ async function fetchFWIData(): Promise<FWIResult> {
       culture: (latest.weights as any)?.culture ?? (latest.weights as any)?.momentum ?? 0.3,
     },
     monthly: {
-      months: scores.map(s => s.date.slice(0, 7)),
-      dates: scores.map(s => s.date),
-      confidence: scores.map(s => typeof s.confidence === 'number' ? s.confidence : 0),
-      overall: scores.map(s => Math.round(s.overall_score * 10) / 10),
-      demand:  scores.map(s => Math.round(s.demand_score * 10) / 10),
+      // displayScores = trailing continuous run of real supply readings (see above), so the
+      // charted lines are gapless using only measured data — never fabricated bridge points.
+      months: displayScores.map(s => s.date.slice(0, 7)),
+      dates: displayScores.map(s => s.date),
+      confidence: displayScores.map(s => typeof s.confidence === 'number' ? s.confidence : 0),
+      overall: displayScores.map(s => Math.round(s.overall_score * 10) / 10),
+      demand:  displayScores.map(s => Math.round(s.demand_score * 10) / 10),
       // null supply_score = unmeasured → kept as null so the chart shows a gap, not a crash to 0.
-      supply:  scores.map(s => s.supply_score == null ? null : Math.round(s.supply_score * 10) / 10),
-      culture: scores.map(s => Math.round(s.momentum_score * 10) / 10),
+      supply:  displayScores.map(s => s.supply_score == null ? null : Math.round(s.supply_score * 10) / 10),
+      culture: displayScores.map(s => Math.round(s.momentum_score * 10) / 10),
     },
     today: {
       overall: Math.round(latest.overall_score * 10) / 10,
