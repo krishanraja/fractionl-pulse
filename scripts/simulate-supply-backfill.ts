@@ -31,7 +31,7 @@ type ScoreRow = {
   confidence: number | null;
   weights: Record<string, number> | null;
   notes: string | null;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
 };
 
 function argValue(name: string): string | null {
@@ -126,7 +126,9 @@ function recomputeOverall(row: ScoreRow, supply: number) {
 function patchedRow(row: ScoreRow, supply: number) {
   const { weights, overall } = recomputeOverall(row, supply);
   const metadata = row.metadata || {};
-  const dataQuality = metadata.data_quality || {};
+  const dataQuality = typeof metadata.data_quality === 'object' && metadata.data_quality !== null && !Array.isArray(metadata.data_quality)
+    ? metadata.data_quality as Record<string, unknown>
+    : {};
 
   return {
     supply_score: supply,

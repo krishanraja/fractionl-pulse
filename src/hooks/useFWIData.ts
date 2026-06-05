@@ -37,6 +37,7 @@ const BASELINE: FWIData = {
 };
 
 const STALE_THRESHOLD_MS = 48 * 60 * 60 * 1000;
+const HISTORY_MONTHS = 12;
 
 function buildContext(monthly: FWIData['monthly'], today: FWIData['today']): FWIContext {
   const overall = monthly.overall;
@@ -98,11 +99,15 @@ interface FWIResult {
 }
 
 async function fetchFWIData(): Promise<FWIResult> {
+  const historyStart = new Date();
+  historyStart.setMonth(historyStart.getMonth() - HISTORY_MONTHS);
+
   const { data: scoresDesc, error: scoreError } = await supabase
     .from('fwi_scores')
     .select('date, overall_score, demand_score, supply_score, momentum_score, weights, confidence, metadata')
+    .gte('date', historyStart.toISOString().slice(0, 10))
     .order('date', { ascending: false })
-    .limit(26);
+    .limit(370);
 
   if (scoreError || !scoresDesc || scoresDesc.length === 0) {
     return { data: { ...BASELINE, context: buildContext(BASELINE.monthly, BASELINE.today) }, isLive: false, isStale: false, lastUpdated: null, hasBackfilledData: false, hasLiveSupply: false, totalWeeks: 0 };
