@@ -150,11 +150,11 @@ export async function emitEvent(
       ...extra,
     });
 
-    // Prefer keepalive so the event survives a navigation (e.g. landed -> click out).
-    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-      const ok = navigator.sendBeacon(EMIT_URL, new Blob([body], { type: 'application/json' }));
-      if (ok) return;
-    }
+    // fetch + keepalive survives navigation like a beacon, but without sendBeacon's
+    // forced credentials-include mode: emit-event's preflight answers with the
+    // wildcard Allow-Origin and no Allow-Credentials, so browsers reject every
+    // credentialed beacon AFTER queueing it (sendBeacon returns true, the fetch
+    // fallback never ran, and the event was silently dropped).
     await fetch(EMIT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
