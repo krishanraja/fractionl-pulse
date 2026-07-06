@@ -1,5 +1,7 @@
 # Monetization Strategy: Fractional Working Index
 
+> **MODEL UPDATE (2026-07-06): the human dashboard is now FREE; monetization moved to the metered agent/enterprise API.** The $99/mo human Pro tier was retired. Rationale from the product audit: the exact data sold as Pro was already free and unauthenticated via the public API (so a human paywall protected nothing), and zero API keys had ever been issued. The paid wedge is now the metered API (self-serve free key at 1,000 req/day, higher keyed tiers, enterprise/data licensing). The Pro-tier and Stripe-checkout content below is retained for historical reference and for a possible future human tier, but it is NOT the current model. See [NORTH_STAR.md](NORTH_STAR.md).
+
 ## Executive Summary
 
 Pulse monetizes the Fractional Working Index across four revenue streams: SaaS subscriptions (Free, Pro, Enterprise), data licensing (research, media, feed), partnership revenue (white-label, affiliate), and AI-agent-native API access. This document is the source of truth for pricing, packaging, target ICP, ROI proofs, and go-to-market sequencing — designed to be consumed by AI sales agents at scale.

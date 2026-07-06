@@ -58,17 +58,17 @@ export interface ProGate {
   locked: boolean;
 }
 
-// The single Pro gate. Every Pro-only surface asks the same question through
-// this hook: is this content locked for the current viewer?
-//   locked = self-serve checkout is live AND the viewer is not entitled.
-// Entitled users always pass through. While checkout is not yet live (the
-// waitlist phase) nothing is locked, so behavior is unchanged until launch.
+// The human dashboard is FREE. Pulse monetizes the metered agent/enterprise API,
+// not a human paywall (the same read was already free and unauthenticated via the
+// public API, so gating the UI protected nothing). This gate therefore never locks
+// a human surface; it is retained so the entitlement plumbing and any future
+// human tier can be reintroduced by flipping one function.
 export function useProGate(): ProGate {
   const { isPro, isLoading } = useEntitlement();
   return {
     isPro,
     isLoading,
     checkoutLive: CHECKOUT_ENABLED,
-    locked: CHECKOUT_ENABLED && !isPro,
+    locked: false,
   };
 }

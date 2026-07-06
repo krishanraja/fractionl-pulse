@@ -21,5 +21,5 @@ MRR is the business scoreboard; it does not tell you whether the product deliver
 ## What this implies for the roadmap (from the audit)
 
 - The product must know the user's lane. Signup now captures the fractional role; the readiness gauge and the "Ask the index" verdict read for that lane, not just the market.
-- The paywall must protect something the free/open API does not already give away, or the human tier should be reconsidered in favour of the metered agent/enterprise API. (Open decision; see the audit report's "the call" and "sharper alternative".)
+- Monetization model (decided 2026-07-06, the audit's "sharper alternative"): the **human dashboard is free in full**, and Pulse charges for the **metered agent/enterprise API** plus data licensing. Rationale: the same read was already free and unauthenticated via the public API, so a human paywall protected nothing and `api_keys` had zero issued keys. The API is where willingness-to-pay and defensibility actually sit, and it is not cannibalized by the open human view. A human tier can be reintroduced by flipping `useProGate` if that ever changes.
 - Trust surfaces must never contradict themselves (one synthesized read, honest deltas, no impossible source counts).

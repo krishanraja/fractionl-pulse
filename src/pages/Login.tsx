@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { ArrowRight, Mail, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { CHECKOUT_ENABLED } from '@/lib/checkout';
 import { useUserRole, FRACTIONAL_ROLES } from '@/hooks/useUserRole';
 import fractionlLogo from '@/assets/fractionl-logo.png';
 import fractionlIcon from '@/assets/fractionl-icon.png';
@@ -18,10 +17,10 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setSelectedRole] = useState('');
-  // When self-serve checkout is live, the front door is a real sign-up, not a
-  // waitlist. The waitlist stays available as a secondary path (and is the
-  // default only while checkout is still gated off).
-  const [mode, setMode] = useState<Mode>(CHECKOUT_ENABLED ? 'signup' : 'waitlist');
+  // The dashboard is free, so the front door is a real account sign-up (which
+  // unlocks the personal, role-aware read and, later, an API key). The waitlist
+  // remains reachable via the mode switcher as a legacy secondary path.
+  const [mode, setMode] = useState<Mode>('signup');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [waitlistSuccess, setWaitlistSuccess] = useState(false);

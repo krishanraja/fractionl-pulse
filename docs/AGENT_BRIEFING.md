@@ -38,7 +38,7 @@ Pulse publishes the **Fractional Working Index (FWI)**, a weekly composite 0–1
 | **Geography** | US primary, UK secondary, no APAC |
 | **Live URL** | https://pulse.fractionl.ai |
 | **API** | https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current (no auth, working) |
-| **Pricing** | Stripe self-serve checkout **LIVE** at $99/mo ($79/mo annual); waitlist retained as a secondary path |
+| **Pricing** | Dashboard is **free in full**. Monetization is the **metered agent API** (free 1,000 req/day per key, higher keyed tiers) plus **enterprise and data licensing**. No human paywall. |
 
 ### Three Pillars
 
@@ -89,7 +89,7 @@ If a pillar's sources fail in a given week, weight redistributes proportionally 
 
 ---
 
-## 8. Pricing (Stripe self-serve checkout LIVE)
+## 8. Pricing (dashboard free; the metered API is the paid wedge)
 
 | Tier | Price | Includes |
 |------|-------|----------|
@@ -101,7 +101,7 @@ If a pillar's sources fail in a given week, weight redistributes proportionally 
 | **Citation / Research license** | $500 one-time (1 publication, attribution required) or $5,000/yr Annual Research | Press, research papers, newsletters |
 | **Affiliate** | 20% recurring 12 months | 25% at 10+/mo, 30%+ at 50+/mo |
 
-> **Important:** Stripe self-serve checkout is **LIVE** (`VITE_PULSE_CHECKOUT_ENABLED=true` in production). Prospects can buy Pro directly at $99/mo, or $79/mo billed annually, via the live checkout. The waitlist remains available as a secondary path. Billing contact: data@fractionl.ai.
+> **Important:** The Pulse **dashboard is free in full** for every fractional operator (all sub-indices, 12-month history, all 21 signals, AI insights, Content Radar, personalized readiness, weekly brief). There is no human paywall. Pulse monetizes the **metered agent API**: a signed-in user self-serves a free API key (1,000 req/day) at `/pricing`, and higher-volume or enterprise/data-licensing tiers are handled by sales. Billing/API contact: data@fractionl.ai.
 
 ---
 
@@ -292,7 +292,7 @@ Agents must never make these claims:
 
 - ❌ "Years of historical data." (We have ~12 weeks backfilled + accumulating weekly.)
 - ❌ "Peer-reviewed", "academically validated", or "backtested." (Not yet.)
-- ✅ "Pricing is live, you can buy Pro today." Stripe self-serve checkout IS live at $99/mo ($79/mo annual). (This was previously a Do-Not-Say while checkout was pending; it retired when checkout shipped.)
+- ✅ "The dashboard is free; the API is the paid product." The human dashboard is free in full. The paid wedge is the metered agent API (free 1,000 req/day per key, higher keyed and enterprise tiers) plus data licensing. Do NOT pitch a $99 human Pro tier: it was retired in the 2026-07 pivot to the metered-API model.
 - ❌ Specific predictive-accuracy numbers (e.g. "85% accurate"), including any percentage attached to the Form D Lead. The leading-indicator hypothesis is reasonable, not statistically validated.
 - ❌ "Real-time data" / "real-time market intelligence." This phrase is FORBIDDEN. Updates are daily ingest with a weekly composite settle. "Weekly index" and "live dashboard" are fine.
 - ❌ Coverage of any role beyond the 6 C-suite roles: fractional CFO, CMO, CTO, COO, CRO, interim CEO.
