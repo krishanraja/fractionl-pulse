@@ -83,8 +83,17 @@ serve(async (req) => {
   const score = ctx?.score?.overall;
   const label = ctx?.score?.label;
   const delta = ctx?.score?.delta30d;
+  // The /fwi-api/current payload emits movers as { role, changePct, ... } (camelCase).
+  // Reading snake_case here previously produced "Fractional CMO undefined%" for every
+  // mover, so the model got no role signal and every verdict collapsed to a generic read.
   const movers = (ctx?.topMovers || []).slice(0, 5)
-    .map((m: any) => `${m.skill || m.role || ''} ${m.change_pct > 0 ? '+' : ''}${m.change_pct}%`).join(', ');
+    .map((m: any) => {
+      const who = m.role ?? m.skill ?? '';
+      const chg = m.changePct ?? m.change_pct;
+      return chg == null ? who : `${who} ${chg > 0 ? '+' : ''}${chg}%`;
+    })
+    .filter((s: string) => s.trim())
+    .join(', ');
   const demand = ctx?.score?.components?.demand?.score ?? ctx?.score?.components?.demand;
   const supply = ctx?.score?.components?.supply?.score ?? ctx?.score?.components?.supply;
   const culture = ctx?.score?.components?.culture?.score ?? ctx?.score?.components?.culture;

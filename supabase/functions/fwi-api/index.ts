@@ -111,7 +111,7 @@ async function handleCurrentFWI(): Promise<Response> {
             : ['SerpAPI LinkedIn supply proxy', 'Brave LinkedIn talent proxy', 'GoFractional marketplace listings', 'Supply-side search intent (SerpAPI)'],
           status: weights.supply === 0 ? 'excluded' : 'live',
           note: weights.supply === 0
-            ? 'No supply data available this week — weight redistributed to demand and culture'
+            ? 'No supply data available this week, weight redistributed to demand and culture'
             : null,
         },
         culture: {
@@ -247,6 +247,54 @@ async function handleTrigger(authHeader: string | null): Promise<Response> {
   });
 }
 
+// Metered API tiers. Anonymous callers (no x-api-key) keep the free, unauthenticated
+// public read unchanged and unmetered, so the dashboard and existing agents never
+// break. A supplied key is validated and metered per day against api_keys; this is
+// the monetizable wedge (free keys 1k/day, paid tiers higher, enterprise unlimited).
+const TIER_LIMITS: Record<string, number | null> = { free: 1000, pro: 10000, enterprise: null };
+
+async function sha256Hex(s: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+interface MeterResult { ok: boolean; status?: number; error?: string; headers?: Record<string, string>; }
+
+async function meter(req: Request): Promise<MeterResult> {
+  const key = req.headers.get('x-api-key');
+  if (!key) return { ok: true }; // anonymous free public tier, unmetered
+  const hash = await sha256Hex(key);
+  const { data: row } = await supabase
+    .from('api_keys')
+    .select('id, tier, requests_used, requests_limit, last_used_at, is_active')
+    .eq('key_hash', hash)
+    .maybeSingle();
+  if (!row || !row.is_active) return { ok: false, status: 401, error: 'invalid_or_revoked_api_key' };
+  const limit = row.requests_limit ?? TIER_LIMITS[row.tier as string] ?? 1000;
+  const unlimited = limit == null || row.tier === 'enterprise';
+  const today = new Date().toISOString().slice(0, 10);
+  const lastDay = row.last_used_at ? new Date(row.last_used_at).toISOString().slice(0, 10) : null;
+  let used = lastDay && lastDay < today ? 0 : (row.requests_used ?? 0); // daily reset
+  if (!unlimited && used >= (limit as number)) {
+    return { ok: false, status: 429, error: 'rate_limit_exceeded', headers: { 'X-RateLimit-Limit': String(limit), 'X-RateLimit-Remaining': '0' } };
+  }
+  used += 1;
+  await supabase.from('api_keys').update({ requests_used: used, last_used_at: new Date().toISOString() }).eq('id', row.id);
+  return {
+    ok: true,
+    headers: unlimited
+      ? { 'X-RateLimit-Limit': 'unlimited' }
+      : { 'X-RateLimit-Limit': String(limit), 'X-RateLimit-Remaining': String(Math.max(0, (limit as number) - used)) },
+  };
+}
+
+function withHeaders(resp: Response, extra?: Record<string, string>): Response {
+  if (!extra) return resp;
+  const h = new Headers(resp.headers);
+  for (const [k, v] of Object.entries(extra)) h.set(k, v);
+  return new Response(resp.body, { status: resp.status, headers: h });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -254,13 +302,17 @@ serve(async (req) => {
   const path = url.pathname.split('/').pop();
 
   try {
-    if (path === 'current' || path === 'fwi-api') {
-      return await handleCurrentFWI();
-    }
-
-    if (path === 'history') {
-      const months = parseInt(url.searchParams.get('months') || '3');
-      return await handleHistory(months);
+    if (path === 'current' || path === 'fwi-api' || path === 'history') {
+      const m = await meter(req);
+      if (!m.ok) {
+        return new Response(JSON.stringify({ error: m.error }), {
+          status: m.status, headers: { ...corsHeaders, ...(m.headers || {}), 'Content-Type': 'application/json' },
+        });
+      }
+      const resp = path === 'history'
+        ? await handleHistory(parseInt(url.searchParams.get('months') || '3'))
+        : await handleCurrentFWI();
+      return withHeaders(resp, m.headers);
     }
 
     if (path === 'trigger' && req.method === 'POST') {

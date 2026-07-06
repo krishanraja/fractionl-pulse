@@ -123,12 +123,14 @@ async function fetchFWIData(): Promise<FWIResult> {
   }
 
   const latestDate = scores[scores.length - 1].date;
+  // Fetch a wide set (not just the top 5) so any role can be matched for the
+  // personal "your lane" read; the dashboard "movers" card slices to the top few.
   const { data: moversRaw } = await supabase
     .from('movers')
     .select('skill, signal_type, change_pct, note')
     .eq('date', latestDate)
     .order('change_pct', { ascending: false })
-    .limit(5);
+    .limit(30);
 
   // A non-null supply_score is now the source of truth for "we have a real reading"
   // (placeholder/floor values were nulled out in cleanup and are never written going forward).
@@ -161,6 +163,16 @@ async function fetchFWIData(): Promise<FWIResult> {
 
   const roundDelta = (a: number, b: number) => Math.round((a - b) * 10) / 10;
 
+  // A pillar delta is only meaningful when there is a real reading ~30 days ago to
+  // compare against. A null/near-zero prior (an unmeasured pillar, or an early
+  // backfill point sitting near 0) produced the from-zero artifacts "+54.6" and
+  // "+0.0" with an up-arrow. In those cases return null so the UI shows "new".
+  const pillarDelta = (latestVal: number | null, prevVal: number | null | undefined): number | null => {
+    if (!prev || prevIsRecent) return null;
+    if (latestVal == null || prevVal == null || prevVal < 1) return null;
+    return roundDelta(latestVal, prevVal);
+  };
+
   const delta30d = prev && !prevIsRecent
     ? roundDelta(latest.overall_score, prev.overall_score)
     : 0;
@@ -189,18 +201,15 @@ async function fetchFWIData(): Promise<FWIResult> {
       delta30d,
       demand: {
         score: Math.round(latest.demand_score * 10) / 10,
-        delta30d: prev && !prevIsRecent ? roundDelta(latest.demand_score, prev.demand_score) : 0,
+        delta30d: pillarDelta(latest.demand_score, prev?.demand_score),
       },
       supply: {
         score: latest.supply_score == null ? null : Math.round(latest.supply_score * 10) / 10,
-        // delta only meaningful when both endpoints are real readings.
-        delta30d: prev && !prevIsRecent && latest.supply_score != null && prev.supply_score != null
-          ? roundDelta(latest.supply_score, prev.supply_score)
-          : 0,
+        delta30d: pillarDelta(latest.supply_score, prev?.supply_score),
       },
       culture: {
         score: Math.round(latest.momentum_score * 10) / 10,
-        delta30d: prev && !prevIsRecent ? roundDelta(latest.momentum_score, prev.momentum_score) : 0,
+        delta30d: pillarDelta(latest.momentum_score, prev?.momentum_score),
       },
     },
     movers: (moversRaw || []).map(m => ({

@@ -173,6 +173,10 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
           x: {
             type: 'time',
             time: {
+              // Never render below day granularity: a short teaser window (a few
+              // recent readings that span under a day) must not fall back to an
+              // hour axis (12AM/1PM/2AM), which reads as a bug on a weekly index.
+              minUnit: 'day',
               tooltipFormat: 'MMM d, yyyy',
               displayFormats: { day: 'MMM d', week: 'MMM d', month: "MMM ''yy" },
             },

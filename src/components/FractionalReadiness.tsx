@@ -6,7 +6,35 @@ import type { getFWILabel } from '@/pages/Index';
 interface FractionalReadinessProps {
   score?: number;
   label?: ReturnType<typeof getFWILabel>;
+  /** The viewer's own fractional role, if known. Turns the global gauge into a personal read. */
+  role?: string | null;
+  /** This week's demand change for the viewer's role vs the market average (percent). */
+  roleMover?: number | null;
 }
+
+// A personal read keyed to the viewer's role and its live mover, so the gauge
+// answers "is this slow month the market or me?" instead of restating the market.
+const getRoleGuidance = (role: string, mover: number | null): { headline: string; body: string } => {
+  if (mover == null) {
+    return {
+      headline: `Your lane: ${role}`,
+      body: `We do not have a distinct reading for ${role} demand this week. Read the market gauge below as your baseline.`,
+    };
+  }
+  const pct = `${mover > 0 ? '+' : ''}${Math.round(mover)}%`;
+  if (mover >= 10) return {
+    headline: `${role} is running ${pct} vs market`,
+    body: `Your lane is stronger than the wider market this week. A slow month is more likely you than the market. Hold your rate, and lean into outreach.`,
+  };
+  if (mover > -10) return {
+    headline: `${role} is tracking the market (${pct})`,
+    body: `Your lane is moving with the broader index. Conditions are neutral for ${role}: steady pipeline, no reason to discount.`,
+  };
+  return {
+    headline: `${role} is ${pct} vs market`,
+    body: `Your lane is softer than the wider market this week. Focus on existing relationships and differentiated positioning over new-logo volume.`,
+  };
+};
 
 const getGuidance = (score: number): { headline: string; body: string } => {
   if (score >= 75) return {
@@ -31,7 +59,7 @@ const getGuidance = (score: number): { headline: string; body: string } => {
   };
 };
 
-const FractionalReadiness = ({ score, label }: FractionalReadinessProps) => {
+const FractionalReadiness = ({ score, label, role, roleMover }: FractionalReadinessProps) => {
   const targetValue = score ?? 0;
   const [animatedValue, setAnimatedValue] = useState(0);
 
@@ -66,7 +94,7 @@ const FractionalReadiness = ({ score, label }: FractionalReadinessProps) => {
   };
 
   const gaugeColor = getGaugeColor(animatedValue);
-  const guidance = getGuidance(animatedValue);
+  const guidance = role ? getRoleGuidance(role, roleMover ?? null) : getGuidance(animatedValue);
 
   return (
     <motion.div
@@ -74,7 +102,7 @@ const FractionalReadiness = ({ score, label }: FractionalReadinessProps) => {
       className="glass-card p-4 sm:p-5 h-full flex flex-col"
     >
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-foreground text-sm tracking-tight">Market readiness</h3>
+        <h3 className="font-semibold text-foreground text-sm tracking-tight">{role ? 'Your readiness' : 'Market readiness'}</h3>
         {label && (
           <span className={`data-badge ${
             label.color.includes('emerald') ? 'bg-emerald-500/10 text-emerald-500' :

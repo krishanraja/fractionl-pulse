@@ -8,7 +8,7 @@ For autonomous discovery, three files are served from the site root:
 
 - `/llms.txt`: a plain-text map of what Pulse is and where the live data lives, written for LLMs.
 - `/.well-known/ai-plugin.json`: the plugin manifest for agent platforms that auto-discover tools.
-- `/product-truth.json`: the runtime source of truth for the current offer and pricing. Read this rather than hardcoding prices, since the offer changes (for example when Stripe self-serve checkout goes live).
+- `/product-truth.json`: the runtime source of truth for the current offer and pricing. Read this rather than hardcoding prices. Current model: the human dashboard is free in full, and Pulse monetizes the metered agent API plus enterprise and data licensing.
 
 ---
 
@@ -82,9 +82,16 @@ curl -X POST https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/trigg
 
 This is the one endpoint that still requires authentication: a Supabase service-role bearer token. The three read endpoints above (`/current`, `/history`, `/export-brief`) are public no-auth; `/fwi-api/trigger` is not and never will be. It is reserved for ops and on-demand "trigger fresh data" workflows.
 
-### Tiered API keys (rolling out per customer)
+### Optional metered API key (`x-api-key`, live now)
 
-The `api_keys` table is provisioned for tiered access (free / pro / enterprise). Tiered key auth is being rolled out per customer — contact `data@fractionl.ai` for an enterprise key.
+The read endpoints above are free and no-auth. For higher, metered limits, a signed-in user self-serves a **free API key** at [`pulse.fractionl.ai/pricing`](https://pulse.fractionl.ai/pricing) (choose "Get an API key"). Send it as the `x-api-key` header on any read request:
+
+```bash
+curl -H "x-api-key: pk_live_..." \
+  https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current
+```
+
+The free keyed tier is 1,000 requests/day. Keyed responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining`; exceeding the daily limit returns HTTP 429, and an unknown or revoked key returns HTTP 401. The plaintext key is shown once at creation, and only its SHA-256 hash is stored. Higher keyed limits and enterprise volume (unlimited) are arranged with sales at `data@fractionl.ai`.
 
 ---
 
@@ -92,11 +99,12 @@ The `api_keys` table is provisioned for tiered access (free / pro / enterprise).
 
 | Tier | Daily limit | Auth |
 |------|-------------|------|
-| Public | 1,000 req/day | none |
-| Pro | 10,000 req/day | `x-api-key` header (rolling out) |
-| Enterprise | unlimited | `x-api-key` header (rolling out) |
+| Anonymous public read | unmetered (generous, cache-friendly) | none |
+| Free key | 1,000 req/day | `x-api-key` (self-serve at `/pricing`) |
+| Higher / Pro | 10,000 req/day | `x-api-key` (arranged with sales) |
+| Enterprise | unlimited | `x-api-key` (arranged with sales) |
 
-For now the public tier is generous and unenforced for low-volume agents. Cache aggressively.
+The anonymous public read stays free and unmetered, so cache aggressively. Metering applies only when you send an `x-api-key`, and keyed responses report `X-RateLimit-Limit` and `X-RateLimit-Remaining`. Get a free key at `pulse.fractionl.ai/pricing`; contact `data@fractionl.ai` for higher or enterprise limits.
 
 ---
 

@@ -10,6 +10,9 @@ verify_jwt = false
 [functions.export-brief]
 verify_jwt = false
 
+[functions.manage-api-key]
+verify_jwt = false
+
 # Attribution proxy: the browser POSTs lifecycle events here with no auth header.
 # The warehouse ingest secret is held server-side (env), never in the client.
 [functions.emit-event]

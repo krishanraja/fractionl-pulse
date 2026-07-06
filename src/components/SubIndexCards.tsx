@@ -88,7 +88,8 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {indices.map((index, i) => {
-        const isPositive = index.delta >= 0;
+        const hasDelta = index.delta != null;
+        const isPositive = hasDelta && (index.delta as number) >= 0;
         const Icon = index.icon;
         const sourceInfo = SOURCE_COUNTS[index.key];
 
@@ -121,12 +122,14 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
               </div>
               {index.score == null ? (
                 <div className="text-[11px] font-medium text-muted-foreground/70">No reliable reading</div>
+              ) : !hasDelta ? (
+                <div className="text-[11px] font-medium text-muted-foreground/60">new</div>
               ) : (
                 <div className={`flex items-center gap-1 text-sm font-bold tabular-nums ${
                   isPositive ? 'stat-up' : 'stat-down'
                 }`}>
                   {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                  {isPositive ? '+' : ''}{index.delta.toFixed(1)}
+                  {isPositive ? '+' : ''}{(index.delta as number).toFixed(1)}
                 </div>
               )}
             </div>

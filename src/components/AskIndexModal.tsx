@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, MessageCircleQuestion, Loader2 } from 'lucide-react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { SUPABASE_FUNCTIONS_URL } from '@/lib/supabase';
 import { emitEvent } from '@/lib/attribution';
 
@@ -14,12 +14,14 @@ const SUGGESTIONS = [
 interface AskIndexModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The viewer's own fractional role, folded into the situation so the verdict is role-specific. */
+  defaultRole?: string | null;
 }
 
 // The Verdict Line, now hosted in an on-demand overlay: a visitor types one line
 // about their situation and Pulse streams back a personalized, chart-evidenced
 // verdict grounded in this week's real FWI.
-const AskIndexModal = ({ open, onOpenChange }: AskIndexModalProps) => {
+const AskIndexModal = ({ open, onOpenChange, defaultRole }: AskIndexModalProps) => {
   const [input, setInput] = useState('');
   const [verdict, setVerdict] = useState('');
   const [streaming, setStreaming] = useState(false);
@@ -27,8 +29,13 @@ const AskIndexModal = ({ open, onOpenChange }: AskIndexModalProps) => {
   const abortRef = useRef<AbortController | null>(null);
 
   const run = async (situation: string) => {
-    const text = situation.trim();
+    let text = situation.trim();
     if (!text || streaming) return;
+    // Fold the viewer's known role into the situation so the verdict is keyed to
+    // their lane, unless they already named a role in their own words.
+    if (defaultRole && !/\b(cmo|cfo|cto|coo|cro|ceo|fractional|interim)\b/i.test(text)) {
+      text = `${text} (I am a ${defaultRole})`;
+    }
     setAsked(true);
     setStreaming(true);
     setVerdict('');
@@ -80,6 +87,7 @@ const AskIndexModal = ({ open, onOpenChange }: AskIndexModalProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg p-5 sm:p-6 gap-0 overflow-hidden">
+        <DialogTitle className="sr-only">Ask the index</DialogTitle>
         {/* soft brand wash anchoring the magic-moment surface */}
         <div
           className="pointer-events-none absolute -top-16 -right-16 w-48 h-48 rounded-full opacity-[0.07]"

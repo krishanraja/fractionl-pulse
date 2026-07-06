@@ -1,62 +1,61 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Check, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { CHECKOUT_ENABLED, startCheckout } from '@/lib/checkout';
-import { useEntitlement } from '@/hooks/useEntitlement';
+import { useAuth } from '@/hooks/useAuth';
+import ApiKeyManager from '@/components/ApiKeyManager';
 
-const TIERS = [
+// Pulse monetizes the metered agent/enterprise API, not a human paywall. The
+// dashboard is free in full; the API is the paid wedge (the same read was always
+// free and unauthenticated via the API, so a human paywall protected nothing).
+type Action = 'signup' | 'api' | 'contact';
+
+const TIERS: Array<{
+  name: string; price: string; cadence: string; blurb: string;
+  features: string[]; cta: string; action: Action; highlight: boolean;
+}> = [
   {
     name: 'Free',
     price: '$0',
-    cadence: '',
-    features: ['Overall FWI score', '30-day trend', 'Top 5 movers', 'Weekly email digest', 'Public no-auth API'],
-    cta: 'Current plan',
-    plan: null as 'monthly' | 'annual' | null,
-    highlight: false,
-  },
-  {
-    name: 'Pro',
-    price: '$99',
-    cadence: '/mo ($79/mo billed annually)',
-    features: ['Full sub-index breakdown', '12-month history', 'All 21 signals', 'AI insight cards', 'Custom weight tuning', 'Brief export (MD + PDF)', 'the Form D Lead detail'],
-    cta: 'Upgrade to Pro',
-    plan: 'monthly' as const,
+    cadence: 'the full dashboard',
+    blurb: 'Everything a fractional operator needs to read the market weekly.',
+    features: ['Overall FWI + all three sub-indices', '12-month history and trend', 'All 21 source signals', 'AI insight cards + Content Radar', 'Personalized, role-aware readiness', 'Weekly market brief'],
+    cta: 'Start free',
+    action: 'signup',
     highlight: true,
   },
   {
-    name: 'Enterprise',
-    price: '$500+',
-    cadence: '/mo',
-    features: ['Everything in Pro', 'REST + MCP at scale', 'Vertical sub-indices', 'Raw data exports', 'SSO + SLA', 'White-label partnership available'],
+    name: 'Agents & API',
+    price: 'Metered',
+    cadence: 'free public, keyed tiers',
+    blurb: 'Build the index into your agent, product, or workflow.',
+    features: ['Public REST + hosted MCP (no auth)', 'x-api-key tiers: free 1,000 req/day', 'Current + history + weekly brief endpoints', 'X-FWI-Score / X-FWI-Label headers', 'Higher limits on request'],
+    cta: 'Get an API key',
+    action: 'api',
+    highlight: false,
+  },
+  {
+    name: 'Enterprise & Data',
+    price: 'Talk to us',
+    cadence: '',
+    blurb: 'High-volume API, raw data, and licensing.',
+    features: ['Unlimited / custom API limits', 'Raw signal + score exports', 'Data licensing and citations', 'White-label and vertical indices', 'SSO + SLA'],
     cta: 'Talk to us',
-    plan: null,
+    action: 'contact',
     highlight: false,
   },
 ];
 
 const Pricing = () => {
-  const [busy, setBusy] = useState(false);
-  const { isPro } = useEntitlement();
-  // Read Pro pricing live from the product-truth manifest rather than hardcoding
-  // the copy. Falls back to the static tier price if the fetch fails.
-  const [proPriceLive, setProPriceLive] = useState<string | null>(null);
-  useEffect(() => {
-    fetch('/product-truth.json')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => { if (j?.offers?.pro?.price) setProPriceLive(j.offers.pro.price); })
-      .catch(() => { /* keep the static fallback */ });
-  }, []);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [apiOpen, setApiOpen] = useState(false);
 
-  const onCta = async (tier: (typeof TIERS)[number]) => {
-    if (tier.name === 'Enterprise') { window.location.href = 'mailto:data@fractionl.ai?subject=Pulse%20Enterprise'; return; }
-    if (!tier.plan) return;
-    if (isPro) return; // already entitled: pass through, nothing to buy
-    if (!CHECKOUT_ENABLED) { window.location.href = '/login'; return; } // waitlist until checkout is on
-    setBusy(true);
-    await startCheckout(tier.plan);
-    setBusy(false);
+  const onCta = (action: Action) => {
+    if (action === 'signup') { navigate('/login'); return; }
+    if (action === 'contact') { window.location.href = 'mailto:data@fractionl.ai?subject=Pulse%20Enterprise%20and%20Data'; return; }
+    if (action === 'api') { user ? setApiOpen(true) : navigate('/login'); }
   };
 
   return (
@@ -69,8 +68,7 @@ const Pricing = () => {
         <div className="text-center mb-10">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Read the market like an instrument</h1>
           <p className="text-sm text-muted-foreground mt-2 max-w-lg mx-auto">
-            The FWI is free to glance at. Pro is for operators who act on it every week.
-            {!CHECKOUT_ENABLED && ' Founding-customer pricing is open by waitlist while we finish self-serve checkout.'}
+            The dashboard is free for every fractional operator. We monetize the API that agents and platforms build on.
           </p>
         </div>
 
@@ -85,20 +83,15 @@ const Pricing = () => {
             >
               {tier.highlight && (
                 <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-semibold bg-primary text-primary-foreground rounded-full px-2.5 py-0.5">
-                  Most popular
+                  For operators
                 </span>
               )}
               <h2 className="text-base font-semibold text-foreground">{tier.name}</h2>
-              <div className="mt-1.5 mb-4">
-                {tier.name === 'Pro' && proPriceLive ? (
-                  <span className="text-lg font-bold text-foreground">{proPriceLive}</span>
-                ) : (
-                  <>
-                    <span className="text-2xl font-bold text-foreground">{tier.price}</span>
-                    <span className="text-xs text-muted-foreground">{tier.cadence}</span>
-                  </>
-                )}
+              <div className="mt-1.5 mb-1">
+                <span className="text-2xl font-bold text-foreground">{tier.price}</span>
+                {tier.cadence && <span className="text-xs text-muted-foreground ml-1.5">{tier.cadence}</span>}
               </div>
+              <p className="text-[11px] text-muted-foreground mb-4">{tier.blurb}</p>
               <ul className="space-y-2 flex-1">
                 {tier.features.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-xs text-foreground/80">
@@ -107,18 +100,11 @@ const Pricing = () => {
                 ))}
               </ul>
               <Button
-                onClick={() => onCta(tier)}
-                disabled={busy || tier.name === 'Free' || (isPro && !!tier.plan)}
+                onClick={() => onCta(tier.action)}
                 variant={tier.highlight ? 'default' : 'outline'}
                 className="w-full mt-5"
               >
-                {tier.name === 'Free'
-                  ? 'Current plan'
-                  : isPro && tier.plan
-                    ? 'Current plan'
-                    : !CHECKOUT_ENABLED && tier.plan
-                      ? 'Join the waitlist'
-                      : tier.cta}
+                {tier.cta}
               </Button>
             </motion.div>
           ))}
@@ -128,6 +114,8 @@ const Pricing = () => {
           The FWI is a weekly index for the fractional executive market, published by Fractionl. Not financial advice.
         </p>
       </div>
+
+      <ApiKeyManager open={apiOpen} onOpenChange={setApiOpen} />
     </div>
   );
 };

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { ArrowRight, Mail, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole, FRACTIONAL_ROLES } from '@/hooks/useUserRole';
 import fractionlLogo from '@/assets/fractionl-logo.png';
 import fractionlIcon from '@/assets/fractionl-icon.png';
 
@@ -15,12 +16,18 @@ type Mode = 'login' | 'signup' | 'waitlist';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [mode, setMode] = useState<Mode>('waitlist');
+  const [role, setSelectedRole] = useState('');
+  // The dashboard is free, so the front door is a real account sign-up (which
+  // unlocks the personal, role-aware read and, later, an API key). The waitlist
+  // remains reachable via the mode switcher as a legacy secondary path.
+  const [mode, setMode] = useState<Mode>('signup');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [waitlistSuccess, setWaitlistSuccess] = useState(false);
+  const [signupSuccess, setSignupSuccess] = useState(false);
   const navigate = useNavigate();
   const { signInWithEmail, signUpWithEmail, signInWithGoogle, joinWaitlist } = useAuth();
+  const { setRole } = useUserRole();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,9 +44,15 @@ const Login = () => {
         if (error) setError(error);
         else navigate('/');
       } else {
+        if (!role) { setError('Please pick your fractional role so the index can read for you.'); return; }
         const { error } = await signUpWithEmail(email, password);
         if (error) setError(error);
-        else navigate('/');
+        else {
+          // Persist the role (localStorage now, server once confirmed) and show the
+          // confirm-email state rather than dropping the user on the anon dashboard.
+          await setRole(role);
+          setSignupSuccess(true);
+        }
       }
     } finally {
       setIsLoading(false);
@@ -94,8 +107,8 @@ const Login = () => {
             </div>
           </motion.div>
 
-          {/* Waitlist success state */}
-          {waitlistSuccess ? (
+          {/* Success states: waitlist join, or account-created confirm-email */}
+          {(waitlistSuccess || signupSuccess) ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -105,9 +118,15 @@ const Login = () => {
                 <Check className="w-8 h-8 text-green-500" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-foreground">You're on the list</h2>
+                <h2 className="text-lg font-semibold text-foreground">
+                  {signupSuccess ? 'Check your email' : "You're on the list"}
+                </h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  We'll email you at <span className="text-foreground font-medium">{email}</span> when Pulse Pro launches.
+                  {signupSuccess ? (
+                    <>We sent a confirmation link to <span className="text-foreground font-medium">{email}</span>. Confirm it, then sign in to your dashboard.</>
+                  ) : (
+                    <>We'll email you at <span className="text-foreground font-medium">{email}</span> when Pulse Pro launches.</>
+                  )}
                 </p>
               </div>
               <Button variant="outline" onClick={() => navigate('/')} className="mt-4">
@@ -158,6 +177,25 @@ const Login = () => {
                       minLength={6}
                       className="h-11"
                     />
+                  </div>
+                )}
+
+                {mode === 'signup' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Your fractional role</Label>
+                    <select
+                      id="role"
+                      value={role}
+                      onChange={(e) => setSelectedRole(e.target.value)}
+                      required
+                      className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      <option value="" disabled>Select your role</option>
+                      {FRACTIONAL_ROLES.map((r) => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-muted-foreground">The index reads for your lane, not just the market.</p>
                   </div>
                 )}
 

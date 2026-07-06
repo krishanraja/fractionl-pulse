@@ -33,10 +33,13 @@ export interface MonthlyData {
 export interface TodayData {
   overall: number;
   delta30d: number;
-  demand: { score: number; delta30d: number };
-  /** score is null when supply has no reliable reading; delta30d is 0 in that case. */
-  supply: { score: number | null; delta30d: number };
-  culture: { score: number; delta30d: number };
+  /** delta30d is null when there is no meaningful reading ~30 days ago to compare
+   *  against, so the UI shows "new" instead of a from-zero artifact (e.g. +54.6
+   *  against a near-zero backfill point, or +0.0 against an unmeasured pillar). */
+  demand: { score: number; delta30d: number | null };
+  /** score is null when supply has no reliable reading. */
+  supply: { score: number | null; delta30d: number | null };
+  culture: { score: number; delta30d: number | null };
 }
 
 export interface Mover {

@@ -30,16 +30,22 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
   const isPositive = delta >= 0;
   const isFlat = Math.abs(delta) < 0.05;
 
-  // Forward lean from the Form D Lead: demand is the leading pillar, so its recent
-  // trajectory is a directional read on where the index is heading. Directional,
-  // not a forecast, and never with an accuracy claim (truth-discipline).
+  // Forward lean: demand is the leading pillar, so its recent trajectory is a
+  // directional read on where the index is heading. Powered by SEC startup-funding
+  // (Form D) filings, a 1 to 3 month leading indicator. Directional, not a forecast,
+  // and never with an accuracy claim (truth-discipline). Plain language, no codename.
   const demandDelta = data.today.demand?.delta30d ?? 0;
   const lean =
     demandDelta > 1.5
-      ? { txt: 'Demand tilting up. The Form D Lead points to firmer fractional demand over the next 1 to 3 months.', cls: 'stat-up' }
+      ? { txt: 'Demand is tilting up. Recent startup-funding filings point to firmer fractional demand over the next 1 to 3 months.', cls: 'stat-up' }
       : demandDelta < -1.5
-      ? { txt: 'Demand softening. The Form D Lead points to cooler fractional demand over the next 1 to 3 months.', cls: 'stat-down' }
-      : { txt: 'Demand steady. The Form D Lead shows no strong directional pull right now.', cls: 'text-muted-foreground' };
+      ? { txt: 'Demand is softening. Recent startup-funding filings point to cooler fractional demand over the next 1 to 3 months.', cls: 'stat-down' }
+      : { txt: 'Demand is steady. Recent startup-funding filings show no strong directional pull right now.', cls: 'text-muted-foreground' };
+
+  // One synthesized read so level and momentum resolve into a single conclusion
+  // instead of a "Stable" pill sitting next to a red drop reading as a contradiction.
+  const momentumWord = isFlat ? 'and holding steady' : isPositive ? 'and rising' : 'but cooling';
+  const marketVerdict = `The fractional market is ${bandFor(compositeScore).name.toLowerCase()} ${momentumWord}.`;
 
   useEffect(() => {
     const duration = 1500;
@@ -124,6 +130,11 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
         style={{ ['--band-accent' as string]: `linear-gradient(90deg, ${band.color}, ${band.color}40)` }}
       >
         <div className="instrument-grid" aria-hidden="true" />
+
+        {/* The single reconciled read: one conclusion the eye lands on first. */}
+        <p className="relative text-sm sm:text-[15px] font-semibold text-foreground mb-4 tracking-tight">
+          {marketVerdict}
+        </p>
 
         <div className="relative flex flex-col sm:flex-row gap-6 sm:gap-7">
           {/* The gauge instrument */}
