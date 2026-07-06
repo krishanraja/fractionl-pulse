@@ -1,5 +1,7 @@
 # Sales Playbook: Pulse by Fractionl
 
+> **MODEL UPDATE (2026-07-06): the human dashboard is now FREE in full; monetization moved to the metered agent API plus enterprise and data licensing.** The $99/mo human "Pro" tier and the waitlist-as-primary model were retired. Every mention of $99 Pro pricing, the waitlist, and "Stripe not yet live" in the sections below is retained for historical reference and for a possible future human tier, but it is NOT the current model. Sell the free dashboard as the wedge, then the metered agent API (self-serve free key at 1,000 req/day, higher tiers on request) plus enterprise and data licensing. See [`NORTH_STAR.md`](./NORTH_STAR.md) and the banner atop [`MONETIZATION_STRATEGY.md`](./MONETIZATION_STRATEGY.md).
+
 > **Audience:** AI sales agents, AI marketing agents, AI outbound agents, BDRs, founders running founder-led sales.
 > **Goal:** Equip every agent and human seller with a single source of truth for ICP, outcomes, qualifying questions, sequences, talk tracks, and objection handling — so Pulse can be sold at scale by AI.
 

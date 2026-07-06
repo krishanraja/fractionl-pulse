@@ -6,7 +6,7 @@
 
 Pulse monetizes the Fractional Working Index across four revenue streams: SaaS subscriptions (Free, Pro, Enterprise), data licensing (research, media, feed), partnership revenue (white-label, affiliate), and AI-agent-native API access. This document is the source of truth for pricing, packaging, target ICP, ROI proofs, and go-to-market sequencing — designed to be consumed by AI sales agents at scale.
 
-> **Status note:** Stripe self-serve checkout is not yet live. All conversions today route through the waitlist with manual onboarding (Stripe account: Fractionl AI, shared with Circle; billing contact: data@fractionl.ai). Founding-customer pricing locks in the rate for waitlist signups. When Stripe checkout ships, the offer flips to "Pro checkout LIVE" and the "no buy today" guidance retires.
+> **Status note (HISTORICAL, pre-2026-07 human-Pro model; superseded by the banner above):** In the retired human-Pro model, Stripe self-serve checkout was never live and all conversions routed through the waitlist with manual onboarding (Stripe account: Fractionl AI, shared with Circle; billing contact: data@fractionl.ai), with founding-customer pricing locking the rate for waitlist signups. This describes a past plan and applies only if a human paid tier is ever reintroduced. It is NOT the current model; the human dashboard is free and the paid product is the metered agent API plus enterprise and data licensing.
 
 ---
 

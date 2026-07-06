@@ -67,13 +67,13 @@ If a pillar's sources fail in a given week, weight redistributes proportionally 
 
 | Customer | What they buy | Outcome they get |
 |----------|---------------|------------------|
-| Fractional CFO making $250K | Pro at $99/mo | Raises rates 15% during a "Surging" week, cites Pulse to clients. ROI in week one. |
-| Boutique fractional staffing agency, $5M revenue | Enterprise at $1.5K/mo | Times outbound campaign to "Growing" weeks; doubles inbound during cultural-momentum spikes. |
-| Career coach with 50 clients/yr | Pro | Replaces gut-feel "is now a good time to go fractional?" with cited weekly data. |
+| Fractional CFO making $250K | Free dashboard | Raises rates 15% during a "Surging" week, cites Pulse to clients. Reads whether a slow month is the market or them. |
+| Boutique fractional staffing agency, $5M revenue | Free dashboard, or Enterprise at $1.5K/mo to embed | Times outbound campaign to "Growing" weeks; doubles inbound during cultural-momentum spikes. |
+| Career coach with 50 clients/yr | Free dashboard | Replaces gut-feel "is now a good time to go fractional?" with cited weekly data. |
 | HR tech SaaS, 5K customers | Enterprise white-label, $3K/mo | Embeds FWI gauge in dashboard. Charges premium for "market intelligence" tier. |
 | Series B VC | Enterprise data feed, $2.5K/mo | Validates workforce thesis with external composite. Calibrates portfolio fractional spend. |
 | Business outlet | Citation license, $5K/yr | Weekly citable index for talent-economy coverage. |
-| Outbound AI agent | Public API, free | Answers "is now a good time to hire a fractional CMO?" in one tool call. |
+| Outbound AI agent | Metered agent API (free public read; free key 1,000 req/day) | Answers "is now a good time to hire a fractional CMO?" in one tool call. |
 
 ---
 
@@ -93,8 +93,8 @@ If a pillar's sources fail in a given week, weight redistributes proportionally 
 
 | Tier | Price | Includes |
 |------|-------|----------|
-| **Free** | $0 | Overall FWI, 30-day trend, top 5 movers, weekly email digest, readiness gauge, public no-auth REST API |
-| **Pro** | $99/mo or $79/mo billed annually | Full sub-index breakdown, 12-month history, all 21 signals, role-level demand, AI insight cards, custom threshold alerts (when shipped), Markdown + PDF brief export, methodology deep-dive, custom weight tuning |
+| **Free dashboard (human)** | $0 | The entire dashboard: Overall FWI, all three sub-indices, 12-month history and trend, all 21 signals, role-level demand, AI insight cards, Content Radar, personalized role-aware readiness, and the weekly brief. No paywall. |
+| **Agents & API (metered)** | Free public read; free keyed tier 1,000 req/day; higher tiers on request | Public REST and hosted MCP read need no auth. A signed-in user self-serves a free `x-api-key` at `/pricing`; keyed responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining`. Higher and enterprise limits are arranged with sales. (The $99/mo human Pro tier was retired in the 2026-07 pivot.) |
 | **Enterprise SaaS** | $500–$5,000/mo (caps at $5K) | Starter $500/mo (5 seats, 10K calls/mo); Growth $1,500/mo (20 seats, 50K calls/mo, embed widget); Scale $3,000/mo (unlimited seats, 200K calls/mo, custom sub-indices); Custom negotiated up to $5,000/mo. Includes REST + MCP access, custom weighting, vertical sub-indices, raw exports, SSO, SLA |
 | **White-label partnership** (separate program) | $10,000 one-time setup + $2,000–$10,000/mo license | Optional 10–20% rev-share, min $5K MRR commitment. This is where the up-to-$10K figure belongs, NOT the Enterprise SaaS tier |
 | **Data feed license** | Daily JSON $1,000/mo, Daily Signals $1,500/mo, Realtime feed $2,500/mo, Historical Backfill $5,000 one-time | Feed only, no UI |
@@ -117,17 +117,18 @@ If a pillar's sources fail in a given week, weight redistributes proportionally 
 - React dashboard with React Query + Supabase Realtime auto-refresh
 - 12 weeks of historical backfill priming trendlines
 - Per-source health monitoring + Resend email alerts on cron failure
-- Waitlist + auth (Supabase magic link)
+- Free full dashboard (no human paywall): all sub-indices, 12-month history, all 21 signals, AI insights, Content Radar, personalized role-aware readiness, weekly brief
+- Metered agent API + self-serve keys: `fwi-api` accepts an optional `x-api-key` metered per key per day; a signed-in user mints a free key (1,000 req/day) via `manage-api-key` at `/pricing`. Keyed responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining`
+- Hosted MCP server live (no auth) at `https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp`
+- Machine-readable discovery surfaces live: `/product-truth.json`, `/llms.txt`, `/.well-known/ai-plugin.json`
+- Auth (Supabase magic link; fractional role captured at signup)
 - RLS hardened (public read on read-only tables, service-role-only writes)
 - Custom domain `pulse.fractionl.ai`
 
 ### Not yet live 🚧
-- Stripe self-serve checkout LIVE ($99/mo, $79/mo annual)
-- Hosted MCP server (reference implementation + live REST API today; hosted server on roadmap)
+- Self-serve billing for paid API tiers (the free keyed tier is self-serve; higher and enterprise limits are arranged with sales today). The $99/mo human Pro tier and the waitlist-as-primary model were retired in the 2026-07 pivot; a human paid tier could be reintroduced later
 - Webhook threshold alerts (planned)
 - White-label embeddable widget (planned)
-- API key tiered auth (`api_keys` table provisioned, not exposed)
-- Machine-readable discovery surfaces `/product-truth.json`, `/llms.txt`, `/.well-known/ai-plugin.json` (being created in this pass)
 - Less than a year of accumulated weekly data (~12 weeks backfilled + accumulating weekly)
 - Methodology has not been peer-reviewed or backtested against past cycles
 
@@ -201,7 +202,7 @@ If a pillar's sources fail in a given week, weight redistributes proportionally 
 
 - "Less than a year of accumulated weekly data — we've backfilled 12 weeks at launch but the dataset gets stronger every week."
 - "The index is new. It hasn't been peer-reviewed or backtested against historical cycles. The methodology is open for scrutiny."
-- "Pro is live: buy directly at $99/mo, or $79/mo billed annually, through self-serve checkout."
+- "The dashboard is free in full. The paid product is the metered agent API (a free key gives 1,000 req/day; higher tiers via sales) plus enterprise and data licensing."
 
 ---
 
@@ -233,8 +234,8 @@ We surface this transparently in the API response. When supply has data, it carr
 **"You only have a few weeks of data."**
 We backfilled 12 weeks at launch using historical-capable APIs (FRED, SEC EDGAR, Guardian, NYT, HN, Census). Going forward we accumulate one weekly datapoint that no competitor is collecting. After 52 weeks, the dataset is a defensible asset no one can replicate without spending a year. Early access means the ability to shape methodology and lock in founding-customer pricing before the historical moat is built.
 
-**"$99/month seems expensive for one number."**
-It's not one number — it's a sub-index breakdown, 12 months of history, AI-generated insights, custom alerts, role-level demand, and a methodology drawer. The target user makes $200K+. A single well-timed rate decision (raise during "Surging", hold during "Cooling") pays for years of subscription.
+**"If the dashboard is free, what do I actually pay for?"**
+Nothing, if you are a human operator: the full dashboard is free (sub-index breakdown, 12 months of history, AI insights, role-level demand, methodology drawer, and all). Pulse charges for the metered agent API (a free self-serve key gives 1,000 req/day; higher and enterprise limits are arranged with sales) and for enterprise and data licensing (raw exports, feeds, citations, white-label). The paid wedge sits with agents and enterprises, not the human reader.
 
 **"Why not LinkedIn?"**
 LinkedIn doesn't track fractional work specifically. It doesn't publish a composite index. It doesn't have a public API for this slice. It doesn't combine demand, culture, and supply. It doesn't run the Form D Lead as a leading indicator. Different product entirely.
@@ -245,8 +246,8 @@ True, and we say so openly. The methodology is fully transparent and published. 
 **"How do I know this isn't gameable?"**
 Single sources are gameable. A 21-source composite with anomaly guards (3σ over 8-week rolling) is structurally hard to manipulate. Form D filings come from the SEC directly. Adzuna postings come from employers. Google Trends comes from real searches. Triangulation does the work.
 
-**"Stripe isn't live — what am I actually buying?"**
-Founding-customer pricing locked in, Pro feature access today via manual onboarding, and direct line to the team for product feedback. When Stripe launches, founding customers stay at the original rate.
+**"How do I get API access?"**
+Sign in at pulse.fractionl.ai, open `/pricing`, and choose "Get an API key". The free tier is 1,000 requests/day, self-serve, with the plaintext key shown once. Send it as the `x-api-key` header. For higher or enterprise limits, data licensing, or white-label, contact data@fractionl.ai.
 
 ---
 
@@ -308,7 +309,7 @@ Agents must never make these claims:
 
 ### Fetch the live truth at runtime
 
-This briefing is a snapshot. The current offer, pricing, and Do-Not-Say list can change (for example, the moment Stripe checkout ships). Before quoting an offer, price, or limit, fetch `/product-truth.json` from the live site at runtime and treat it as authoritative over this file. Companion discovery surfaces `/llms.txt` and `/.well-known/ai-plugin.json` describe Pulse and its endpoints for agents. The current live reading is also dynamic: fetch it from `GET /fwi-api/current` rather than quoting a static number (it currently reads about FWI 42.4, label Cooling, as of 2026-05-25, but always fetch live).
+This briefing is a snapshot. The current offer, pricing, and Do-Not-Say list can change (for example, if a human paid tier is ever reintroduced). Before quoting an offer, price, or limit, fetch `/product-truth.json` from the live site at runtime and treat it as authoritative over this file. Companion discovery surfaces `/llms.txt` and `/.well-known/ai-plugin.json` describe Pulse and its endpoints for agents. The current live reading is also dynamic: fetch it from `GET /fwi-api/current` rather than quoting a static number (it currently reads about FWI 42.4, label Cooling, as of 2026-05-25, but always fetch live).
 
 ---
 

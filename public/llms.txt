@@ -8,9 +8,13 @@ Publisher: Fractionl (a private composite, not an official or government index).
 
 A weekly 0-100 market-health score for the fractional executive market, covering six C-suite roles only: fractional CFO, CMO, CTO, COO, CRO, and interim CEO. It blends 21 independent data sources across three pillars: Demand (50%), Supply (20%), and Culture (30%). When supply has no data, the supply weight redistributes across the remaining pillars. Current reading is about FWI 42.4, label Cooling, as of 2026-05-25 (fetch live, do not treat as static).
 
-## No-auth REST API
+## Pricing model
 
-All read endpoints require no authentication. Base URL: https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1
+The dashboard is free in full for every fractional operator (all sub-indices, 12-month history, all 21 signals, AI insights, Content Radar, a personalized role-aware read, and the weekly brief). There is no human paywall. Pulse monetizes the metered agent API (free public read, plus a self-serve free key at 1,000 req/day and higher tiers on request) and enterprise/data licensing. The $99/mo human Pro tier was retired in the 2026-07 pivot.
+
+## REST API (free public read, optional metered key)
+
+Read endpoints require no authentication for the free public tier. To get higher, metered limits, sign in at https://pulse.fractionl.ai/pricing, choose Get an API key, and send it as the x-api-key header (free tier 1,000 req/day; keyed responses include X-RateLimit-Limit and X-RateLimit-Remaining). Base URL: https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1
 
 - GET /fwi-api/current : latest weekly composite, components, weights, 30-day delta, top movers, full source breakdown, and meta (dataCompleteness, nextUpdate). Returns Cache-Control plus X-FWI-Score and X-FWI-Label headers.
 - GET /fwi-api/history?months=N : weekly data points (N clamped 1-12).
@@ -37,7 +41,7 @@ The full, versioned product description, offers, and selling rules live at https
 
 - No years of historical data (about 12 weeks backfilled plus accumulating weekly).
 - Not peer-reviewed, academically validated, or backtested.
-- You cannot buy Pro today (Stripe checkout is not yet live; route to the waitlist).
+- Do not pitch a $99 human Pro tier or any human paywall (retired 2026-07). The dashboard is free; the paid product is the metered API plus enterprise and data licensing.
 - No specific predictive-accuracy percentage.
 - Never say "real-time data" or "real-time market intelligence" (it is daily ingest with a weekly composite settle; "weekly index" and "live dashboard" are fine).
 - No coverage beyond the 6 C-suite roles.

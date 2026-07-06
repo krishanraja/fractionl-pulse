@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "content_version": "2026-05-30",
+  "content_version": "2026-07-06",
   "product": {
     "name": "Pulse by Fractionl",
     "index": "Fractional Working Index (FWI)",
@@ -8,44 +8,38 @@
     "url": "https://pulse.fractionl.ai",
     "circle_handoff_url": "https://fractionl.com"
   },
-  "one_liner": "Pulse publishes the Fractional Working Index, a free, citable, agent-readable weekly 0-100 score of how healthy the fractional executive market is and where it is heading.",
+  "one_liner": "Pulse publishes the Fractional Working Index, a free, citable, agent-readable weekly 0-100 score of how healthy the fractional executive market is and where it is heading. The dashboard is free in full; Pulse monetizes the metered agent API and enterprise/data licensing.",
   "what_it_is": "Pulse publishes the Fractional Working Index (FWI), a weekly 0-100 composite market-health score for the fractional executive market, covering six C-suite roles only (fractional CFO, CMO, CTO, COO, CRO, and interim CEO). The score blends 21 independent data sources across three pillars: Demand (50%), Supply (20%), and Culture (30%). When supply has no data, the supply weight redistributes across the remaining pillars.",
-  "magic_moment": "One number, fetched live, that answers how healthy the fractional executive market is right now and which direction it is heading: currently about FWI 42.4 with a Cooling label as of 2026-05-25 (always fetch live rather than treat as static).",
+  "magic_moment": "One number, fetched live, that answers how healthy the fractional executive market is right now and which direction it is heading. Signed-in operators also get a personal read: their own fractional role vs the market this week (is a slow month you or the market). Always fetch the live number rather than treating any quoted value as static.",
   "method": {
-    "name": "the Form D Lead",
-    "description": "The Form D Lead is Pulse's method of using SEC Form D filing velocity as a 1 to 3 month leading indicator of fractional executive demand (companies file Form D within 15 days of a raise, then enter the fractional buyer pool 1 to 3 months later). It is the differentiator no competitor has."
+    "name": "SEC Form D leading indicator",
+    "description": "Pulse uses SEC Form D filing velocity as a 1 to 3 month leading indicator of fractional executive demand (companies file Form D within 15 days of a raise, then enter the fractional buyer pool 1 to 3 months later). Describe it in plain language (startup-funding filings) in user-facing copy; do not attach an accuracy percentage."
   },
   "icp_ranked": [
-    { "rank": 1, "segment": "Fractional Executive (solo operator)", "buys": "Pro at $99/mo for rate-setting confidence and reading whether an inbound dry spell is them or the market" },
-    { "rank": 2, "segment": "Boutique Fractional Staffing Agency Principal", "buys": "Enterprise Starter or Growth ($500 to $1,500/mo) for outbound timing and advisory positioning" },
-    { "rank": 3, "segment": "HR Tech / Talent Marketplace SaaS", "buys": "Enterprise Growth or Scale plus white-label ($1,500 to $10,000/mo) to add a market-intelligence tier without building a research function" },
-    { "rank": 4, "segment": "VC / PE Platform Team", "buys": "Enterprise Growth ($1,500/mo) or a data feed to arm portfolio CEOs with calibrated workforce data" },
-    { "rank": 5, "segment": "Enterprise HR / Talent Ops", "buys": "Enterprise Growth or Scale ($1,500 to $3,000/mo) to justify fractional vs full-time budget decisions" },
-    { "rank": 6, "segment": "Talent-Economy Journalist / Outlet", "buys": "Citation License ($500 one-time) or Annual Research ($5,000/yr) for a citable, methodology-transparent weekly source" },
-    { "rank": 7, "segment": "AI Agent Builder / Outbound Tool Founder", "buys": "Free public no-auth API, scaling to Enterprise when usage justifies, to answer market-state questions without stitching together five APIs" }
+    { "rank": 1, "segment": "Fractional Executive (solo operator)", "buys": "Uses the free dashboard for rate-setting confidence and to read whether an inbound dry spell is them or the market. No paid human tier." },
+    { "rank": 2, "segment": "AI Agent Builder / Outbound Tool Founder", "buys": "Self-serves a free API key (1,000 req/day), scaling to higher metered tiers, to answer market-state questions without stitching together five APIs" },
+    { "rank": 3, "segment": "HR Tech / Talent Marketplace SaaS", "buys": "Enterprise API + white-label to add a market-intelligence tier without building a research function" },
+    { "rank": 4, "segment": "VC / PE Platform Team", "buys": "Enterprise API or a data feed to arm portfolio CEOs with calibrated workforce data" },
+    { "rank": 5, "segment": "Boutique Fractional Staffing Agency Principal", "buys": "Free dashboard for outbound timing; enterprise API or data feed when embedding" },
+    { "rank": 6, "segment": "Enterprise HR / Talent Ops", "buys": "Enterprise API to justify fractional vs full-time budget decisions" },
+    { "rank": 7, "segment": "Talent-Economy Journalist / Outlet", "buys": "Citation License ($500 one-time) or Annual Research ($5,000/yr) for a citable, methodology-transparent weekly source" }
   ],
   "offers": {
-    "free": {
+    "free_dashboard": {
       "price": "$0",
-      "includes": "Overall FWI, 30-day trend, top 5 movers, weekly email digest, readiness gauge, and the public no-auth REST API"
+      "includes": "The full dashboard: Overall FWI, all three sub-indices, 12-month history and trend, all 21 source signals, AI insight cards, Content Radar, personalized role-aware readiness, and the weekly market brief. No human paywall."
     },
-    "pro": {
-      "price": "$99/mo, or $79/mo billed annually",
-      "includes": "Full sub-index breakdown, 12-month history, all 21 signals, role-level demand, AI insight cards, custom threshold alerts (when shipped), Markdown and PDF brief export, methodology deep-dive, and custom weight tuning"
+    "agent_api": {
+      "price": "Free public read (no auth); free keyed tier 1,000 requests/day; higher tiers on request",
+      "includes": "The metered agent API is the paid wedge. The public REST and hosted MCP read endpoints require no auth. A signed-in user self-serves a free API key at https://pulse.fractionl.ai/pricing and sends it as the x-api-key header for a metered 1,000 req/day tier; higher keyed limits and enterprise volume are arranged with sales (data@fractionl.ai)."
     },
-    "enterprise_saas": {
-      "price": "Caps at $5,000/mo",
-      "tiers": {
-        "starter": "$500/mo: 5 seats, 10K API calls/mo",
-        "growth": "$1,500/mo: 20 seats, 50K calls/mo, embed widget",
-        "scale": "$3,000/mo: unlimited seats, 200K calls/mo, custom sub-indices",
-        "custom": "Negotiated up to $5,000/mo"
-      },
-      "includes": "REST plus MCP access, custom weighting, vertical sub-indices, raw exports, SSO, and SLA"
+    "enterprise_and_data": {
+      "price": "Talk to us (data@fractionl.ai)",
+      "includes": "High-volume or unlimited API limits, raw signal and score exports, data licensing and citations, white-label and vertical indices, SSO and SLA."
     },
     "white_label_partnership": {
       "price": "$10,000 one-time setup plus $2,000 to $10,000/mo license",
-      "includes": "Optional 10-20% rev-share, minimum $5K MRR commitment. A separate program from the Enterprise SaaS tier."
+      "includes": "Optional 10-20% rev-share, minimum $5K MRR commitment. A separate program from enterprise API."
     },
     "data_feed": {
       "price": "Daily JSON $1,000/mo, Daily Signals $1,500/mo, Realtime feed $2,500/mo, Historical Backfill $5,000 one-time",
@@ -54,17 +48,13 @@
     "citation": {
       "price": "$500 one-time (1 publication, attribution required), or $5,000/yr Annual Research",
       "includes": "Cite-ready FWI data with attribution for press and research use"
-    },
-    "affiliate": {
-      "price": "20% recurring for 12 months",
-      "includes": "Steps to 25% at 10+ referrals/mo and 30%+ at 50+ referrals/mo"
     }
   },
   "current_offer": {
-    "status": "waitlist_founding",
-    "stripe_checkout_live": false,
-    "description": "Waitlist + founding-customer pricing; manual onboarding; founding rate locks. Stripe self-serve checkout not yet live.",
-    "checkout_url": null
+    "status": "dashboard_free_api_metered",
+    "human_paywall": false,
+    "description": "The dashboard is free in full. Monetization is the metered agent API (free 1,000 req/day self-serve key, higher tiers and enterprise volume on request) plus data licensing. The $99/mo human Pro tier was retired in the 2026-07 pivot to the metered-API model.",
+    "get_api_key_url": "https://pulse.fractionl.ai/pricing"
   },
   "stripe": {
     "account": "fractionl_ai",
@@ -72,7 +62,8 @@
   },
   "api": {
     "base_url": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1",
-    "auth": "none for read endpoints",
+    "auth": "None for the free public read. Optional x-api-key header for a metered keyed tier (free 1,000 req/day). Responses to keyed calls include X-RateLimit-Limit and X-RateLimit-Remaining.",
+    "get_api_key": "Sign in at https://pulse.fractionl.ai/pricing and choose Get an API key (self-serve, free tier).",
     "current": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current",
     "history": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/history?months=N",
     "brief": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief",
@@ -80,7 +71,8 @@
     "feed_rss": "https://pulse.fractionl.ai/feed.xml",
     "verdict": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-verdict",
     "trigger_note": "POST /fwi-api/trigger is service-role only",
-    "example_curl": "curl https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current"
+    "example_curl": "curl https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current",
+    "example_curl_keyed": "curl -H 'x-api-key: pk_live_...' https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current"
   },
   "discovery": {
     "llms_txt": "https://pulse.fractionl.ai/llms.txt",
@@ -91,15 +83,15 @@
     "hosted_mcp_server": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp"
   },
   "do_not_say": [
+    "Do not pitch a $99 human Pro tier or any human paywall. The dashboard is free in full; the paid product is the metered agent API plus enterprise and data licensing. (The $99 Pro tier was retired in the 2026-07 pivot.)",
     "Do not claim years of historical data (reality: about 12 weeks backfilled plus accumulating weekly).",
     "Do not claim it is peer-reviewed, academically validated, or backtested.",
-    "Do not claim you can buy Pro today (Stripe checkout is not yet live; conversions route to the waitlist).",
-    "Do not attach any specific predictive-accuracy percentage to the FWI or the Form D Lead.",
+    "Do not attach any specific predictive-accuracy percentage to the FWI or the Form D leading indicator.",
     "Do not use the phrase 'real-time data' or 'real-time market intelligence' (it is daily ingest with a weekly composite settle; 'weekly index' and 'live dashboard' are fine).",
     "Do not claim coverage of any role beyond the 6 C-suite roles (fractional CFO, CMO, CTO, COO, CRO, interim CEO).",
     "Do not claim it is an official, institutional, or government index (publisher is Fractionl, a private composite).",
-    "Do not claim supply has been live since day one (it went live after the People Data Labs integration).",
-    "Do not claim geographic coverage beyond US primary and UK secondary (no APAC)."
+    "Do not claim geographic coverage beyond US primary and UK secondary (no APAC).",
+    "Do not use em dashes in any user-facing copy; use commas, periods, or the word 'to'."
   ],
   "coverage_statement": "Honest limits: about 12 weeks of backfill plus accumulating weekly data (not years of history); 6 C-suite roles only (fractional CFO, CMO, CTO, COO, CRO, interim CEO); US primary, UK secondary, no APAC; publisher is Fractionl, a private composite, not an official or government index.",
   "contact": "data@fractionl.ai"

@@ -1,6 +1,6 @@
 # Technical Specification: Fractionl Pulse
 
-_Source of truth for the system as it ships today. 21 live data sources, 7 edge functions, daily Vercel cron pipeline, agent-native API. Generated from the live codebase — see commit history for last update._
+_Source of truth for the system as it ships today. 21 live data sources, 8 core edge functions (plus supporting content, feed, checkout, and MCP functions), daily Vercel cron pipeline, agent-native API. Generated from the live codebase; see commit history for last update._
 
 ---
 
@@ -23,7 +23,7 @@ _Source of truth for the system as it ships today. 21 live data sources, 7 edge 
                                ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │              SUPABASE (Postgres + Deno Edge Functions)            │
-│  Auth · Database · Realtime · 7 edge functions                    │
+│  Auth · Database · Realtime · 8 core edge functions               │
 └──────────────────────────────┬───────────────────────────────────┘
                                │
         ┌──────────────────────┼─────────────────────────────────┐
@@ -42,8 +42,9 @@ _Source of truth for the system as it ships today. 21 live data sources, 7 edge 
 | `ingest-signals` | Pulls 21 sources, normalizes 0–100, runs anomaly guard, upserts `signals`, then fires `calculate-fwi` | Vercel cron (daily + weekly) + manual |
 | `calculate-fwi` | Composites signals into FWI + movers with WoW deltas, writes `fwi_scores` & `movers` | Called by `ingest-signals` |
 | `generate-pulse-insights` | GPT-4o-mini insight cards, 12-hour cache via `valid_until` | Daily cron + on-demand from frontend |
-| `fwi-api` | Public REST API — `/current`, `/history?months=N`, `/trigger` | Always-on |
-| `export-brief` | Markdown weekly intelligence brief — `?format=json` available | Always-on (`/export-brief`) |
+| `fwi-api` | Public REST API: `/current`, `/history?months=N`, `/trigger`. Accepts an optional `x-api-key` header that meters the request against `api_keys` per key per day (the metered agent tier); anonymous calls stay free and unmetered | Always-on |
+| `export-brief` | Markdown weekly intelligence brief, `?format=json` available | Always-on (`/export-brief`) |
+| `manage-api-key` | Self-serve metered-API key issuance for signed-in users: mint (POST), list (GET), revoke (DELETE). Plaintext key returned exactly once at creation; only the SHA-256 hash is stored | Called from the dashboard `/pricing` page (user JWT) |
 | `backfill-historical` | One-time 12-week backfill of historical-capable sources (FRED, SEC, Guardian, NYT, Census, HN) | Manual |
 | `send-pipeline-alert` | Sends Resend transactional email (critical/warning) on cron failures | Called by Vercel cron handlers |
 
@@ -199,9 +200,31 @@ CREATE TABLE waitlist (
 -- anon insert allowed, service-role read only
 ```
 
-### `api_keys` (provisioned, not yet exposed)
+### `api_keys` (metered-API backing store)
 
-Reserved for tiered API key auth (free / pro / enterprise) once Stripe integration ships.
+This is the live backing store for the metered agent API, not a reserved placeholder. Each row is one issued key, owned by the user who minted it, with usage metered per day.
+
+```sql
+-- Columns exercised by manage-api-key (issuance) and fwi-api (metering):
+--   id              uuid    primary key
+--   user_id         uuid    references auth.users(id) on delete cascade   -- added in migration 015
+--   key_hash        text    SHA-256 hex of the plaintext key (the plaintext is NEVER stored)
+--   label           text    human label shown in the dashboard
+--   tier            text    'free' | 'pro' | 'enterprise'
+--   requests_limit  integer per-day cap (free = 1000; enterprise = unlimited)
+--   requests_used   integer per-day counter, reset when last_used_at rolls to a new UTC day
+--   last_used_at    timestamptz  drives the daily reset
+--   is_active       boolean revoked keys set this false
+--   created_at      timestamptz
+-- Indexes (migration 015): api_keys_user_id_idx, api_keys_key_hash_idx.
+```
+
+Rows are created, metered, and revoked **only** by the service-role edge functions (`manage-api-key` and `fwi-api`), so there is no client-facing RLS beyond the existing service-role-only policy. A signed-in user gets at most 5 active keys. See §6 for how `fwi-api` validates and meters a supplied `x-api-key`.
+
+### Security & metering migrations (014, 015)
+
+- **`014_audit_security_hardening.sql`** (2026-07-06): a security-advisor hardening pass from the product audit. Sets `security_invoker = on` on the `data_quality_summary` and `pipeline_health` views (they no longer bypass RLS), revokes `EXECUTE` on the trigger functions `handle_new_user()`, `update_updated_at_column()`, and `trigger_google_sheets_sync()` from `anon` and `public` (triggers still fire as the function owner), pins `search_path = public` on `check_data_freshness()` and `sync_cached_insights_model()`, and drops a redundant, mis-keyed `user_profiles` policy. Tenant-data isolation (subscriptions, user_profiles, api_keys, waitlist) was already correct and left untouched.
+- **`015_api_keys_user_owned.sql`**: adds `api_keys.user_id` (references `auth.users(id) on delete cascade`) plus the `api_keys_user_id_idx` and `api_keys_key_hash_idx` indexes, so keys can be scoped to their owner for the self-serve metered API.
 
 ### Views
 
@@ -296,8 +319,8 @@ Three routes via the `fwi-api` edge function. CORS is wide-open.
 
 | Route | Method | Auth | Caching |
 |-------|--------|------|---------|
-| `/fwi-api/current` | GET | none | `Cache-Control: public, max-age=3600, stale-while-revalidate=86400` |
-| `/fwi-api/history?months=N` | GET | none | `Cache-Control: public, max-age=3600` |
+| `/fwi-api/current` | GET | none (optional `x-api-key`) | `Cache-Control: public, max-age=3600, stale-while-revalidate=86400` |
+| `/fwi-api/history?months=N` | GET | none (optional `x-api-key`) | `Cache-Control: public, max-age=3600` |
 | `/fwi-api/trigger` | POST | service role JWT | none |
 
 Shortcut response headers on `/current`:
@@ -306,6 +329,15 @@ Shortcut response headers on `/current`:
 X-FWI-Score: 62.4
 X-FWI-Label: Growing
 ```
+
+### Optional `x-api-key` metering (the paid wedge)
+
+`fwi-api` accepts an **optional** `x-api-key` header (`config.toml` keeps `verify_jwt = false`, and CORS allows the header). The read endpoints stay free and no-auth:
+
+- **No key supplied**: the request is served on the free anonymous tier, unmetered and unchanged. The dashboard and existing agents never break.
+- **Key supplied**: `fwi-api` SHA-256-hashes the key, looks it up in `api_keys` by `key_hash`, and meters it per day. An unknown or revoked key returns HTTP 401 (`invalid_or_revoked_api_key`). Within the tier limit, `requests_used` is incremented (reset to 0 when `last_used_at` rolls to a new UTC day) and the response carries `X-RateLimit-Limit` and `X-RateLimit-Remaining`. Over the limit returns HTTP 429 (`rate_limit_exceeded`) with `X-RateLimit-Remaining: 0`.
+
+Tier limits (`TIER_LIMITS` in `fwi-api`): `free` = 1,000 req/day, `pro` = 10,000 req/day, `enterprise` = unlimited (`X-RateLimit-Limit: unlimited`). Users self-serve a free key at `/pricing` via `manage-api-key`; higher and enterprise limits are arranged with sales at `data@fractionl.ai`.
 
 Full schema lives in [`AGENT_INTEGRATION.md`](./AGENT_INTEGRATION.md).
 
@@ -324,7 +356,7 @@ Full schema lives in [`AGENT_INTEGRATION.md`](./AGENT_INTEGRATION.md).
 - **State:** React hooks + `@tanstack/react-query` v5
 - **Data freshness:** Supabase Realtime channel `pulse-data-changes` subscribing to `fwi_scores`, `signals`, `cached_insights`, `data_source_health`. React Query cache is invalidated on every change event.
 - **Stale detection:** `useFWIData` flags `isStale` if latest `fwi_scores.date` is more than 48h old.
-- **Auth:** Supabase Auth (email magic link + waitlist signup)
+- **Auth:** Supabase Auth (email magic link; fractional role captured at signup)
 - **Routing:** `react-router-dom` v6
 
 ### Key Components

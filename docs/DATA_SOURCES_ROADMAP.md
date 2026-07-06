@@ -132,9 +132,10 @@ Every cron + manual run writes a `pipeline_runs` row with status, records insert
 - 🟢 **Machine-readable discovery surfaces** — `/product-truth.json` and `/llms.txt` shipped this pass for agent and LLM discovery.
 - 🟢 **MCP tools + hosted server** — two tools (`get_fractional_working_index`, `get_fwi_weekly_brief`) exposed by a LIVE hosted MCP server (Streamable HTTP, no auth) at `https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp`. Agents can also call the REST API directly.
 - 🟢 **`/.well-known/ai-plugin.json`** — live discovery surface (HTTP 200).
+- 🟢 **Metered agent API + self-serve keys (live):** `fwi-api` accepts an optional `x-api-key` and meters it per key per day against `api_keys`; the anonymous read stays free and unmetered. A signed-in user mints, lists, or revokes a free key (1,000 req/day) via `manage-api-key` from `pulse.fractionl.ai/pricing` (plaintext shown once, SHA-256 hash stored). Keyed responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining`; higher and enterprise limits via `data@fractionl.ai`.
 
 ### Roadmap (not yet shipped)
-- 🚧 **API key tiered auth** — `api_keys` table is provisioned; rolling out per enterprise customer.
+- 🚧 **Self-serve billing for paid API tiers:** the free keyed tier (1,000 req/day) is self-serve and live; higher and enterprise keyed limits are currently arranged with sales (`data@fractionl.ai`) rather than self-checkout.
 
 ---
 
@@ -142,12 +143,12 @@ Every cron + manual run writes a `pipeline_runs` row with status, records insert
 
 ### Near-term (next 1–2 quarters)
 
-- 🚧 **Webhook threshold alerts** — push notifications on band changes, role-level deltas, score crossings (Pro/Enterprise feature)
-- 🚧 **API key tiered auth** — `api_keys` table is provisioned; rolling out per enterprise customer
-- 🚧 **Stripe billing integration** — self-serve checkout not yet live; today conversions route to the waitlist with manual onboarding and founding-customer pricing. When it ships, the offer flips to "Pro checkout LIVE."
-- 🚧 **Hosted MCP server** — deployed MCP endpoint (reference tools + live REST API exist today)
-- 🚧 **White-label embeddable widget** — single-script gauge + sub-index cards
-- 🚧 **CSV / Parquet export** for Pro and Enterprise
+- 🚧 **Webhook threshold alerts:** push notifications on band changes, role-level deltas, score crossings
+- ✅ **API key tiered metering** (shipped 2026-07): self-serve free keys and metered `x-api-key` on `fwi-api` are live; see Section 4. Higher and enterprise limits are arranged with sales.
+- ✅ **Hosted MCP server** (shipped): live at `https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp`; see Section 4.
+- 🚧 **Self-serve billing for paid API tiers:** the free keyed tier is self-serve; higher and enterprise keyed limits are arranged with sales today rather than self-checkout. (The retired $99/mo human Pro tier and waitlist were the pre-2026-07 model; the human dashboard is now free, so there is no human checkout on the current path. A human paid tier could be reintroduced later.)
+- 🚧 **White-label embeddable widget:** single-script gauge + sub-index cards
+- 🚧 **CSV / Parquet export** for data-licensing customers
 
 ### Source expansion candidates
 

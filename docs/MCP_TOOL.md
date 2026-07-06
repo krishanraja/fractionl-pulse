@@ -316,13 +316,14 @@ Cache aggressively. The score changes at most once per week. For lightweight pol
 
 | Tier | Limit | Auth |
 |------|-------|------|
-| Public | 1,000 req/day | none |
-| Pro | 10,000 req/day | `x-api-key` (rolling out) |
-| Enterprise | unlimited | `x-api-key` (rolling out) |
+| Anonymous public read | unmetered (generous, cache-friendly) | none |
+| Free key | 1,000 req/day | `x-api-key` (self-serve at `/pricing`) |
+| Higher / Pro | 10,000 req/day | `x-api-key` (arranged with sales) |
+| Enterprise | unlimited | `x-api-key` (arranged with sales) |
 
-For now the public tier is generous and unenforced for low-volume agents.
+The anonymous public read (including the hosted MCP server) stays free and unmetered. Metering applies only to REST calls that send an `x-api-key`: keyed responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining`, over-limit returns HTTP 429, and an unknown or revoked key returns HTTP 401.
 
-Contact `data@fractionl.ai` for Pro/Enterprise API keys and white-label embeds.
+A signed-in user self-serves a free API key (1,000 req/day) at `pulse.fractionl.ai/pricing`. Contact `data@fractionl.ai` for higher or enterprise limits, data licensing, and white-label embeds.
 
 ---
 
