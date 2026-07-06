@@ -20,7 +20,7 @@ const TIERS = [
     name: 'Pro',
     price: '$99',
     cadence: '/mo ($79/mo billed annually)',
-    features: ['Full sub-index breakdown', '12-month history', 'All 21 signals', 'AI insight cards', 'Custom weight tuning', 'Brief export (MD + PDF)', 'the Form D Lead detail'],
+    features: ['Full sub-index breakdown', '12-month history', 'All 21 signals', 'AI insight cards', 'Custom weight tuning', 'Brief export (MD + PDF)', 'Startup-funding demand signal (Form D)'],
     cta: 'Upgrade to Pro',
     plan: 'monthly' as const,
     highlight: true,
@@ -38,6 +38,7 @@ const TIERS = [
 
 const Pricing = () => {
   const [busy, setBusy] = useState(false);
+  const [annual, setAnnual] = useState(false);
   const { isPro } = useEntitlement();
   // Read Pro pricing live from the product-truth manifest rather than hardcoding
   // the copy. Falls back to the static tier price if the fetch fails.
@@ -55,7 +56,8 @@ const Pricing = () => {
     if (isPro) return; // already entitled: pass through, nothing to buy
     if (!CHECKOUT_ENABLED) { window.location.href = '/login'; return; } // waitlist until checkout is on
     setBusy(true);
-    await startCheckout(tier.plan);
+    // Honour the billing-cycle toggle so the advertised annual price is actually purchasable.
+    await startCheckout(tier.name === 'Pro' && annual ? 'annual' : tier.plan);
     setBusy(false);
   };
 
@@ -74,6 +76,25 @@ const Pricing = () => {
           </p>
         </div>
 
+        {CHECKOUT_ENABLED && (
+          <div className="flex items-center justify-center gap-1 mb-8">
+            <div className="inline-flex items-center rounded-full border border-border bg-muted/40 p-1 text-xs">
+              <button
+                onClick={() => setAnnual(false)}
+                className={`rounded-full px-3 py-1.5 transition-colors ${!annual ? 'bg-primary text-primary-foreground font-semibold' : 'text-muted-foreground'}`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setAnnual(true)}
+                className={`rounded-full px-3 py-1.5 transition-colors ${annual ? 'bg-primary text-primary-foreground font-semibold' : 'text-muted-foreground'}`}
+              >
+                Annual <span className="opacity-70">(save 20%)</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
           {TIERS.map((tier) => (
             <motion.div
@@ -90,8 +111,11 @@ const Pricing = () => {
               )}
               <h2 className="text-base font-semibold text-foreground">{tier.name}</h2>
               <div className="mt-1.5 mb-4">
-                {tier.name === 'Pro' && proPriceLive ? (
-                  <span className="text-lg font-bold text-foreground">{proPriceLive}</span>
+                {tier.name === 'Pro' ? (
+                  <>
+                    <span className="text-2xl font-bold text-foreground">{annual ? '$79' : (proPriceLive || '$99')}</span>
+                    <span className="text-xs text-muted-foreground">{annual ? '/mo billed annually ($948/yr)' : '/mo'}</span>
+                  </>
                 ) : (
                   <>
                     <span className="text-2xl font-bold text-foreground">{tier.price}</span>

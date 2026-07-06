@@ -64,7 +64,7 @@ serve(async (req) => {
     try {
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST', headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from: FROM, to: [to], subject: `Fractional Content Radar — week of ${brief.week_start}`, html }),
+        body: JSON.stringify({ from: FROM, to: [to], subject: `Fractional Content Radar: week of ${brief.week_start}`, html }),
       });
       if (res.ok) sent++;
       await new Promise(r => setTimeout(r, 300));

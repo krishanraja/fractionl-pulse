@@ -111,7 +111,7 @@ async function handleCurrentFWI(): Promise<Response> {
             : ['SerpAPI LinkedIn supply proxy', 'Brave LinkedIn talent proxy', 'GoFractional marketplace listings', 'Supply-side search intent (SerpAPI)'],
           status: weights.supply === 0 ? 'excluded' : 'live',
           note: weights.supply === 0
-            ? 'No supply data available this week — weight redistributed to demand and culture'
+            ? 'No supply data available this week, weight redistributed to demand and culture'
             : null,
         },
         culture: {

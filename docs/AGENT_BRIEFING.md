@@ -38,7 +38,7 @@ Pulse publishes the **Fractional Working Index (FWI)**, a weekly composite 0–1
 | **Geography** | US primary, UK secondary, no APAC |
 | **Live URL** | https://pulse.fractionl.ai |
 | **API** | https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current (no auth, working) |
-| **Pricing** | Defined; Stripe self-serve checkout **not yet live**, waitlist + founding pricing active |
+| **Pricing** | Stripe self-serve checkout **LIVE** at $99/mo ($79/mo annual); waitlist retained as a secondary path |
 
 ### Three Pillars
 
@@ -89,7 +89,7 @@ If a pillar's sources fail in a given week, weight redistributes proportionally 
 
 ---
 
-## 8. Pricing (waitlist active, Stripe pending)
+## 8. Pricing (Stripe self-serve checkout LIVE)
 
 | Tier | Price | Includes |
 |------|-------|----------|
@@ -101,7 +101,7 @@ If a pillar's sources fail in a given week, weight redistributes proportionally 
 | **Citation / Research license** | $500 one-time (1 publication, attribution required) or $5,000/yr Annual Research | Press, research papers, newsletters |
 | **Affiliate** | 20% recurring 12 months | 25% at 10+/mo, 30%+ at 50+/mo |
 
-> **Important:** Stripe self-serve checkout is **not yet live**. All conversions today land on the waitlist with manual onboarding, and founding pricing locks the rate. Tell prospects this transparently: frame it as "founding-customer pricing locked in." When Stripe checkout ships, the offer flips to "Pro checkout LIVE" and the "no buy today" rule retires. Billing contact: data@fractionl.ai.
+> **Important:** Stripe self-serve checkout is **LIVE** (`VITE_PULSE_CHECKOUT_ENABLED=true` in production). Prospects can buy Pro directly at $99/mo, or $79/mo billed annually, via the live checkout. The waitlist remains available as a secondary path. Billing contact: data@fractionl.ai.
 
 ---
 
@@ -122,7 +122,7 @@ If a pillar's sources fail in a given week, weight redistributes proportionally 
 - Custom domain `pulse.fractionl.ai`
 
 ### Not yet live 🚧
-- Stripe self-serve checkout (waitlist + manual onboarding only today)
+- Stripe self-serve checkout LIVE ($99/mo, $79/mo annual)
 - Hosted MCP server (reference implementation + live REST API today; hosted server on roadmap)
 - Webhook threshold alerts (planned)
 - White-label embeddable widget (planned)
@@ -201,7 +201,7 @@ If a pillar's sources fail in a given week, weight redistributes proportionally 
 
 - "Less than a year of accumulated weekly data — we've backfilled 12 weeks at launch but the dataset gets stronger every week."
 - "The index is new. It hasn't been peer-reviewed or backtested against historical cycles. The methodology is open for scrutiny."
-- "Stripe checkout isn't live yet — we're waitlist-only. Founding-customer pricing locks in for early signups."
+- "Pro is live: buy directly at $99/mo, or $79/mo billed annually, through self-serve checkout."
 
 ---
 
@@ -292,7 +292,7 @@ Agents must never make these claims:
 
 - ❌ "Years of historical data." (We have ~12 weeks backfilled + accumulating weekly.)
 - ❌ "Peer-reviewed", "academically validated", or "backtested." (Not yet.)
-- ❌ "Pricing is live, you can buy Pro today." Stripe self-serve checkout is NOT yet live; conversions route to the waitlist with manual onboarding and founding pricing. This rule retires only when Stripe checkout ships (then the offer flips to "Pro checkout LIVE").
+- ✅ "Pricing is live, you can buy Pro today." Stripe self-serve checkout IS live at $99/mo ($79/mo annual). (This was previously a Do-Not-Say while checkout was pending; it retired when checkout shipped.)
 - ❌ Specific predictive-accuracy numbers (e.g. "85% accurate"), including any percentage attached to the Form D Lead. The leading-indicator hypothesis is reasonable, not statistically validated.
 - ❌ "Real-time data" / "real-time market intelligence." This phrase is FORBIDDEN. Updates are daily ingest with a weekly composite settle. "Weekly index" and "live dashboard" are fine.
 - ❌ Coverage of any role beyond the 6 C-suite roles: fractional CFO, CMO, CTO, COO, CRO, interim CEO.
@@ -301,7 +301,7 @@ Agents must never make these claims:
 - ❌ "Official", "institutional", or "government index." It is a private composite published by Fractionl.
 - ❌ "Supply has been live since day one." Supply pillar went live after the People Data Labs integration; before that it was a neutral baseline. Be honest about timeline.
 - ❌ APAC coverage. Geography is US primary, UK secondary, no APAC.
-- ❌ A hosted MCP server is live. Today there are two documented MCP tools plus a reference implementation and the live REST API; the hosted server is roadmap.
+- ✅ A hosted MCP server is live. The hosted MCP endpoint at `https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp` responds to JSON-RPC `tools/list` with `get_fractional_working_index` and `get_fwi_weekly_brief`, no auth. (Verified live 2026-07-06; this was previously listed as roadmap in error.)
 - ❌ No em dashes anywhere. Use commas, colons, or parentheses.
 
 ---

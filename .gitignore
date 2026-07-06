@@ -40,3 +40,6 @@ supabase/.temp/
 
 # Upgrade working dir (internal audit + phase reports + tooling, not for the repo)
 _upgrade/
+
+# Local audit artifacts (screenshots, report) — not part of the app
+audit/

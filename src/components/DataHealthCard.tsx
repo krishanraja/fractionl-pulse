@@ -83,7 +83,12 @@ const DataHealthCard = () => {
       })),
   })).filter(g => g.items.length > 0);
 
-  const healthyCount = sources.filter(s => s.status === 'healthy' || s.status === 'ok').length;
+  // Count only sources that are part of the tracked registry, so the numerator can
+  // never exceed the denominator. Retired sources still emit health rows in the DB;
+  // counting those produced the impossible "23 of 21".
+  const healthyCount = sources.filter(
+    s => SOURCE_DISPLAY[s.source] && (s.status === 'healthy' || s.status === 'ok'),
+  ).length;
   const totalTracked = Object.keys(SOURCE_DISPLAY).length;
 
   return (

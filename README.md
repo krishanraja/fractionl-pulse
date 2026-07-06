@@ -22,7 +22,7 @@ The output answers one question: **"How healthy is the fractional executive mark
 
 ## Why Pulse Exists
 
-The fractional executive economy is the fastest-growing segment of the talent market — yet operators inside it (fractional execs, agencies, marketplaces, VCs, HR tech) are flying blind. They rely on:
+The fractional executive economy is the fastest-growing segment of the talent market, yet operators inside it (fractional execs, agencies, marketplaces, VCs, HR tech) are flying blind. They rely on:
 
 - LinkedIn anecdotes
 - Stale quarterly staffing reports
@@ -30,6 +30,8 @@ The fractional executive economy is the fastest-growing segment of the talent ma
 - Gut feel
 
 Pulse is the first product that turns this market into a **measurable, trackable index**. Composite, normalized, weekly, agent-readable.
+
+**North Star:** a solo fractional executive opens Pulse and, in one glance, knows whether this month's slow inbound is the market or them, and whether to raise rates or hold, with enough confidence to act. See [docs/NORTH_STAR.md](docs/NORTH_STAR.md).
 
 ---
 

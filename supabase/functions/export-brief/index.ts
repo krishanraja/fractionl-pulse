@@ -77,14 +77,14 @@ serve(async (req) => {
     const arrow = (n: number) => n > 0 ? '↑' : n < 0 ? '↓' : '→';
 
     const moversSection = (movers || []).map((m: any, i: number) =>
-      `${i + 1}. **${m.skill}** — ${m.change_pct > 0 ? '+' : ''}${m.change_pct}% ${arrow(m.change_pct)} ${m.note || ''}`
+      `${i + 1}. **${m.skill}**: ${m.change_pct > 0 ? '+' : ''}${m.change_pct}% ${arrow(m.change_pct)} ${m.note || ''}`
     ).join('\n');
 
     const insightsSection = (insights || []).map((ins: any) => {
       return `- **${ins.title || ins.type || 'Insight'}:** ${ins.body || ''}`;
     }).join('\n');
 
-    const brief = `# Fractional Working Index — Weekly Market Intelligence Brief
+    const brief = `# Fractional Working Index: Weekly Market Intelligence Brief
 
 **Week of ${current.date}** | Published by Pulse by Fractionl
 

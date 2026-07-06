@@ -18,6 +18,7 @@ import { useFWIData } from '@/hooks/useFWIData';
 import { staggerContainer } from '@/lib/motion';
 import { Link } from 'react-router-dom';
 import { useProGate } from '@/lib/entitlements';
+import { useUserRole, FRACTIONAL_ROLES } from '@/hooks/useUserRole';
 
 export const getFWILabel = (score: number): { label: string; emoji: string; color: string } => {
   if (score >= 75) return { label: 'Surging', emoji: '🚀', color: 'text-emerald-400' };
@@ -32,6 +33,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [askOpen, setAskOpen] = useState(false);
   const { preferences } = useUserPreferences();
+  const { role, setRole } = useUserRole();
   const { data: fwiData, isLoading, refresh } = useFWIData();
   // Single Pro gate: free sees the recent trend, Pro sees the full 12-month
   // history. Inactive (nothing locked) until self-serve checkout is enabled.
@@ -48,15 +50,29 @@ const Index = () => {
 
   const fwiLabel = getFWILabel(data.today.overall);
 
+  // The viewer's own lane vs the market this week: the personal signal that turns
+  // the global gauge into "is a slow month me or the market?". Prefer the role's
+  // demand mover, falling back to any signal carrying the role name.
+  type MoverLite = { skill: string; type: string; change_pct: number };
+  const movers: MoverLite[] = data.movers ?? [];
+  const roleMover = role
+    ? (movers.find((m) => m.skill === role && m.type === 'demand')?.change_pct
+       ?? movers.find((m) => m.skill === role)?.change_pct
+       ?? null)
+    : null;
+
+  // Free teaser: the most recent 8 readings (was 5, which looked thin). The full
+  // 12-month history is the Pro unlock.
+  const TEASER = 8;
   const trendData = trendLocked
     ? {
-        months: data.monthly.months.slice(-5),
-        dates: data.monthly.dates.slice(-5),
-        confidence: data.monthly.confidence.slice(-5),
-        overall: data.monthly.overall.slice(-5),
-        demand: data.monthly.demand.slice(-5),
-        supply: data.monthly.supply.slice(-5),
-        culture: data.monthly.culture.slice(-5),
+        months: data.monthly.months.slice(-TEASER),
+        dates: data.monthly.dates.slice(-TEASER),
+        confidence: data.monthly.confidence.slice(-TEASER),
+        overall: data.monthly.overall.slice(-TEASER),
+        demand: data.monthly.demand.slice(-TEASER),
+        supply: data.monthly.supply.slice(-TEASER),
+        culture: data.monthly.culture.slice(-TEASER),
       }
     : data.monthly;
 
@@ -162,10 +178,27 @@ const Index = () => {
               <p>Signals notably above or below the index average</p>
             </div>
           </div>
-          <SignalsTable movers={data.movers} />
+          <SignalsTable movers={data.movers.slice(0, 5)} />
         </section>
-        <aside>
-          <FractionalReadiness score={data.today.overall} label={fwiLabel} />
+        <aside className="space-y-4">
+          {!role && (
+            <div className="glass-card p-4 sm:p-5">
+              <p className="text-xs font-semibold text-foreground">Make this personal</p>
+              <p className="text-[11px] text-muted-foreground mt-1 mb-3">Tell us your lane and the index reads for you, not just the market.</p>
+              <div className="flex flex-wrap gap-1.5">
+                {FRACTIONAL_ROLES.map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => setRole(r)}
+                    className="text-[11px] text-muted-foreground hover:text-primary bg-muted/40 hover:bg-primary/[0.06] border border-border hover:border-primary/40 rounded-full px-3 py-1.5 transition-all"
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <FractionalReadiness score={data.today.overall} label={fwiLabel} role={role} roleMover={roleMover} />
         </aside>
       </div>
     </motion.div>
@@ -232,7 +265,7 @@ const Index = () => {
         </button>
       )}
 
-      <AskIndexModal open={askOpen} onOpenChange={setAskOpen} />
+      <AskIndexModal open={askOpen} onOpenChange={setAskOpen} defaultRole={role} />
     </AppShell>
   );
 };
