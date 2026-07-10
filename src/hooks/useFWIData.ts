@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { onDataChange } from '@/lib/realtime';
 import type { FWIData, FWIContext, Mover } from '@/lib/types';
+import { displayScore, formatDelta } from '@/lib/format';
 
 function trailingMonths(count: number): string[] {
   const now = new Date();
@@ -55,8 +56,8 @@ function buildContext(monthly: FWIData['monthly'], today: FWIData['today']): FWI
     : isAtLow
     ? `Lowest reading in the last ${monthsTracked} months`
     : today.delta30d > 0
-    ? `Up ${today.delta30d.toFixed(1)} pts in 30 days. Peak was ${maxScore} in ${highLabel}`
-    : `Down ${Math.abs(today.delta30d).toFixed(1)} pts in 30 days. Peak was ${maxScore} in ${highLabel}`;
+    ? `Up ${formatDelta(today.delta30d)} pts in 30 days. Peak was ${displayScore(maxScore)} in ${highLabel}`
+    : `Down ${formatDelta(Math.abs(today.delta30d))} pts in 30 days. Peak was ${displayScore(maxScore)} in ${highLabel}`;
 
   const demandDelta = today.demand.delta30d;
   const demandContext = demandDelta > 3

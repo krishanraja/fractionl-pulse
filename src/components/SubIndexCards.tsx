@@ -3,6 +3,7 @@ import { TrendingUp, TrendingDown, Briefcase, Users, Megaphone } from 'lucide-re
 import SparklineChart from './SparklineChart';
 import RoleBreakdown from './RoleBreakdown';
 import { useSignalContext } from '@/hooks/useSignalContext';
+import { displayScore, formatDelta } from '@/lib/format';
 
 interface SubIndexCardsProps {
   data: any;
@@ -118,7 +119,7 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
             {/* Score + delta row */}
             <div className="flex items-end justify-between mb-1">
               <div className="score-medium text-foreground">
-                {index.score == null ? <span className="text-muted-foreground/60">—</span> : index.score}
+                {index.score == null ? <span className="text-muted-foreground/60">—</span> : displayScore(index.score)}
               </div>
               {index.score == null ? (
                 <div className="text-[11px] font-medium text-muted-foreground/70">No reliable reading</div>
@@ -129,7 +130,7 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
                   isPositive ? 'stat-up' : 'stat-down'
                 }`}>
                   {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                  {isPositive ? '+' : ''}{(index.delta as number).toFixed(1)}
+                  {isPositive ? '+' : ''}{formatDelta(index.delta as number)}
                 </div>
               )}
             </div>

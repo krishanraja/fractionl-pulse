@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { BookOpen, RefreshCw, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 import { calcComposite } from '@/lib/types';
+import { displayScore, formatDelta } from '@/lib/format';
 
 interface HeroSectionProps {
   data: any;
@@ -26,6 +27,9 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const compositeScore = calcComposite(data.today, data.weights);
+  // The whole-number index the UI shows. Band and verdict below derive from this same
+  // rounded value, so the number and its label can never disagree at a boundary.
+  const score = displayScore(compositeScore);
   const delta = data.today.delta30d;
   const isPositive = delta >= 0;
   const isFlat = Math.abs(delta) < 0.05;
@@ -44,26 +48,42 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
 
   // One synthesized read so level and momentum resolve into a single conclusion
   // instead of a "Stable" pill sitting next to a red drop reading as a contradiction.
-  const momentumWord = isFlat ? 'and holding steady' : isPositive ? 'and rising' : 'but cooling';
-  const marketVerdict = `The fractional market is ${bandFor(compositeScore).name.toLowerCase()} ${momentumWord}.`;
+  // The band is the market's level; the 4-week delta is its direction. Join them with
+  // "and" when they point the same way, "but" when they diverge — and phrase the
+  // momentum so it never echoes the band word (no "cooling but cooling").
+  const level = bandFor(score).name.toLowerCase();
+  const magnitude = Math.abs(delta);
+  const momentum = isFlat
+    ? 'holding steady'
+    : isPositive
+    ? (magnitude >= 2 ? 'climbing' : 'edging higher')
+    : (magnitude >= 2 ? 'sliding lower' : 'edging lower');
+  const levelDir = score >= 60 ? 1 : score >= 45 ? 0 : -1; // hot / neutral / cool
+  const momentumDir = isFlat ? 0 : isPositive ? 1 : -1;
+  const conjunction =
+    levelDir === 0 || momentumDir === 0 || levelDir === momentumDir ? 'and' : 'but';
+  const marketVerdict =
+    isFlat && levelDir === 0
+      ? 'The fractional market is holding steady.'
+      : `The fractional market is ${level} ${conjunction} ${momentum}.`;
 
   useEffect(() => {
     const duration = 1500;
     const steps = 60;
-    const increment = compositeScore / steps;
+    const increment = score / steps;
     let current = 0;
 
     const timer = setInterval(() => {
       current += increment;
-      if (current >= compositeScore) {
-        current = compositeScore;
+      if (current >= score) {
+        current = score;
         clearInterval(timer);
       }
-      setAnimatedScore(Math.round(current * 10) / 10);
+      setAnimatedScore(Math.round(current));
     }, duration / steps);
 
     return () => clearInterval(timer);
-  }, [compositeScore]);
+  }, [score]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -140,7 +160,7 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
           {/* The gauge instrument */}
           <div className="flex items-center gap-5 sm:gap-6">
             <div className="relative w-32 h-32 sm:w-36 sm:h-36 shrink-0">
-              <svg className="w-full h-full" viewBox="0 0 120 120" role="img" aria-label={`FWI score ${animatedScore.toFixed(1)} out of 100`}>
+              <svg className="w-full h-full" viewBox="0 0 120 120" role="img" aria-label={`FWI score ${animatedScore} out of 100`}>
                 {/* track */}
                 <circle
                   cx="60" cy="60" r={R}
@@ -179,7 +199,7 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center pt-1">
                 <span className="score-large" style={{ color: band.color }}>
-                  {animatedScore.toFixed(1)}
+                  {animatedScore}
                 </span>
                 <span className="text-[10px] font-medium text-muted-foreground/70 tracking-wider tabular-nums mt-1">
                   / 100
@@ -204,7 +224,7 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
                 }}
               >
                 {isFlat ? <Minus size={15} /> : isPositive ? <ArrowUpRight size={15} /> : <ArrowDownRight size={15} />}
-                <span>{isPositive && !isFlat ? '+' : ''}{delta.toFixed(1)}</span>
+                <span>{isPositive && !isFlat ? '+' : ''}{formatDelta(delta)}</span>
                 <span className="text-[11px] font-medium opacity-70">pts</span>
               </div>
               <span className="text-[11px] text-muted-foreground -mt-0.5">vs 4 weeks ago</span>

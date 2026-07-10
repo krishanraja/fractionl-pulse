@@ -24,7 +24,9 @@
   function render(el, data) {
     var card = el.getAttribute('data-fwi-badge') === 'card';
     var score = data && data.score ? data.score.overall : null;
-    var b = score != null ? band(score) : { label: 'FWI', color: '#64748b' };
+    // The index is a 0–100 gauge, so the badge shows a whole number to match the app.
+    var shown = score != null ? Math.round(score) : null;
+    var b = shown != null ? band(shown) : { label: 'FWI', color: '#64748b' };
     var fontStack = '-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif';
     var a = document.createElement('a');
     a.href = SITE; a.target = '_blank'; a.rel = 'nofollow noopener';
@@ -33,7 +35,7 @@
       ';background:#fff;color:#0f172a;line-height:1.2;box-shadow:0 1px 2px rgba(0,0,0,.04)';
     a.innerHTML =
       '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + b.color + '"></span>' +
-      '<span style="font-weight:700;font-size:' + (card ? '20px' : '14px') + '">' + (score != null ? score.toFixed(1) : '--') + '</span>' +
+      '<span style="font-weight:700;font-size:' + (card ? '20px' : '14px') + '">' + (shown != null ? shown : '--') + '</span>' +
       '<span style="color:' + b.color + ';font-weight:600;font-size:' + (card ? '13px' : '12px') + '">' + b.label + '</span>' +
       (card ? '<span style="color:#64748b;font-size:11px;margin-left:4px">Fractional Working Index</span>' : '') +
       '<span style="color:#94a3b8;font-size:10px;margin-left:6px">Pulse by Fractionl</span>';
