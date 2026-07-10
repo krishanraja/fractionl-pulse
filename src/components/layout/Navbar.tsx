@@ -15,6 +15,7 @@ import fractionlLogo from '@/assets/fractionl-logo.png';
 import { useFWIData } from '@/hooks/useFWIData';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { checkAlerts } from '@/lib/alerts';
+import { displayScore, formatDelta } from '@/lib/format';
 import { formatRelativeTime } from '@/lib/time';
 import { SUPABASE_FUNCTIONS_URL } from '@/lib/supabase';
 import { emitEvent } from '@/lib/attribution';
@@ -133,7 +134,7 @@ const Navbar = () => {
                         >
                           <span className="font-medium">{alert.label}</span>
                           <span className="opacity-70 tabular-nums shrink-0">
-                            {alert.direction === 'up' ? '+' : ''}{alert.delta.toFixed(1)} pts to {alert.score}
+                            {alert.direction === 'up' ? '+' : ''}{formatDelta(alert.delta)} pts to {displayScore(alert.score)}
                           </span>
                         </div>
                       ))}

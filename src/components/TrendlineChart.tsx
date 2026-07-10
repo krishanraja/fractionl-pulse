@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Chart, registerables } from 'chart.js';
 import 'chartjs-adapter-date-fns';
 import { useMediaQuery } from '@/hooks/use-mobile';
+import { displayScore } from '@/lib/format';
 
 Chart.register(...registerables);
 
@@ -165,7 +166,7 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
                 const ts = context[0].parsed.x;
                 return new Date(ts).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
               },
-              label: (context) => `  ${context.dataset.label}: ${context.parsed.y.toFixed(1)}`
+              label: (context) => `  ${context.dataset.label}: ${displayScore(context.parsed.y)}`
             }
           }
         },

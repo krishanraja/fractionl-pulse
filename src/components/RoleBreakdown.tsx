@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { fadeInUp } from '@/lib/motion';
 import { useRoleBreakdown } from '@/hooks/useRoleBreakdown';
+import { displayScore, formatDelta } from '@/lib/format';
 
 const RoleBreakdown = () => {
   const { roles, isLoading, asOf } = useRoleBreakdown();
@@ -45,7 +46,7 @@ const RoleBreakdown = () => {
 
             <div className="flex items-center gap-3 shrink-0">
               <span className="text-sm font-semibold text-foreground tabular-nums w-8 text-right">
-                {role.score}
+                {displayScore(role.score)}
               </span>
 
               {role.wowChange !== null ? (
@@ -66,7 +67,7 @@ const RoleBreakdown = () => {
                     <Minus size={10} />
                   )}
                   {role.wowChange > 0 ? '+' : ''}
-                  {role.wowChange.toFixed(1)}
+                  {formatDelta(role.wowChange)}
                 </span>
               ) : (
                 <span className="text-[10px] text-muted-foreground/40 w-14 text-right">

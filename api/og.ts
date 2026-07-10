@@ -31,7 +31,9 @@ export default async function handler() {
   } catch {
     /* fall back to brandline */
   }
-  const b = score != null ? band(score) : { label: 'The Fractional Working Index', color: '#4338ca' };
+  // The index is a 0–100 gauge, so the card shows a whole number to match the app.
+  const shown = score != null ? Math.round(score) : null;
+  const b = shown != null ? band(shown) : { label: 'The Fractional Working Index', color: '#4338ca' };
 
   const el = h(
     'div',
@@ -47,8 +49,8 @@ export default async function handler() {
       'div',
       { style: { display: 'flex', flexDirection: 'column' } },
       h('div', { style: { display: 'flex', alignItems: 'flex-end', gap: 24 } },
-        h('div', { style: { fontSize: score != null ? 200 : 84, fontWeight: 700, color: b.color, lineHeight: 1 } }, score != null ? score.toFixed(1) : 'FWI'),
-        score != null ? h('div', { style: { fontSize: 56, fontWeight: 600, color: b.color, paddingBottom: 28 } }, b.label) : null,
+        h('div', { style: { fontSize: shown != null ? 200 : 84, fontWeight: 700, color: b.color, lineHeight: 1 } }, shown != null ? String(shown) : 'FWI'),
+        shown != null ? h('div', { style: { fontSize: 56, fontWeight: 600, color: b.color, paddingBottom: 28 } }, b.label) : null,
       ),
       h('div', { style: { display: 'flex', fontSize: 36, color: '#cbd5e1', marginTop: 8 } }, 'Fractional Working Index'),
     ),

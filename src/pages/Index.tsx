@@ -19,6 +19,7 @@ import { staggerContainer } from '@/lib/motion';
 import { Link } from 'react-router-dom';
 import { useProGate } from '@/lib/entitlements';
 import { useUserRole, FRACTIONAL_ROLES } from '@/hooks/useUserRole';
+import { displayScore } from '@/lib/format';
 
 export const getFWILabel = (score: number): { label: string; emoji: string; color: string } => {
   if (score >= 75) return { label: 'Surging', emoji: '🚀', color: 'text-emerald-400' };
@@ -48,7 +49,8 @@ const Index = () => {
     weights: userHasCustomWeights ? preferences.weights : fwiData.weights,
   };
 
-  const fwiLabel = getFWILabel(data.today.overall);
+  // Label off the same whole number the gauges show, so the band and the score agree.
+  const fwiLabel = getFWILabel(displayScore(data.today.overall));
 
   // The viewer's own lane vs the market this week: the personal signal that turns
   // the global gauge into "is a slow month me or the market?". Prefer the role's
@@ -198,7 +200,7 @@ const Index = () => {
               </div>
             </div>
           )}
-          <FractionalReadiness score={data.today.overall} label={fwiLabel} role={role} roleMover={roleMover} />
+          <FractionalReadiness score={displayScore(data.today.overall)} label={fwiLabel} role={role} roleMover={roleMover} />
         </aside>
       </div>
     </motion.div>
