@@ -38,6 +38,26 @@
     <meta name="twitter:description" content="Weekly market intelligence for fractional executives." />
     <meta name="twitter:image" content="https://pulse.fractionl.ai/api/og" />
     <meta name="twitter:image:alt" content="Pulse by Fractionl" />
+
+    <!-- PostHog product analytics. Shared project; the product super-property
+         separates ventures. Key is a publishable client key (safe in page markup). -->
+    <script>
+      (function () {
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://us-assets.i.posthog.com/static/array.js';
+        s.onload = function () {
+          window.posthog.init('phc_uNKPzXzC9QCgkZo2VcTmpwVTNuKtZpghXdeuA5ciBBaz', {
+            api_host: 'https://us.i.posthog.com',
+            person_profiles: 'identified_only',
+            capture_pageview: true,
+            capture_pageleave: true
+          });
+          window.posthog.register({ product: 'fractionl_pulse' });
+        };
+        document.head.appendChild(s);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
