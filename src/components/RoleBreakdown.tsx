@@ -17,7 +17,10 @@ const RoleBreakdown = () => {
   }
 
   return (
-    <motion.div variants={fadeInUp} className="space-y-2">
+    // Same fix as FractionalReadiness: drive the variant states locally rather
+    // than inheriting an animate label that never arrives, which left the whole
+    // by-role breakdown invisible on production.
+    <motion.div variants={fadeInUp} initial="hidden" animate="show" className="space-y-2">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           By role

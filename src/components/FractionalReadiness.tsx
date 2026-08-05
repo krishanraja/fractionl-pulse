@@ -97,8 +97,15 @@ const FractionalReadiness = ({ score, label, role, roleMover }: FractionalReadin
   const guidance = role ? getRoleGuidance(role, roleMover ?? null) : getGuidance(animatedValue);
 
   return (
+    // `variants` alone inherits its animate label from a motion ancestor. The
+    // page-level stagger container in Index.tsx does not reach this deep, so the
+    // card stayed at the `hidden` state and shipped invisible (opacity 0,
+    // translateY 20) on production. Driving the states locally, the way
+    // MarketSnapshot and AIInsights already do, is the fix.
     <motion.div
       variants={fadeInUp}
+      initial="hidden"
+      animate="show"
       className="glass-card p-4 sm:p-5 h-full flex flex-col"
     >
       <div className="flex items-center justify-between mb-4">

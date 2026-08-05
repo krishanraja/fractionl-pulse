@@ -1,12 +1,18 @@
 // Dynamic Open Graph card for the FWI. Renders the current week's score + band so
 // fleet-posted links unfurl with this week's real reading. Edge runtime, no JSX
 // (React.createElement) to keep the build robust in a non-Next Vite project.
+//
+// `?role=cfo|cmo|cto|coo|cro|ceo` renders that role's advertised-demand reading
+// instead of the overall composite, so the six per-role SEO pages unfurl with
+// their own number rather than the market-wide one. Unknown or missing role
+// falls back to the composite card.
 import React from 'react';
 import { ImageResponse } from '@vercel/og';
 
 export const config = { runtime: 'edge' };
 
 const API = 'https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current';
+const ROLES_API = 'https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-roles';
 
 function band(score: number): { label: string; color: string } {
   if (score >= 75) return { label: 'Surging', color: '#10b981' };
@@ -18,18 +24,51 @@ function band(score: number): { label: string; color: string } {
 
 const h = React.createElement;
 
-export default async function handler() {
+const ROLE_KEYS = ['cfo', 'cmo', 'cto', 'coo', 'cro', 'ceo'];
+
+export default async function handler(req: Request) {
+  let requestedRole: string | null = null;
+  try {
+    const q = new URL(req.url).searchParams.get('role');
+    if (q && ROLE_KEYS.includes(q.toLowerCase())) requestedRole = q.toLowerCase();
+  } catch {
+    /* no role, render the composite card */
+  }
+
   let score: number | null = null;
   let asOf = '';
-  try {
-    const r = await fetch(API);
-    if (r.ok) {
-      const d = await r.json();
-      score = d?.score?.overall ?? null;
-      asOf = d?.meta?.asOf ?? '';
+  let heading = 'Fractional Working Index';
+  let footline = 'Weekly market health for the fractional executive economy';
+
+  if (requestedRole) {
+    try {
+      const r = await fetch(ROLES_API);
+      if (r.ok) {
+        const d = await r.json();
+        const hit = (d?.roles ?? []).find((x: { role: string }) => x.role === requestedRole);
+        if (hit?.demand != null) {
+          score = hit.demand;
+          asOf = d?.asOf ?? '';
+          heading = `${hit.label} demand`;
+          footline = 'Advertised demand, trailing 7 days, from the Fractional Working Index';
+        }
+      }
+    } catch {
+      /* fall through to the composite card */
     }
-  } catch {
-    /* fall back to brandline */
+  }
+
+  if (score == null) {
+    try {
+      const r = await fetch(API);
+      if (r.ok) {
+        const d = await r.json();
+        score = d?.score?.overall ?? null;
+        asOf = d?.meta?.asOf ?? '';
+      }
+    } catch {
+      /* fall back to brandline */
+    }
   }
   // The index is a 0–100 gauge, so the card shows a whole number to match the app.
   const shown = score != null ? Math.round(score) : null;
@@ -52,10 +91,10 @@ export default async function handler() {
         h('div', { style: { fontSize: shown != null ? 200 : 84, fontWeight: 700, color: b.color, lineHeight: 1 } }, shown != null ? String(shown) : 'FWI'),
         shown != null ? h('div', { style: { fontSize: 56, fontWeight: 600, color: b.color, paddingBottom: 28 } }, b.label) : null,
       ),
-      h('div', { style: { display: 'flex', fontSize: 36, color: '#cbd5e1', marginTop: 8 } }, 'Fractional Working Index'),
+      h('div', { style: { display: 'flex', fontSize: 36, color: '#cbd5e1', marginTop: 8 } }, heading),
     ),
     h('div', { style: { display: 'flex', justifyContent: 'space-between', fontSize: 26, color: '#64748b' } },
-      h('div', { style: { display: 'flex' } }, 'Weekly market health for the fractional executive economy'),
+      h('div', { style: { display: 'flex' } }, footline),
       h('div', { style: { display: 'flex' } }, asOf ? `as of ${asOf}` : ''),
     ),
   );
