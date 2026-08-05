@@ -1,6 +1,8 @@
 # Fleet Wiring (Pulse to Mindmaker OS)
 
-This is the handoff contract for a separate Mindmaker OS session to verify that Fractionl Pulse is wired into the fleet correctly. It is written to be precise and truth-disciplined. Pulse is the free, citable, agent-readable Fractional Working Index (FWI) and the lead funnel for the paid sibling product Circle (fractionl.com). Both share the Fractionl AI Stripe account, so they must be separable downstream by `app` plus `stripe_account`.
+This is the handoff contract for a separate Mindmaker OS session to verify that Fractionl Pulse is wired into the fleet correctly. It is written to be precise and truth-disciplined. Pulse is the free, citable, agent-readable Fractional Working Index (FWI) and the lead funnel for the paid sibling product Fractionl Circle at **https://circle.fractionl.ai** (the thesis-validation engine for fractional executives, free to start with a Pro tier at $39/month). Both share the Fractionl AI Stripe account, so they must be separable downstream by `app` plus `stripe_account`.
+
+> **Domain correction (2026-08-05):** earlier revisions of this doc and of `/llms.txt` and `/product-truth.json` pointed at `fractionl.com` for Circle. That is wrong: `fractionl.com` is an unrelated business. Circle is at `circle.fractionl.ai`, and the Fractionl brand site is `fractionl.ai`. All machine-readable surfaces have been corrected.
 
 - Repo: `C:\Users\krish\MindmakerOS-Apps\fractionl-pulse`
 - Live site: https://pulse.fractionl.ai

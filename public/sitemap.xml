@@ -1,15 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The checked-in copy of the set. scripts/prerender-roles.mjs REWRITES
+  dist/sitemap.xml on every build from the routes that build actually produced,
+  and stamps a fresh lastmod, so the shipped sitemap cannot drift out of sync
+  with the shipped routes. Keep the two sets identical: a URL only belongs here
+  once something real resolves at it.
+
+  Every URL below resolves to real static HTML:
+    /             the prerendered dashboard shell (live FWI baked into head, JSON-LD and noscript)
+    /fractional-* the six prerendered per-role demand pages
+    /pricing      the SPA pricing route (self-serve API key)
+-->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://pulse.fractionl.ai/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url><loc>https://pulse.fractionl.ai/pricing</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://pulse.fractionl.ai/fractional-cfo</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://pulse.fractionl.ai/fractional-cmo</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://pulse.fractionl.ai/fractional-cto</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://pulse.fractionl.ai/fractional-coo</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://pulse.fractionl.ai/fractional-cro</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://pulse.fractionl.ai/fractional-ceo</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pulse.fractionl.ai/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://pulse.fractionl.ai/fractional-cfo</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pulse.fractionl.ai/fractional-cmo</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pulse.fractionl.ai/fractional-cto</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pulse.fractionl.ai/fractional-coo</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pulse.fractionl.ai/fractional-cro</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pulse.fractionl.ai/fractional-ceo</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pulse.fractionl.ai/pricing</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
 </urlset>

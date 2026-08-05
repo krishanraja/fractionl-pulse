@@ -1,12 +1,22 @@
 {
   "schema_version": "1.0",
-  "content_version": "2026-07-06",
+  "content_version": "2026-08-05",
   "product": {
     "name": "Pulse by Fractionl",
     "index": "Fractional Working Index (FWI)",
     "publisher": "Fractionl",
+    "publisher_url": "https://fractionl.ai",
     "url": "https://pulse.fractionl.ai",
-    "circle_handoff_url": "https://fractionl.com"
+    "circle_handoff_url": "https://circle.fractionl.ai"
+  },
+  "sibling_product": {
+    "name": "Fractionl Circle",
+    "url": "https://circle.fractionl.ai",
+    "what_it_is": "The thesis-validation engine for fractional executives. An operator brings their idea for how they want to fractionalize, what they want to offer and to whom. Circle pressure-tests that idea against the live market in the open, is explicit about what it cannot confirm, and turns it into named warm-network moves toward a first retained client.",
+    "pricing": "Free to start, with a Pro tier at $39/month.",
+    "relationship": "Pulse is the free market instrument and the lead funnel; Circle is the paid sibling product. They share the Fractionl AI Stripe account and are separable downstream by app plus stripe_account. Circle's $39 Pro tier is Circle's pricing and says nothing about Pulse: Pulse has no human paywall.",
+    "handoff_url_with_attribution": "https://circle.fractionl.ai/?utm_source=pulse&utm_medium=cross_sell&utm_campaign=fwi_dashboard",
+    "do_not_say": "Circle is NOT at fractionl.com. fractionl.com is an unrelated business. Always link circle.fractionl.ai."
   },
   "one_liner": "Pulse publishes the Fractional Working Index, a free, citable, agent-readable weekly 0-100 score of how healthy the fractional executive market is and where it is heading. The dashboard is free in full; Pulse monetizes the metered agent API and enterprise/data licensing.",
   "what_it_is": "Pulse publishes the Fractional Working Index (FWI), a weekly 0-100 composite market-health score for the fractional executive market, covering six C-suite roles only (fractional CFO, CMO, CTO, COO, CRO, and interim CEO). The score blends 21 independent data sources across three pillars: Demand (50%), Supply (20%), and Culture (30%). When supply has no data, the supply weight redistributes across the remaining pillars.",
@@ -80,7 +90,16 @@
     "embeddable_badge": "https://pulse.fractionl.ai/embed.js",
     "rss_feed": "https://pulse.fractionl.ai/feed.xml",
     "mcp_tools": ["get_fractional_working_index", "get_fwi_weekly_brief"],
-    "hosted_mcp_server": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp"
+    "hosted_mcp_server": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp",
+    "role_pages": [
+      "https://pulse.fractionl.ai/fractional-cfo",
+      "https://pulse.fractionl.ai/fractional-cmo",
+      "https://pulse.fractionl.ai/fractional-cto",
+      "https://pulse.fractionl.ai/fractional-coo",
+      "https://pulse.fractionl.ai/fractional-cro",
+      "https://pulse.fractionl.ai/fractional-ceo"
+    ],
+    "sitemap": "https://pulse.fractionl.ai/sitemap.xml"
   },
   "do_not_say": [
     "Do not pitch a $99 human Pro tier or any human paywall. The dashboard is free in full; the paid product is the metered agent API plus enterprise and data licensing. (The $99 Pro tier was retired in the 2026-07 pivot.)",
@@ -91,7 +110,9 @@
     "Do not claim coverage of any role beyond the 6 C-suite roles (fractional CFO, CMO, CTO, COO, CRO, interim CEO).",
     "Do not claim it is an official, institutional, or government index (publisher is Fractionl, a private composite).",
     "Do not claim geographic coverage beyond US primary and UK secondary (no APAC).",
-    "Do not use em dashes in any user-facing copy; use commas, periods, or the word 'to'."
+    "Do not use em dashes in any user-facing copy; use commas, periods, or the word 'to'.",
+    "Do not send anyone to fractionl.com for Fractionl Circle. Circle is at https://circle.fractionl.ai; fractionl.com is an unrelated business. The Fractionl brand site is https://fractionl.ai.",
+    "Do not publish a per-role supply or talent-availability score. The supply sources are not role-differentiated once normalized, so only the per-role DEMAND index is real."
   ],
   "coverage_statement": "Honest limits: about 12 weeks of backfill plus accumulating weekly data (not years of history); 6 C-suite roles only (fractional CFO, CMO, CTO, COO, CRO, interim CEO); US primary, UK secondary, no APAC; publisher is Fractionl, a private composite, not an official or government index.",
   "contact": "data@fractionl.ai"

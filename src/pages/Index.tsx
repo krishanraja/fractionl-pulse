@@ -10,6 +10,7 @@ import TrendlineChart from '@/components/TrendlineChart';
 import SignalsTable from '@/components/SignalsTable';
 import FractionalReadiness from '@/components/FractionalReadiness';
 import AIInsights from '@/components/AIInsights';
+import CircleCrossSell from '@/components/CircleCrossSell';
 import ContentRadar from '@/components/ContentRadar';
 import DataHealthCard from '@/components/DataHealthCard';
 import MethodologyDrawer from '@/components/MethodologyDrawer';
@@ -199,6 +200,9 @@ const Index = () => {
             </div>
           )}
           <FractionalReadiness score={data.today.overall} label={fwiLabel} role={role} roleMover={roleMover} />
+          {/* The Pulse to Circle handoff, sat where the reader has just named
+              their lane. Quiet by design: one card, one text link, no button. */}
+          <CircleCrossSell role={role} />
         </aside>
       </div>
     </motion.div>
