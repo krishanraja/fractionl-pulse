@@ -6,77 +6,90 @@ The credibility and value of the FWI depend entirely on the quality, breadth, an
 
 ## 1. Live Source Inventory (21 sources)
 
-**Total**: 17 composite + 4 context (FRED + Census, stored not scored).
+**Total**: 17 composite + 4 context (stored not scored). Last reconciled against the live database and `ingest-signals` code: **2026-08-06**.
+
+> For the live source-by-source state at any moment, query `data_source_health` — this table, not this doc, is the operational truth.
 
 ### Demand pillar (50% weight)
 
-| Source | Signal | Method | Status | Cost / call |
-|--------|--------|--------|--------|-------------|
-| **Adzuna** | Fractional job postings, 6 C-suite roles | REST API, `what_phrase` exact-phrase | 🟢 Live | $0 (free tier) |
-| **SerpAPI Google Jobs** | Independent Google Jobs cross-check | SerpAPI engine, exact phrase per role | 🟢 Live | ~$0.005 |
-| **SEC EDGAR Form D** | VC funding pipeline, tech/SaaS, 90-day rolling | EDGAR full-text search | 🟢 Live | $0 (gov) |
+| Source | Signal | Method | Cost / call |
+|--------|--------|--------|-------------|
+| **Adzuna** | Fractional job postings, 6 C-suite roles | REST API, `what_phrase` exact-phrase | $0 (free tier) |
+| **SerpAPI Google Jobs** | Independent Google Jobs cross-check | SerpAPI engine, exact phrase per role | ~$0.005 |
+| **SEC EDGAR Form D** | VC funding pipeline, tech/SaaS, 90-day rolling | EDGAR full-text search | $0 (gov) |
 
 ### Supply pillar (20% weight, redistributes if empty)
 
-| Source | Signal | Method | Status | Cost / call |
-|--------|--------|--------|--------|-------------|
-| **People Data Labs** | Profile counts containing fractional/interim title terms | PDL Person Search API | 🟢 Live | ~$0.06 |
-| **SerpAPI LinkedIn** | `site:linkedin.com/in "fractional CFO"` proxy | SerpAPI Google Search | 🟢 Live | ~$0.02 |
-| **GoFractional** | Active marketplace listings | Apify scraper actor | 🟢 Live | ~$0.01 |
-| **Apify Trends (supply intent)** | Searches like "become fractional executive" | Apify google-trends-scraper | 🟢 Live | ~$0.01 |
-| **SerpAPI Trends (supply intent)** | Independent supply-intent cross-check | SerpAPI Trends | 🟢 Live | ~$0.005 |
+| Source | Signal | Method | Cost / call |
+|--------|--------|--------|-------------|
+| **SerpAPI LinkedIn** | `site:linkedin.com/in "fractional CFO"` proxy | SerpAPI Google Search | ~$0.02 |
+| **Brave Talent** | SerpAPI-independent LinkedIn-profile backstop | Brave Web Search | ~$0.003 |
+| **GoFractional** | Active marketplace listings | Apify web-scraper actor | ~$0.01 |
+| **SerpAPI Trends (supply intent)** | Searches like "become fractional executive" | SerpAPI Trends | ~$0.005 |
 
 ### Culture pillar (30% weight)
 
-| Source | Signal | Method | Status | Cost / call |
-|--------|--------|--------|--------|-------------|
-| **SerpAPI Google Trends** | Search interest, 90-day, US geo | SerpAPI Trends (primary) | 🟢 Live | ~$0.005 |
-| **Apify Google Trends** | Backup search-interest provider | Apify google-trends-scraper | 🟢 Live | ~$0.01 |
-| **NewsAPI** | Article volume, 28-day, exact phrase | REST API | 🟢 Live | $0 (free tier) |
-| **Mediastack** | Independent news cross-check | REST API | 🟢 Live | $0 (free tier) |
-| **Brave News** | News-vertical search | Brave Search API | 🟢 Live | ~$0.003 |
-| **Brave Web Search** | Total web mentions across sites | Brave Search API | 🟢 Live | ~$0.003 |
-| **The Guardian** | Elite UK media, 90-day | Guardian Open Platform API | 🟢 Live | $0 |
-| **NY Times** | Elite US media, 90-day | NYT Article Search API | 🟢 Live | $0 |
-| **Podchaser** | Podcast episodes mentioning fractional terms | Podchaser GraphQL API | 🟢 Live | $0 |
-| **Reddit** | Posts + engagement in relevant subreddits | Apify Reddit scraper | 🟢 Live | ~$0.005 |
-| **Hacker News** | Stories + points | Algolia HN Search | 🟢 Live | $0 |
+| Source | Signal | Method | Cost / call |
+|--------|--------|--------|-------------|
+| **SerpAPI Google Trends** | Search interest, 90-day, US geo | SerpAPI Trends | ~$0.005 |
+| **NewsAPI** | Article volume, 28-day, exact phrase | REST API | $0 (free tier) |
+| **Mediastack** | Independent news cross-check | REST API | $0 (free tier) |
+| **Brave News** | News-vertical search | Brave Search API | ~$0.003 |
+| **Brave Web Search** | Total web mentions across sites | Brave Search API | ~$0.003 |
+| **The Guardian** | Elite UK media, 90-day | Guardian Open Platform API | $0 |
+| **Podchaser** | Podcast episodes mentioning fractional terms | Podchaser GraphQL API | $0 |
+| **Reddit** | Posts + engagement in relevant subreddits | Apify Reddit scraper | ~$0.005 |
+| **Hacker News** | Stories + points | Algolia HN Search | $0 |
+| **Wikipedia pageviews** | Article-interest volume for fractional-work topics | Wikimedia REST API | $0 |
 
 ### Context (stored, excluded from composite)
 
-| Source | Signal | Method | Status |
-|--------|--------|--------|--------|
-| **FRED — JOLTS** | US Job Openings (monthly) | FRED API | 🟢 Live |
-| **FRED — Unemployment** | US Unemployment Rate (monthly) | FRED API | 🟢 Live |
-| **FRED — Initial Claims** | US Initial Jobless Claims (weekly) | FRED API | 🟢 Live |
-| **Census ACS** | Self-employment household percentage | Census API | 🟢 Live |
+| Source | Signal | Method | Notes |
+|--------|--------|--------|-------|
+| **BLS** | JOLTS openings, unemployment, wages | BLS API | Live since 2026-02 |
+| **Census ACS** | Self-employment household percentage | Census API | Live |
+| **OpenAlex** | Academic / thought-leadership coverage | OpenAlex API | Live since 2026-02 |
+| **FRED** | JOLTS, unemployment, initial claims | FRED API | ⚠️ Coded but has never written a signal (`FRED_API_KEY` unset); BLS covers the same macro context |
+
+### Retired sources (2026-05-30)
+
+These had been failing every run for weeks and are fully covered by replacements. Their historical signals remain in the `signals` table.
+
+| Source | Retired because | Replaced by |
+|--------|-----------------|-------------|
+| **Apify Google Trends** (`google_trends`) | Persistent failures; last signal 2026-04-13 | SerpAPI Trends |
+| **Apify supply trends** (`supply_trends`) | Persistent failures | SerpAPI supply trends |
+| **People Data Labs** | HTTP 404 every run | SerpAPI LinkedIn + Brave Talent |
+| **NY Times** | HTTP 401 every run | Guardian |
+
+> ⚠️ Note the concentration risk this created: SerpAPI is now the **only** Google Trends provider (demand-side and supply-side) and a major share of demand + supply coverage. A SerpAPI quota exhaustion (HTTP 429) takes out four sources at once — exactly what happened 2026-08-04.
 
 ---
 
 ## 2. Source-Confidence Weights
 
-Each source has a domain-weighted contribution to the data-completeness score, baked into `SOURCE_CONFIDENCE_WEIGHTS` in `supabase/functions/ingest-signals/index.ts`:
+Each source has a domain-weighted contribution to the data-completeness score, baked into `SOURCE_CONFIDENCE_WEIGHTS` in `supabase/functions/ingest-signals/index.ts` (that constant is authoritative; this table mirrors it as of 2026-08-06):
 
 | Source | Weight |
 |--------|--------|
-| Adzuna | 0.14 |
-| SEC EDGAR | 0.10 |
-| People Data Labs | 0.10 |
-| SerpAPI Jobs | 0.08 |
-| Google Trends (Apify) | 0.08 |
-| SerpAPI LinkedIn | 0.06 |
-| SerpAPI Trends | 0.06 |
-| GoFractional | 0.05 |
-| NewsAPI | 0.05 |
-| Brave News | 0.04 |
-| Apify supply trends | 0.04 |
+| Adzuna | 0.12 |
+| SEC EDGAR | 0.09 |
+| SerpAPI Jobs | 0.07 |
+| Wikipedia pageviews | 0.06 |
+| SerpAPI Trends | 0.05 |
+| SerpAPI LinkedIn | 0.05 |
+| Brave Talent | 0.05 |
+| NewsAPI | 0.04 |
+| GoFractional | 0.04 |
+| BLS | 0.04 |
+| Brave News | 0.03 |
 | Brave Web | 0.03 |
 | Mediastack | 0.03 |
 | SerpAPI supply trends | 0.03 |
 | Guardian | 0.02 |
-| NY Times | 0.02 |
 | Podchaser | 0.02 |
 | Reddit | 0.02 |
+| OpenAlex | 0.02 |
 | Hacker News | 0.01 |
 | FRED | 0.01 |
 | Census ACS | 0.01 |
@@ -94,11 +107,10 @@ For every successful signal, the ingest function fetches the last 8 weeks of val
 ### Cross-source triangulation
 
 - 3 news APIs (NewsAPI, Mediastack, Brave) cover the same culture signal
-- 2 Google Trends providers (SerpAPI primary, Apify fallback)
-- 4 supply sources (PDL, LinkedIn proxy, GoFractional, supply-intent search)
+- 4 supply sources (SerpAPI LinkedIn, Brave Talent, GoFractional, supply-intent search)
 - 2 demand sources for jobs (Adzuna, SerpAPI Google Jobs)
 
-Single-source disruptions don't take the index down.
+Single-source disruptions don't take the index down. **Known exception since the 2026-05-30 retirements: Google Trends has only one provider (SerpAPI), and four sources share the single SerpAPI quota — a provider-level 429 degrades demand, supply, and culture simultaneously.**
 
 ### Idempotent writes
 
@@ -114,7 +126,11 @@ Every cron + manual run writes a `pipeline_runs` row with status, records insert
 
 ### Email alerts
 
-`send-pipeline-alert` fires Resend transactional emails on critical (ingest failure) or warning (insights generation failure) events.
+`send-pipeline-alert` fires Resend transactional emails to `ALERT_EMAILS` (env, comma-separated) on:
+
+- **critical** — the whole daily ingest failed after retries
+- **warning** — insights generation failed after a successful ingest
+- **warning** — the run "succeeded" but is degraded: data completeness below `COMPLETENESS_ALERT_THRESHOLD` (default 0.75) or healthy sources below `MIN_HEALTHY_SOURCES` (default 14). The email names each failing source with its last error and last-success date, so partial outages (quota 429s, expired keys) can no longer fail silently.
 
 ---
 
@@ -205,7 +221,7 @@ A single full ingest run touches every source listed above. Estimated cost per r
 | SerpAPI (jobs + trends + LinkedIn + supply) | ~$0.10 |
 | Apify (Google Trends + supply trends + Reddit + GoFractional) | ~$0.04 |
 | Brave (news + web) | ~$0.006 |
-| People Data Labs (per role) | ~$0.36 |
+| ~~People Data Labs~~ (retired 2026-05-30) | $0 |
 | OpenAI (insights) | ~$0.005 |
 | Free APIs (NewsAPI, Mediastack, FRED, Census, NYT, Guardian, Podchaser, HN, SEC) | $0 |
 | **Total per daily run** | **~$0.50** |
@@ -220,7 +236,7 @@ Daily cron × 30 days = ~$15/mo in variable data cost. Real annual variable cost
 | NewsAPI | $0 (free dev tier) — $449 if upgraded |
 | Mediastack | $0 (free tier) |
 | SerpAPI | $50–$150 depending on volume |
-| PDL | $99 (starter) — $500+ at scale |
+| ~~PDL~~ (retired 2026-05-30) | $0 |
 | Apify | $49 (starter plan) |
 | Brave Search | $5–$50 depending on volume |
 | Resend | $0–$20 |
@@ -260,7 +276,7 @@ This is the actual operating cost behind the FWI — useful when prospects ask w
 | Guardian | API, commercial | Open Platform allows commercial w/ key |
 | NY Times | API, non-commercial dev key | Article counts only — within fair use |
 | Podchaser | API, commercial | Within ToS |
-| People Data Labs | API, commercial | Aggregate counts only, within ToS |
+| People Data Labs | API, commercial | Aggregate counts only, within ToS (retired 2026-05-30; historical signals retained) |
 | Reddit (via Apify) | Scraper | Apify handles ToS; we consume aggregate counts |
 | Hacker News | Public Algolia API | Free, no restrictions |
 | GoFractional (via Apify) | Scraper | Aggregate listings counts; respects robots.txt |

@@ -1,7 +1,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') || '';
-const ALERT_EMAIL = 'krish@fractionl.ai';
+// Delivery to krish@fractionl.ai alone was never verified (no alert has ever
+// been seen in an inbox), so default to a second, known-read mailbox as well.
+const ALERT_EMAILS = (Deno.env.get('ALERT_EMAILS') || 'krish@fractionl.ai,krishanraja@gmail.com')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -54,7 +59,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         from: 'Pulse Alerts <alerts@fractionl.ai>',
-        to: [ALERT_EMAIL],
+        to: ALERT_EMAILS,
         subject: `[${severity.toUpperCase()}] ${subject}`,
         html,
       }),

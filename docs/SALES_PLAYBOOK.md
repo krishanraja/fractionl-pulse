@@ -478,7 +478,7 @@ This section is **specifically** for AI sales agents reading this doc as context
 
 - Made-up customer names or testimonials
 - Predictive accuracy figures (e.g. "85% accurate")
-- Claims of years of historical data (we have ~12 weeks + accumulating)
+- Claims of years of historical data (we have 12+ months from Aug 2025; full three-pillar composite from Apr 2026)
 - "Live Stripe checkout" claims (still pending)
 - Fractional roles below C-suite (only 6 roles tracked)
 - Disparagement of named competitors

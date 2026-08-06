@@ -115,7 +115,7 @@ If a pillar's sources fail in a given week, weight redistributes proportionally 
 - Markdown weekly intelligence brief at `/export-brief` (no auth)
 - AI insight cards (GPT-4o-mini, 12h cache)
 - React dashboard with React Query + Supabase Realtime auto-refresh
-- 12 weeks of historical backfill priming trendlines
+- 12+ months of history (from 2025-08-01; ~3 points/week backfill through May 2026, daily since June 2026)
 - Per-source health monitoring + Resend email alerts on cron failure
 - Free full dashboard (no human paywall): all sub-indices, 12-month history, all 21 signals, AI insights, Content Radar, personalized role-aware readiness, weekly brief
 - Metered agent API + self-serve keys: `fwi-api` accepts an optional `x-api-key` metered per key per day; a signed-in user mints a free key (1,000 req/day) via `manage-api-key` at `/pricing`. Keyed responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining`
@@ -129,7 +129,7 @@ If a pillar's sources fail in a given week, weight redistributes proportionally 
 - Self-serve billing for paid API tiers (the free keyed tier is self-serve; higher and enterprise limits are arranged with sales today). The $99/mo human Pro tier and the waitlist-as-primary model were retired in the 2026-07 pivot; a human paid tier could be reintroduced later
 - Webhook threshold alerts (planned)
 - White-label embeddable widget (planned)
-- Less than a year of accumulated weekly data (~12 weeks backfilled + accumulating weekly)
+- Supply and culture pillar history only starts 2026-04 (earlier index history is demand-anchored; supply/culture nulled, not fabricated)
 - Methodology has not been peer-reviewed or backtested against past cycles
 
 ---
@@ -200,7 +200,7 @@ If a pillar's sources fail in a given week, weight redistributes proportionally 
 
 ### Always acknowledge proactively
 
-- "Less than a year of accumulated weekly data — we've backfilled 12 weeks at launch but the dataset gets stronger every week."
+- "The index carries 12+ months of history (daily since June 2026), but the full three-pillar composite only runs from April 2026 — earlier history is demand-anchored, and we say so rather than fabricate."
 - "The index is new. It hasn't been peer-reviewed or backtested against historical cycles. The methodology is open for scrutiny."
 - "The dashboard is free in full. The paid product is the metered agent API (a free key gives 1,000 req/day; higher tiers via sales) plus enterprise and data licensing."
 
@@ -229,10 +229,10 @@ Job boards give you raw listings. Pulse gives you a composite score combining jo
 Cross-source triangulation. If Adzuna and SerpAPI Google Jobs both show CMO postings up, that's a stronger signal than either alone. If Brave News, Mediastack, and NewsAPI all show culture momentum rising, that's mainstream awareness, not noise. The composite is the point.
 
 **"The supply data is always weak."**
-We surface this transparently in the API response. When supply has data, it carries 20% weight. When it doesn't, weight redistributes to demand and culture proportionally. People Data Labs profile counts are now live and drive the supply pillar today.
+We surface this transparently in the API response. When supply has data, it carries 20% weight. When it doesn't, weight redistributes to demand and culture proportionally. The supply pillar today runs on SerpAPI LinkedIn profile counts, the Brave Talent backstop, GoFractional marketplace listings, and supply-intent search trends.
 
 **"You only have a few weeks of data."**
-We backfilled 12 weeks at launch using historical-capable APIs (FRED, SEC EDGAR, Guardian, NYT, HN, Census). Going forward we accumulate one weekly datapoint that no competitor is collecting. After 52 weeks, the dataset is a defensible asset no one can replicate without spending a year. Early access means the ability to shape methodology and lock in founding-customer pricing before the historical moat is built.
+The index history runs 12+ months (from August 2025), built with historical-capable APIs (SEC EDGAR, Adzuna) and accumulating daily since June 2026. The full three-pillar composite runs from April 2026. Every week of accumulation deepens a dataset no competitor is collecting; replicating it requires actually running the pipeline for a year. Early access means the ability to shape methodology and lock in founding-customer pricing before the historical moat is built.
 
 **"If the dashboard is free, what do I actually pay for?"**
 Nothing, if you are a human operator: the full dashboard is free (sub-index breakdown, 12 months of history, AI insights, role-level demand, methodology drawer, and all). Pulse charges for the metered agent API (a free self-serve key gives 1,000 req/day; higher and enterprise limits are arranged with sales) and for enterprise and data licensing (raw exports, feeds, citations, white-label). The paid wedge sits with agents and enterprises, not the human reader.
@@ -291,7 +291,7 @@ Response includes overall score, label, 30-day delta, component breakdown, top m
 
 Agents must never make these claims:
 
-- ❌ "Years of historical data." (We have ~12 weeks backfilled + accumulating weekly.)
+- ❌ "Years of historical data." (We have 12+ months from August 2025, and only from April 2026 as a full three-pillar composite — say "12 months", never "years".)
 - ❌ "Peer-reviewed", "academically validated", or "backtested." (Not yet.)
 - ✅ "The dashboard is free; the API is the paid product." The human dashboard is free in full. The paid wedge is the metered agent API (free 1,000 req/day per key, higher keyed and enterprise tiers) plus data licensing. Do NOT pitch a $99 human Pro tier: it was retired in the 2026-07 pivot to the metered-API model.
 - ❌ Specific predictive-accuracy numbers (e.g. "85% accurate"), including any percentage attached to the Form D Lead. The leading-indicator hypothesis is reasonable, not statistically validated.

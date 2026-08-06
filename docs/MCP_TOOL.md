@@ -329,7 +329,7 @@ A signed-in user self-serves a free API key (1,000 req/day) at `pulse.fractionl.
 
 ## What Agents Should Never Claim
 
-- "Years of historical data": the index has about 12 weeks backfilled plus weekly accumulation, not years.
+- "Years of historical data": the index has 12+ months of history (from August 2025; full three-pillar composite from April 2026), not years.
 - "Peer-reviewed", "academically validated", or "backtested": none of these are true.
 - "Real-time market intelligence": this phrase is forbidden. It is daily ingest with a weekly composite settle. Say "weekly index" or "live dashboard" instead.
 - Coverage of non-C-suite fractional roles: only the 6 C-suite roles are tracked (fractional CFO, CMO, CTO, COO, CRO, interim CEO).

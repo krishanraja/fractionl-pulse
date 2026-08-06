@@ -7,6 +7,11 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 5000;
 
+// Degradation thresholds (docs/DATA_SOURCES_ROADMAP.md §6). Overridable via env
+// so tightening them doesn't need a code change.
+const COMPLETENESS_ALERT_THRESHOLD = Number(process.env.COMPLETENESS_ALERT_THRESHOLD || '0.75');
+const MIN_HEALTHY_SOURCES = Number(process.env.MIN_HEALTHY_SOURCES || '14');
+
 async function callWithRetry(
   url: string,
   headers: Record<string, string>,
@@ -36,6 +41,32 @@ async function callWithRetry(
     }
   }
   return { ok: false, error: `${label}: exhausted retries`, attempts: MAX_RETRIES + 1 };
+}
+
+async function fetchFailedSources(): Promise<string> {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/data_source_health?status=eq.failed&select=source,last_success,metadata`,
+      {
+        headers: {
+          'apikey': SUPABASE_SERVICE_ROLE_KEY,
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+      },
+    );
+    if (!res.ok) return 'unavailable';
+    const rows = await res.json() as Array<{
+      source: string;
+      last_success: string | null;
+      metadata?: { last_error?: string };
+    }>;
+    if (rows.length === 0) return 'none';
+    return rows
+      .map(r => `${r.source} (${r.metadata?.last_error || 'unknown error'}; last success ${r.last_success?.slice(0, 10) || 'never'})`)
+      .join(', ');
+  } catch {
+    return 'unavailable';
+  }
 }
 
 async function sendAlert(
@@ -126,14 +157,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       'Attempts': String(ingest.attempts),
       'Insights attempted': 'No (ingest failed first)',
     });
-  } else if (!insights.ok) {
-    await sendAlert('warning', `Insights generation failed for ${today}`, {
-      'Date': today,
-      'Signals collected': String(ingest.result?.signals_collected ?? 'Unknown'),
-      'FWI score': String(ingest.result?.fwi_result?.overall_score ?? 'Unknown'),
-      'Insights error': 'Generation failed after ingest succeeded',
-      'Insights attempts': String(insights.attempts),
-    });
+  } else {
+    if (!insights.ok) {
+      await sendAlert('warning', `Insights generation failed for ${today}`, {
+        'Date': today,
+        'Signals collected': String(ingest.result?.signals_collected ?? 'Unknown'),
+        'FWI score': String(ingest.result?.fwi_result?.overall_score ?? 'Unknown'),
+        'Insights error': 'Generation failed after ingest succeeded',
+        'Insights attempts': String(insights.attempts),
+      });
+    }
+
+    // A "successful" run can still be degraded: individual sources fail silently
+    // (429s, expired keys) while the composite keeps publishing on a thinner mix.
+    const confidence = ingest.result?.confidence;
+    const sourcesHealthy = ingest.result?.sources_healthy;
+    const lowConfidence = typeof confidence === 'number' && confidence < COMPLETENESS_ALERT_THRESHOLD;
+    const lowCoverage = typeof sourcesHealthy === 'number' && sourcesHealthy < MIN_HEALTHY_SOURCES;
+    if (lowConfidence || lowCoverage) {
+      await sendAlert('warning', `Pipeline degraded for ${today}: source failures are thinning the index`, {
+        'Date': today,
+        'Data completeness': String(confidence ?? 'Unknown'),
+        'Completeness alert threshold': String(COMPLETENESS_ALERT_THRESHOLD),
+        'Healthy sources this run': String(sourcesHealthy ?? 'Unknown'),
+        'Minimum healthy sources': String(MIN_HEALTHY_SOURCES),
+        'Failing sources': await fetchFailedSources(),
+      });
+    }
   }
 
   const status = ingest.ok ? 200 : 500;
