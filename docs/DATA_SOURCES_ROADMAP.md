@@ -132,6 +132,8 @@ Every cron + manual run writes a `pipeline_runs` row with status, records insert
 - **warning** — insights generation failed after a successful ingest
 - **warning** — the run "succeeded" but is degraded: data completeness below `COMPLETENESS_ALERT_THRESHOLD` (default 0.75) or healthy sources below `MIN_HEALTHY_SOURCES` (default 14). The email names each failing source with its last error and last-success date, so partial outages (quota 429s, expired keys) can no longer fail silently.
 
+Deliverability: sends go from `ALERT_FROM` (default `alerts@fractionl.ai`). As of 2026-08-07 **fractionl.ai is not a verified domain on the Pulse Resend account**, so the function automatically falls back to Resend's `onboarding@resend.dev` test domain, which can only deliver to the Resend account owner (`ALERT_FALLBACK_TO`, default `hello@krishraja.com`). Verifying fractionl.ai at resend.com/domains (or swapping `RESEND_API_KEY` to the account that already has it verified) restores branded, multi-recipient delivery automatically — no redeploy needed.
+
 ---
 
 ## 4. API & Agent-Native Surfaces

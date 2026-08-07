@@ -7,6 +7,16 @@ const ALERT_EMAILS = (Deno.env.get('ALERT_EMAILS') || 'krish@fractionl.ai,krisha
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
+const ALERT_FROM = Deno.env.get('ALERT_FROM') || 'Pulse Alerts <alerts@fractionl.ai>';
+// Resend rejects sends from unverified domains (fractionl.ai is not verified on
+// this account as of 2026-08-07). resend.dev is Resend's built-in test domain:
+// it needs no verification but only delivers to the Resend account owner's
+// address — a degraded-but-deliverable path until the domain is verified.
+const FALLBACK_FROM = 'Pulse Alerts <onboarding@resend.dev>';
+const FALLBACK_TO = (Deno.env.get('ALERT_FALLBACK_TO') || 'hello@krishraja.com')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -51,31 +61,48 @@ serve(async (req) => {
         </div>
       </div>`;
 
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'Pulse Alerts <alerts@fractionl.ai>',
-        to: ALERT_EMAILS,
-        subject: `[${severity.toUpperCase()}] ${subject}`,
-        html,
-      }),
-    });
+    const send = (from: string, to: string[]) =>
+      fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from,
+          to,
+          subject: `[${severity.toUpperCase()}] ${subject}`,
+          html,
+        }),
+      });
+
+    let usedFrom = ALERT_FROM;
+    let res = await send(ALERT_FROM, ALERT_EMAILS);
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('[Alert] Resend error from primary address:', res.status, errText);
+      if (errText.includes('not verified')) {
+        usedFrom = FALLBACK_FROM;
+        res = await send(FALLBACK_FROM, FALLBACK_TO);
+      } else {
+        return new Response(JSON.stringify({ ok: false, error: errText }), {
+          status: 502,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     if (!res.ok) {
       const errText = await res.text();
-      console.error('[Alert] Resend error:', res.status, errText);
-      return new Response(JSON.stringify({ ok: false, error: errText }), {
+      console.error('[Alert] Resend error from fallback address:', res.status, errText);
+      return new Response(JSON.stringify({ ok: false, error: errText, attempted_fallback: true }), {
         status: 502,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
     const result = await res.json();
-    return new Response(JSON.stringify({ ok: true, id: result.id }), {
+    return new Response(JSON.stringify({ ok: true, id: result.id, from: usedFrom }), {
       headers: { 'Content-Type': 'application/json' },
     });
 
