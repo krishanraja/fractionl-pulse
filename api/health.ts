@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { loadConfig } from './_config';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -6,6 +7,19 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const STALE_HOURS = 48;
 
 export default async function handler(_req: VercelRequest, res: VercelResponse) {
+  // A misconfigured deployment must not look like an unhealthy pipeline. Three
+  // upstream checks failing on "Failed to parse URL" reads as a Supabase outage
+  // when the truth is that this function was never given the URL.
+  const config = loadConfig();
+  if (!config.ok) {
+    return res.status(503).json({
+      status: 'misconfigured',
+      issues: [config.message],
+      missing: config.missing,
+      checked_at: new Date().toISOString(),
+    });
+  }
+
   const headers = {
     'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
     'apikey': SUPABASE_SERVICE_ROLE_KEY,
