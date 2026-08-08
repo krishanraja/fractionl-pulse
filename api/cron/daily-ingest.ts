@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { loadConfig } from '../_config';
+// .js extension required — see the note in api/health.ts ("type": "module").
+import { loadConfig } from '../_config.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const CRON_SECRET = process.env.CRON_SECRET || '';

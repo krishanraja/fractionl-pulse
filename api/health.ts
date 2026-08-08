@@ -1,5 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { loadConfig } from './_config';
+// The .js extension is required: package.json sets "type": "module", and under
+// ESM an extensionless relative specifier throws ERR_MODULE_NOT_FOUND at
+// invocation. The specifier names the emitted file, not the .ts source.
+import { loadConfig } from './_config.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
