@@ -181,6 +181,19 @@ If a pillar has no live data in a given week, its weight is **redistributed prop
 - **Idempotent writes** — `ON CONFLICT` upserts on `(date, source, signal_type, category)`
 - **Per-source health** — `data_source_health` row updated every run with status, error count, last success
 - **Email alerts** — `send-pipeline-alert` edge function fires Resend emails on failed daily ingests
+- **Weekly audit** — `npm run audit` reconciles the source universe, checks schedule adherence and provenance, and returns a 🟢/🟡/🔴 verdict. Read-only, no secrets, exits non-zero when degraded. See [`docs/WEEKLY_PIPELINE_AUDIT.md`](docs/WEEKLY_PIPELINE_AUDIT.md)
+
+### Operations
+
+```bash
+npm run audit            # weekly pipeline audit, verdict first (read-only)
+npm run audit:json       # same, machine-readable
+npm run audit:baseline   # refresh docs/audit-baseline.json — only after a recorded decision
+```
+
+The audit reads only public data and writes nothing, so it also runs unattended
+every Monday via `.github/workflows/weekly-pipeline-audit.yml`, which opens an
+issue when the verdict is AMBER or RED.
 
 ### FWI Scale
 
@@ -296,8 +309,11 @@ npm run dev
 
 | Key | Purpose |
 |-----|---------|
+| `SUPABASE_URL` | **Required.** Base URL every `api/` function calls. Without it `/api/health` and the cron handlers fail on a URL-parse error, and the degradation alert fails the same way — see `api/_config.ts` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Authenticates cron trigger to Supabase |
 | `CRON_SECRET` | Verifies Vercel Cron requests |
+| `COMPLETENESS_ALERT_THRESHOLD` | Optional, default `0.75`. Below this the daily run sends a degradation alert |
+| `MIN_HEALTHY_SOURCES` | Optional, default `14`. Fewer contributing sources sends the same alert |
 
 ---
 
@@ -313,6 +329,8 @@ npm run dev
 | [`docs/SALES_PLAYBOOK.md`](docs/SALES_PLAYBOOK.md) | ICP, outcomes, objection handling, outbound hooks for sales/marketing agents |
 | [`docs/MONETIZATION_STRATEGY.md`](docs/MONETIZATION_STRATEGY.md) | Pricing tiers, data licensing, partnership model, financial projections |
 | [`docs/DATA_SOURCES_ROADMAP.md`](docs/DATA_SOURCES_ROADMAP.md) | Live source inventory + roadmap for new sources, webhooks, marketplace integrations |
+| [`docs/WEEKLY_PIPELINE_AUDIT.md`](docs/WEEKLY_PIPELINE_AUDIT.md) | The weekly maintenance runbook — what `npm run audit` establishes, and the judgement it cannot make |
+| `docs/audit-baseline.json` | Committed provenance baseline. An increase in the estimated-day count is an incident |
 | `/product-truth.json`, `/llms.txt`, `/.well-known/ai-plugin.json` | Machine-readable discovery surfaces for agents (served from the live site) |
 
 ---

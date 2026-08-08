@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { loadConfig } from '../_config';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const CRON_SECRET = process.env.CRON_SECRET || '';
@@ -96,6 +97,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const authHeader = req.headers['authorization'];
   if (authHeader !== `Bearer ${CRON_SECRET}` && !req.headers['x-vercel-cron']) {
     return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  // Fail named and immediately. Without this the run dies on a URL-parse error
+  // and so does the alert that would have reported it.
+  const config = loadConfig();
+  if (!config.ok) {
+    return res.status(500).json({ error: 'misconfigured', missing: config.missing, message: config.message });
   }
 
   const today = new Date().toISOString().slice(0, 10);

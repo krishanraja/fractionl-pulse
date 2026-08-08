@@ -1,109 +1,161 @@
 # Weekly Pipeline Audit — Runbook
 
-This is the procedure executed by the scheduled weekly audit session. It is
-**source-agnostic by design**: it never assumes a fixed source list, so adding,
-upgrading, or retiring sources week over week does not invalidate the audit.
-Update this file to change what the weekly audit does — the schedule itself
-just points here.
+**Repo:** `krishanraja/fractionl-pulse` · **Live:** `pulse.fractionl.ai` · **Supabase:** `dtlcprcpvdomrehbejhw`
+**When:** Monday morning. **Budget: 20 minutes, hard stop.**
 
-**Verdict standard:** the audit ends with one of
-- 🟢 **GREEN** — pipeline on schedule, no failing sources, completeness ≥ 0.85
-- 🟡 **AMBER** — pipeline running but degraded (any failing source, completeness < 0.85, or any reconciliation drift)
-- 🔴 **RED** — pipeline missed a day, completeness < 0.75, healthy sources < 14, or the public API is down
+This is the authoritative, versioned procedure. Change this file to change what
+the weekly audit does — the schedule just points here.
 
-Lead the report with the verdict, then findings ordered by commercial impact.
-Compare against last week's audit if available (previous session/report).
+**This is a maintained asset, not a project.** If it starts needing more than
+twenty minutes a week, that is the finding, and the answer is probably to reduce
+its scope rather than increase the budget.
+
+**Standing rule: read the body, not the status code.** A pipeline that reports
+success while writing nothing has failed. A source marked `healthy` that has not
+delivered in two of its own cadences has failed. An API that returns 200 with a
+stale `asOf` has failed.
 
 ---
 
-## 0. Ground truth: where to read from
+## How this runbook is structured
 
-- **Live database (authoritative for data):** PostgREST at `<SUPABASE_URL>/rest/v1/`
-  using the anon key. Read both from `src/lib/supabase.ts` — never hardcode them
-  from memory; they can rotate. Public-read tables: `signals`, `fwi_scores`,
-  `data_source_health`. (`pipeline_runs` is service-role only; do not rely on it.)
-- **Code (authoritative for intent):** `supabase/functions/ingest-signals/index.ts`
-  (`SOURCE_CONFIDENCE_WEIGHTS` = the intended composite source set),
-  `api/cron/daily-ingest.ts` (alert thresholds), `vercel.json` (cron schedules).
-- **Docs (should mirror the above):** `docs/DATA_SOURCES_ROADMAP.md`.
-- **Public surface:** `https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current`
-  and `/history?months=12` (or the URL currently in `src/lib/supabase.ts`).
+Everything mechanical — counting, reconciling, diffing against last week — is in
+`scripts/pipeline-audit.mjs`. It is read-only, needs no secrets, and is the
+authority on *what is true*. The runbook below is about *what to do with that*.
 
-## 1. Discover the current source universe (do not hardcode)
+Do not re-derive the checks by hand. The three times that went wrong are exactly
+why the script exists:
 
-Build three sets and reconcile them:
+- The runbook used to say "count the estimated days". The flag actually written
+  is `metadata.data_quality.supply = 'simulated_estimate'`, so anything looking
+  for the word "estimated" returns zero and reports a clean bill of health while
+  38 simulated days sit in the published history.
+- It used to say to search Gmail for `alerts@fractionl.ai`. Since 22af761 the
+  deliverable sender is `onboarding@resend.dev` to a different mailbox, so that
+  search can never find an alert.
+- Reconciling three source sets by hand is a dozen paginated queries before any
+  thinking starts, which is most of the twenty minutes.
 
-1. **Intended** — keys of `SOURCE_CONFIDENCE_WEIGHTS` in `ingest-signals/index.ts`.
-2. **Monitored** — `GET /rest/v1/data_source_health?select=source,status,last_success,last_checked,error_count,metadata`.
-3. **Delivering** — distinct `source` values in `signals` over the last 14 days:
-   `GET /rest/v1/signals?select=source,date,created_at&date=gte.<today-14d>` (paginate, limit 1000).
+The script parses every threshold, weight, address and source list out of the
+code that actually runs, so it cannot disagree with production.
 
-Flag every asymmetry:
-- Intended but not delivering → broken or keyless source.
-- Delivering but not intended → orphan writer (weight denominator wrong).
-- Monitored but neither intended nor delivering → stale health row (ignore for
-  scoring, list for cleanup) — known long-standing examples: `marketplace`,
-  `ats_boards`, `bls_oews`, `fred` (coded, key never set).
-- Any source in code but absent from `docs/DATA_SOURCES_ROADMAP.md` §1/§2, or
-  vice versa → doc drift; fix the doc or flag it.
+## 1. Run it
 
-A **new source added this week** should appear in all three sets within its
-first scheduled run — verify it does, and that its first signals pass the
-anomaly guard (present in `signals`, not just attempted).
+```bash
+npm run audit          # human report, verdict first
+npm run audit:json     # same thing, machine-readable
+```
 
-## 2. Schedule adherence
+Exit codes: `0` GREEN, `1` AMBER, `2` RED, `3` the audit itself could not run —
+which is itself a finding, because nothing has confirmed the pipeline is healthy.
 
-- From `signals`: collect distinct `date` values for the last 30 days. Every
-  calendar day must be present (daily cron, 06:00 UTC). Missing day = 🔴.
-- Latest `created_at` must be within 24h.
-- `fwi_scores` must have a row for today (or yesterday if run before 06:00 UTC).
-- Weekly-cadence sources (currently the content-radar family: check
-  `harvest-content-signals/index.ts` for the current set) are expected on
-  Mondays — treat ≤7 days stale as healthy for those; infer each source's
-  cadence from its own recent history rather than assuming daily.
+The script covers, without a fixed source list anywhere in it:
 
-## 3. Source health & staleness
+| Area | What it establishes |
+|---|---|
+| Source universe | Reconciles intended (`SOURCE_CONFIDENCE_WEIGHTS`) vs monitored (`data_source_health`) vs delivering (`signals`, 30d), and flags every asymmetry |
+| Schedule | Every calendar day present in `signals`, newest write < 24h, `fwi_scores` row for today, no gap > 7d in history |
+| Source health | Failures with `last_error` and days-since-success; **plus** sources marked healthy that are overdue against their own inferred cadence |
+| Root cause | Groups failures by the credential that gates them, derived by reading the collectors — so five dead sources report as one vendor account with a blast radius in index-weight |
+| Denominator hygiene | Sources weighted but silent > 14 days, quantified as the completeness tax they impose |
+| Composite quality | Completeness vs the thresholds in `api/cron/daily-ingest.ts`, week-over-week trend, healthy-source floor |
+| **Provenance** | Counts days carrying an invented value, diffs against `docs/audit-baseline.json`, and pulls a known estimated day through every public surface |
+| Alert path | Reads the real sender and recipients out of `send-pipeline-alert`, and reports the exact Gmail search to run |
+| Surface | Public API 200 + fresh `asOf` + completeness matching the DB; every sitemap URL resolves with its own title; pre-rendered number matches live data |
 
-For each source in the **union** of intended+delivering:
-- `data_source_health.status` = failed → report with `metadata.last_error` and
-  days since `last_success`.
-- Days since last signal > 2× its inferred cadence → stale, report even if
-  health says "healthy" (a skipped source updates neither).
-- Watch specifically for **provider-level correlation**: multiple sources
-  sharing one vendor (e.g. all `serpapi_*` on one quota, all Apify actors on
-  one token) failing together is one root cause — report it as one issue with
-  the full blast radius.
+## 2. Judge what the script cannot
 
-## 4. Composite quality
+The script establishes facts. These need a person:
 
-- `fwi_scores` (last 14 days): confidence per row; today's `confidence` vs the
-  thresholds in `api/cron/daily-ingest.ts` (defaults: completeness 0.75,
-  min healthy sources 14; targets in `DATA_SOURCES_ROADMAP.md` §6: ≥ 0.85).
-- No gap > 7 days anywhere in `fwi_scores` history; flag any null pillar scores
-  in the last 14 days (older demand-only history is expected and documented).
-- Sanity-check the public API: `/current` returns HTTP 200 with today's date in
-  `meta.asOf`; `/history?months=12` returns > 300 points; `meta.dataCompleteness`
-  matches the DB confidence.
+- **Is a failing source worth fixing, or should it be retired?** A source failing
+  for a fortnight should be fixed or removed from the calculation, not left
+  rotting in the denominator where it silently drags completeness. The script
+  tells you what each one costs; the decision is yours.
+- **Check one source by hand against its origin.** Pick a different one each
+  week. If a pillar is sitting at exactly the value it produces when its provider
+  caps the response, then a provider limit is being published as a market
+  reading. Say so in the report rather than letting the number stand.
+- **Did anything cite the index publicly this week?** Search for it. This is the
+  entire reason the asset is being kept.
+- **Do the sales-facing claims still hold?** `docs/DATA_SOURCES_ROADMAP.md`,
+  `docs/SALES_PLAYBOOK.md` and the public API's own source lists all describe the
+  index. The script catches weight-table drift; it cannot tell you that a deck
+  claims live LinkedIn supply data while that source has been down for a month.
 
-## 5. Alert-path verification
+## 3. Verify the alert path when the week had an incident
 
-- Confirm `send-pipeline-alert` recipients (`ALERT_EMAILS`) are current.
-- If this week had completeness < 0.75 or a failed day, verify an alert email
-  actually arrived (Gmail search: `from:alerts@fractionl.ai`). An incident
-  without an alert email = the alert path is broken → 🟡 minimum.
+If the week had completeness < 0.75 or a missed day, an alert email must exist.
+The script prints the exact search, with both senders and both recipient lists,
+because they change. An incident with no alert email means the alert path is
+broken → 🟡 minimum, regardless of what the pipeline reports.
 
-## 6. Report
+Note the current state: the primary sending domain is unverified, so alerts only
+reach the fallback address, which is not a mailbox the audit runs from. Until
+`fractionl.ai` is verified at resend.com/domains, absence of an alert in the
+primary inbox is not evidence that no alert fired.
 
-Deliver, in this order:
-1. Verdict (🟢/🟡/🔴) + one-sentence summary.
-2. Incidents: each with root cause, blast radius, days of data lost, and the
-   concrete fix (account/key/plan/code), ordered by index impact (use the
-   source's confidence weight).
-3. Deltas vs last week: sources added/retired/recovered, completeness trend,
-   history depth now.
-4. Reconciliation drift (code vs DB vs docs) — with the specific file/table.
-5. Anything that threatens commercialization: silent degradation, stale
-   sales-facing claims, single-vendor concentration.
+## 4. Report
 
-Do **not** change code, data, or schedules during the audit — it is read-only.
-Propose fixes; apply them only when explicitly asked.
+Five lines. Source coverage, sources down, rows written, estimated-day count,
+anything needing a decision. The script prints exactly these; add the judgement
+from §2 and the deltas against last week.
+
+Then, in order: incidents with root cause and the concrete fix (account, key,
+plan, or code) ordered by index impact; deltas vs last week (sources
+added/retired/recovered, completeness trend, history depth); and anything
+threatening commercialisation — silent degradation, stale sales-facing claims,
+single-vendor concentration.
+
+**Verdict standard**
+
+- 🟢 **GREEN** — on schedule, no failing sources, completeness ≥ target
+- 🟡 **AMBER** — running but degraded, or any reconciliation drift
+- 🔴 **RED** — missed day, completeness < 0.75, fewer than 14 healthy sources,
+  public API down, or any estimated value published as measured
+
+## 5. Escalate the same day
+
+- **The estimated-day count changes.** An increase means someone ran a backfill
+  or an estimation script against published history.
+- **Any public surface presents an estimated value as measured.**
+- Source coverage falls sharply.
+- The pipeline writes nothing on a scheduled day.
+- **Somebody cites the index publicly.** This is a good escalation.
+
+## 6. Never do unattended
+
+- Run any backfill or estimation script
+- Change the weights
+- Change published pricing
+- Add or remove a data source
+- Publish a change to the methodology
+
+The audit is read-only. `scripts/pipeline-audit.mjs` writes nothing and needs no
+secrets, which is what makes it safe to run unattended in CI. Propose fixes;
+apply nothing.
+
+## 7. Maintaining the baseline
+
+`docs/audit-baseline.json` is the committed record of how many days carry an
+invented value. It is what makes "the count went up" detectable at all.
+
+Refresh it **only** after a deliberate, recorded decision — never to make a
+finding go away:
+
+```bash
+npm run audit:baseline   # then review the diff and commit it
+```
+
+If the count moved and you did not intend it, that is the incident. Investigate
+before touching this file.
+
+---
+
+## Automation
+
+`.github/workflows/weekly-pipeline-audit.yml` runs the audit every Monday at
+07:00 UTC (an hour after the daily ingest) and opens a GitHub issue on AMBER or
+RED. It needs no secrets — the audit only reads public data.
+
+That job is a backstop against the audit silently not happening, not a
+replacement for §2. Nothing in CI decides whether a source is worth keeping.

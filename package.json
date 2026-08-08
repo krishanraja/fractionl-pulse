@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "vite build && node scripts/prerender.mjs",
     "build:dev": "vite build --mode development && node scripts/prerender.mjs",
+    "audit": "node scripts/pipeline-audit.mjs",
+    "audit:json": "node scripts/pipeline-audit.mjs --json",
+    "audit:baseline": "node scripts/pipeline-audit.mjs --update-baseline",
     "backfill:supply-simulated": "npx tsx scripts/simulate-supply-backfill.ts",
     "lint": "eslint .",
     "preview": "vite preview"
