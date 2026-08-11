@@ -30,6 +30,11 @@ const roles = [
   ['ceo', 56],
 ].map(([category, normalized]) => ({ category, raw_value: normalized, normalized_value: normalized }));
 
+const movers = [
+  { skill: 'Fractional CFO', type: 'demand', change_pct: 18, note: 'Hiring demand is above the current role average.' },
+  { skill: 'Podcast Mentions', type: 'culture', change_pct: -12, note: 'Discussion softened from the previous reading.' },
+];
+
 async function installFixtures(page: Page) {
   await page.route('**/rest/v1/**', async (route) => {
     const url = decodeURIComponent(route.request().url());
@@ -38,7 +43,32 @@ async function installFixtures(page: Page) {
       return;
     }
     if (url.includes('/movers?')) {
-      await route.fulfill({ json: [] });
+      await route.fulfill({ json: movers });
+      return;
+    }
+    if (url.includes('/data_source_health?')) {
+      await route.fulfill({
+        json: [
+          { source: 'adzuna', status: 'healthy', last_checked: '2026-08-11T12:00:00Z', metadata: {} },
+          { source: 'serpapi_trends', status: 'degraded', last_checked: '2026-08-10T12:00:00Z', metadata: {} },
+        ],
+      });
+      return;
+    }
+    if (url.includes('/cached_insights?')) {
+      await route.fulfill({
+        json: [{
+          insights_json: [{
+            type: 'summary',
+            title: 'The market is stable',
+            body: 'Measured demand is holding while role-level conditions remain uneven.',
+            confidence: 0.82,
+            relatedSignals: ['Hiring demand', 'Market interest'],
+          }],
+          generated_at: '2026-08-11T12:00:00Z',
+          valid_until: '2026-08-18T12:00:00Z',
+        }],
+      });
       return;
     }
     if (url.includes('/signals?') && url.includes('select=date')) {
@@ -81,6 +111,14 @@ async function expectTouchTargets(page: Page, selector: string) {
     .map((element) => element.getBoundingClientRect().height));
   expect(heights.length).toBeGreaterThan(0);
   for (const height of heights) expect(height).toBeGreaterThanOrEqual(44);
+}
+
+async function expectNoDuplicateIds(page: Page) {
+  const duplicates = await page.evaluate(() => {
+    const ids = [...document.querySelectorAll<HTMLElement>('[id]')].map((element) => element.id);
+    return [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];
+  });
+  expect(duplicates).toEqual([]);
 }
 
 for (const width of ACCEPTANCE_WIDTHS) {
@@ -166,5 +204,62 @@ test.describe('mobile Pulse overlays', () => {
     await page.keyboard.press('Escape');
     await expect(page.locator('.pulse-mobile-bottom-nav')).toBeVisible();
     await expect(page.locator('.pulse-mobile-bottom-nav').getByRole('button', { name: 'Ask' })).toBeFocused();
+  });
+});
+
+test.describe('Pulse navigation and design-system integrity', () => {
+  test('uses one evidence destination and no legacy cards on mobile', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 844 });
+    await installFixtures(page);
+    await page.goto('/');
+
+    await page.locator('.pulse-mobile-menu-button').click();
+    const menu = page.locator('#pulse-mobile-menu');
+    await expect(menu.getByRole('button', { name: /sources/i })).toHaveCount(1);
+    await expect(menu.getByRole('button', { name: 'Sources and methods' })).toBeVisible();
+    await menu.getByRole('button', { name: 'Sources and methods' }).click();
+
+    await expect(page.getByRole('heading', { name: 'Where the data comes from' })).toBeVisible();
+    await expect(page.locator('.pulse-source-register')).toBeVisible();
+    await expect(page.locator('.pulse-source-row')).toHaveCount(2);
+    await expect(page.locator('.pulse-mobile-secondary').locator('.rounded-lg, .glass-card, .data-badge, .text-muted-foreground')).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
+    await expectNoDuplicateIds(page);
+
+    const typography = await page.locator('.pulse-product-frame').evaluate((element) => ({
+      ui: getComputedStyle(element).fontFamily,
+      editorial: getComputedStyle(element.querySelector('#sources-heading')!).fontFamily,
+      sourceRadius: getComputedStyle(element.querySelector('.pulse-source-row')!).borderRadius,
+    }));
+    expect(typography.ui.toLowerCase()).toContain('arial');
+    expect(typography.editorial.toLowerCase()).toContain('georgia');
+    expect(typography.sourceRadius).toBe('0px');
+
+    await page.getByRole('button', { name: /how the index is calculated/i }).click();
+    await expect(page.getByRole('heading', { name: 'Sources and methods' })).toBeVisible();
+    await page.getByRole('button', { name: 'Close sources and methods' }).click();
+
+    await page.goto('/?view=signals');
+    await expect(page.locator('.pulse-signal-card')).toHaveCount(2);
+    await expect(page.locator('.pulse-mobile-secondary').locator('.rounded-lg, .glass-card, .data-badge, .text-muted-foreground')).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
+    await expectNoDuplicateIds(page);
+
+    await page.goto('/?view=insights');
+    await expect(page.locator('.pulse-insight-card')).toHaveCount(1);
+    await expect(page.locator('.pulse-mobile-secondary').locator('.rounded-lg, .glass-card, .data-badge, .text-muted-foreground')).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
+    await expectNoDuplicateIds(page);
+  });
+
+  test('uses one evidence destination on desktop', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await installFixtures(page);
+    await page.goto('/');
+
+    const rail = page.locator('.pulse-desktop-rail');
+    await expect(rail.getByRole('button', { name: /sources/i })).toHaveCount(1);
+    await expect(rail.getByRole('button', { name: 'Methods', exact: true })).toHaveCount(0);
+    await expect(rail.getByRole('button', { name: 'Sources and methods', exact: true })).toBeVisible();
   });
 });

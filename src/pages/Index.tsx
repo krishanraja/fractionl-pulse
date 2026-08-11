@@ -125,6 +125,13 @@ const Index = () => {
           <p>The inputs behind the index, whether they are current, and what the score cannot tell us.</p>
         </div>
         <DataHealthCard />
+        <button type="button" className="pulse-method-entry" onClick={openMethodology}>
+          <span>
+            <strong>How the index is calculated</strong>
+            <small>See the three weighted inputs, score bands, quality checks, limitations, and update schedule.</small>
+          </span>
+          <span aria-hidden="true">Open details →</span>
+        </button>
       </section>
     )
     : null}</Suspense>;

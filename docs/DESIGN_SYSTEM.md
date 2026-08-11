@@ -25,6 +25,8 @@ The interface follows three evidence levels:
 | Partner access | Founding Benchmark Partner application path | Public application; no self-serve paid tier |
 | Sign in | Optional profile, role persistence, and operational API-key management | Authenticated utility |
 
+Sources and methods is one navigation destination. Its page combines live source health with a contextual route into calculation details; the methodology drawer is progressive disclosure, not a second menu item. Responsive secondary views are mounted once and restyled by breakpoint—never duplicated into hidden desktop and mobile DOM trees.
+
 Role routes (`/fractional-cfo` through `/fractional-ceo`) are crawlable public demand pages. They must describe measured US job-posting evidence, disclose source overlap and missing referral work, and never infer pricing power or prescribe a fee.
 
 ## Device-specific systems
@@ -51,6 +53,7 @@ Pulse uses purposeful layouts rather than shrinking one desktop dashboard.
 - Dedicated My role view instead of compressing the desktop role comparison.
 - Bottom navigation for Index, My role, and Ask.
 - Ask the Index opens as a full-height, focus-managed task surface that follows the visible viewport when the keyboard opens.
+- Signals, Interpretation, and Sources use the same ruled editorial registers as the index. Generic rounded cards, muted utility palettes, and global Inter typography do not appear inside the Pulse frame.
 
 The acceptance widths are 320, 375, 390, 768, 1024, 1280, 1440, and 1920 pixels. No width may introduce horizontal page scroll, clipped navigation labels, unreachable actions, or hover-only information.
 

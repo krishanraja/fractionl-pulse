@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Database, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, Database } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { onDataChange } from '@/lib/realtime';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
@@ -46,10 +47,22 @@ const SOURCE_DISPLAY: Record<string, { label: string; category: string }> = {
 };
 
 const CATEGORY_ORDER = ['Demand', 'Supply', 'Culture', 'Context'];
+const CATEGORY_LABELS: Record<string, string> = {
+  Demand: 'Hiring demand',
+  Supply: 'Executive availability',
+  Culture: 'Market interest',
+  Context: 'Economic context',
+};
+
+const statusDisplay = (status: string): { label: string; tone: string; Icon: LucideIcon } => {
+  if (status === 'healthy' || status === 'ok') return { label: 'Healthy', tone: 'is-healthy', Icon: CheckCircle2 };
+  if (status === 'degraded' || status === 'stale') return { label: 'Needs attention', tone: 'is-stale', Icon: Clock };
+  if (status === 'error' || status === 'down' || status === 'failed') return { label: 'Unavailable', tone: 'is-unavailable', Icon: AlertCircle };
+  return { label: 'Status unknown', tone: 'is-unknown', Icon: Clock };
+};
 
 const DataHealthCard = () => {
   const queryClient = useQueryClient();
-
   const { data: sources = [], isLoading } = useQuery({
     queryKey: ['data-source-health'],
     queryFn: fetchSourceHealth,
@@ -66,96 +79,65 @@ const DataHealthCard = () => {
     return unsub;
   }, [queryClient]);
 
-  const getStatus = (status: string) => {
-    if (status === 'healthy' || status === 'ok') return { label: 'Healthy', icon: <CheckCircle2 aria-hidden="true" size={12} className="text-emerald-500" /> };
-    if (status === 'degraded' || status === 'stale') return { label: 'Stale', icon: <Clock aria-hidden="true" size={12} className="text-yellow-500" /> };
-    if (status === 'error' || status === 'down' || status === 'failed') return { label: 'Unavailable', icon: <AlertCircle aria-hidden="true" size={12} className="text-red-500" /> };
-    return { label: 'Unknown', icon: <Clock aria-hidden="true" size={12} className="text-muted-foreground/40" /> };
-  };
-
-  const grouped = CATEGORY_ORDER.map(category => ({
+  const grouped = CATEGORY_ORDER.map((category) => ({
     category,
     items: sources
-      .filter(s => SOURCE_DISPLAY[s.source]?.category === category)
-      .map(s => ({
-        ...s,
-        display: SOURCE_DISPLAY[s.source] || { label: s.source, category: 'Other' },
+      .filter((source) => SOURCE_DISPLAY[source.source]?.category === category)
+      .map((source) => ({
+        ...source,
+        display: SOURCE_DISPLAY[source.source] || { label: source.source, category: 'Other' },
       })),
-  })).filter(g => g.items.length > 0);
+  })).filter((group) => group.items.length > 0);
 
-  // Count only sources that are part of the tracked registry, so the numerator can
-  // never exceed the denominator. Retired sources still emit health rows in the DB;
-  // counting those produced the impossible "23 of 21".
   const healthyCount = sources.filter(
-    s => SOURCE_DISPLAY[s.source] && (s.status === 'healthy' || s.status === 'ok'),
+    (source) => SOURCE_DISPLAY[source.source] && (source.status === 'healthy' || source.status === 'ok'),
   ).length;
   const totalTracked = Object.keys(SOURCE_DISPLAY).length;
 
   return (
-    <motion.div
-      variants={staggerContainer}
-      initial="hidden"
-      animate="show"
-      className="space-y-4"
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="p-1.5 rounded-lg bg-primary/10">
-            <Database size={16} className="text-primary" />
-          </div>
-          <div>
-            <h2 className="text-base sm:text-lg font-semibold text-foreground">Data Pipeline</h2>
-            <p className="text-[10px] text-muted-foreground">
-              {healthyCount > 0 ? `${healthyCount} of ${totalTracked} healthy` : `${totalTracked} sources tracked`}
-            </p>
-          </div>
+    <motion.div variants={staggerContainer} initial="hidden" animate="show" className="pulse-source-register">
+      <header className="pulse-register-header">
+        <span className="pulse-register-icon" aria-hidden="true"><Database /></span>
+        <div>
+          <h2>Live source health</h2>
+          <p>{healthyCount > 0 ? `${healthyCount} of ${totalTracked} reporting normally` : `${totalTracked} inputs tracked`}</p>
         </div>
-        <span className="data-badge bg-primary/10 text-primary">
-          {totalTracked} sources
-        </span>
-      </div>
+        <strong className="pulse-register-count">{totalTracked} inputs</strong>
+      </header>
 
       {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-16 rounded-lg bg-muted animate-pulse" />
-          ))}
+        <div className="pulse-source-loading" role="status" aria-live="polite" aria-label="Loading source health">
+          {[1, 2, 3].map((item) => <span key={item} />)}
         </div>
       ) : (
-        <div className="space-y-4">
-          {grouped.map(group => (
-            <motion.div key={group.category} variants={fadeInUp} className="space-y-2">
-              <div className="section-label">{group.category}</div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {group.items.map(item => {
-                  const status = getStatus(item.status);
+        <div className="pulse-source-groups">
+          {grouped.map((group) => (
+            <motion.section key={group.category} variants={fadeInUp} className="pulse-source-group">
+              <h3>{CATEGORY_LABELS[group.category] ?? group.category}</h3>
+              <div className="pulse-source-grid">
+                {group.items.map((item) => {
+                  const status = statusDisplay(item.status);
+                  const StatusIcon = status.Icon;
                   return (
-                  <div
-                    key={item.source}
-                    className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border/60 hover:border-primary/20 transition-colors"
-                  >
-                    {status.icon}
-                    <div className="flex-1 min-w-0">
-                      <span className="text-xs font-medium text-foreground truncate block">
-                        {item.display.label}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground/60">
-                        {status.label}{item.last_checked ? ` · checked ${new Date(item.last_checked).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
-                      </span>
-                    </div>
-                  </div>
+                    <article key={item.source} className={`pulse-source-row ${status.tone}`}>
+                      <span className="pulse-source-status-icon" aria-hidden="true"><StatusIcon /></span>
+                      <div>
+                        <strong>{item.display.label}</strong>
+                        <span>
+                          {status.label}{item.last_checked ? ` · checked ${new Date(item.last_checked).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
+                        </span>
+                      </div>
+                    </article>
                   );
                 })}
               </div>
-            </motion.div>
+            </motion.section>
           ))}
 
           {sources.length === 0 && (
-            <div className="text-center py-8 space-y-2">
-              <Database size={24} className="mx-auto text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">
-                Source health data will appear after the first pipeline run.
-              </p>
+            <div className="pulse-register-empty">
+              <Database aria-hidden="true" />
+              <p>Source health will appear after the next validated pipeline run.</p>
             </div>
           )}
         </div>

@@ -367,11 +367,11 @@ Full schema lives in [`AGENT_INTEGRATION.md`](./AGENT_INTEGRATION.md).
 
 | Component | Purpose |
 |-----------|---------|
-| `PulseInstrument` | Primary desktop and mobile instrument: index level, 30-day movement, timeline, your role, data coverage, decision cues, navigation, and Ask the Index entry. It owns `overlayOpen` so fixed mobile navigation is removed while a modal surface is active. |
+| `PulseInstrument` | Primary desktop and mobile instrument: index level, 30-day movement, timeline, your role, data coverage, decision cues, navigation, and Ask the Index entry. It owns `overlayOpen` so fixed mobile navigation is removed while a modal surface is active. Secondary views mount once in a responsive surface; Sources and Methods has one navigation entry. |
 | `AskIndexModal` | Streams an evidence-bounded, rate-limited explanation grounded in the current public FWI response. Below 1024px it is a full-height composer sized from `window.visualViewport`, with `100dvh` fallback and a keyboard-safe fixed composer. |
-| `SignalsTable` | Full per-role and per-source signal breakdown |
-| `AIInsights` | Insight cards from `generate-pulse-insights` |
-| `DataHealthCard` | Per-source status badges (`data_source_health`) |
+| `SignalsTable` | Pulse-native ruled register for per-role and per-source movement |
+| `AIInsights` | Pulse-native editorial interpretation register from `generate-pulse-insights` |
+| `DataHealthCard` | Pulse-native per-source health register (`data_source_health`) with explicit text status |
 | `MethodologyDrawer` | Plain-first Sources and Methods explainer. It uses a branded viewport-safe drawer below 1024px and a branded right sheet on larger screens, with technical detail disclosed through native expandable sections. |
 
 ### Hooks

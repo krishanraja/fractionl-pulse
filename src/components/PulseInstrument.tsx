@@ -7,7 +7,6 @@ import {
   BrainCircuit,
   Database,
   FileText,
-  Info,
   LayoutGrid,
   LogIn,
   LogOut,
@@ -137,7 +136,7 @@ const PulseInstrument = ({
     { id: 'dashboard', label: 'Index', icon: Activity },
     { id: 'signals', label: 'Signals', icon: LayoutGrid },
     { id: 'insights', label: 'Interpret', accessibleLabel: 'Interpretation', icon: BrainCircuit },
-    { id: 'data', label: 'Sources', icon: Database },
+    { id: 'data', label: 'Sources', accessibleLabel: 'Sources and methods', icon: Database },
   ];
 
   const renderTrend = (mobile = false) => (
@@ -368,11 +367,12 @@ const PulseInstrument = ({
     </aside>
   );
 
-  const mobileMain = activeTab === 'role'
-    ? <div className="pulse-mobile-role-view">{renderRoleLens(true)}<p>We can measure hiring demand for this role. We do not yet have reliable role-by-role data for executive availability or market interest, so those two scores reflect the overall market.</p></div>
-    : activeTab === 'dashboard'
-    ? renderMobileIndex()
-    : <div className="pulse-mobile-secondary">{secondaryContent}</div>;
+  const mobileRoleView = (
+    <div className="pulse-mobile-role-view">
+      {renderRoleLens(true)}
+      <p>We can measure hiring demand for this role. We do not yet have reliable role-by-role data for executive availability or market interest, so those two scores reflect the overall market.</p>
+    </div>
+  );
 
   return (
     <div className="pulse-stage">
@@ -402,7 +402,6 @@ const PulseInstrument = ({
               );
             })}
           </nav>
-          <button type="button" onClick={onShowMethodology} aria-label="Sources and methods"><Info /><span>Methods</span></button>
           {isSignedIn ? (
             <button type="button" onClick={onSignOut} aria-label="Sign out"><LogOut /><span>Exit</span></button>
           ) : (
@@ -414,8 +413,7 @@ const PulseInstrument = ({
           <nav id="pulse-mobile-menu" className="pulse-mobile-menu" aria-label="More navigation">
             <button type="button" onClick={() => selectTab('signals')}><LayoutGrid /> Signals</button>
             <button type="button" onClick={() => selectTab('insights')}><BrainCircuit /> Interpretation</button>
-            <button type="button" onClick={() => selectTab('data')}><Database /> Sources</button>
-            <button type="button" onClick={() => { onShowMethodology(); setMenuOpen(false); }}><Info /> Sources and methods</button>
+            <button type="button" onClick={() => selectTab('data')}><Database /> Sources and methods</button>
             <Link to="/pricing"><FileText /> Partner access</Link>
             {isSignedIn
               ? <button type="button" onClick={() => { onSignOut(); setMenuOpen(false); }}><LogOut /> Sign out</button>
@@ -424,10 +422,18 @@ const PulseInstrument = ({
         )}
 
         <main className="pulse-product-main">
-          <div className="pulse-desktop-only">
-            {activeTab === 'dashboard' ? renderDesktopIndex() : <div className="pulse-desktop-secondary">{secondaryContent}</div>}
-          </div>
-          <div className="pulse-mobile-only">{mobileMain}</div>
+          {activeTab === 'dashboard' ? (
+            <>
+              <div className="pulse-desktop-only">{renderDesktopIndex()}</div>
+              <div className="pulse-mobile-only">{renderMobileIndex()}</div>
+            </>
+          ) : activeTab === 'role' ? (
+            <div className="pulse-mobile-only">{mobileRoleView}</div>
+          ) : (
+            <div className="pulse-responsive-secondary pulse-desktop-secondary pulse-mobile-secondary">
+              {secondaryContent}
+            </div>
+          )}
         </main>
 
         <div className="pulse-desktop-only">{renderAskPanel()}</div>

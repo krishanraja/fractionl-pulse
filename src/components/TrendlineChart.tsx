@@ -148,7 +148,7 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
               pointStyle: 'circle',
               font: {
                 size: isMobile ? 11 : 12,
-                family: 'Inter',
+                family: 'Arial',
                 weight: 500,
               }
             }
@@ -163,8 +163,8 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
             padding: 12,
             caretPadding: 8,
             displayColors: true,
-            titleFont: { size: 13, weight: 600, family: 'Inter' },
-            bodyFont: { size: 12, family: 'Inter' },
+            titleFont: { size: 13, weight: 600, family: 'Arial' },
+            bodyFont: { size: 12, family: 'Arial' },
             callbacks: {
               title: (context) => {
                 const ts = context[0].parsed.x;
@@ -190,7 +190,7 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
               color: 'rgba(148, 163, 184, 0.08)',
             },
             ticks: {
-              font: { size: isMobile ? 10 : 11, family: 'Inter' },
+              font: { size: isMobile ? 10 : 11, family: 'Arial' },
               color: '#94a3b8',
               maxRotation: isMobile ? 45 : 0,
               autoSkip: true,
@@ -204,7 +204,7 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
               color: 'rgba(148, 163, 184, 0.08)',
             },
             ticks: {
-              font: { size: isMobile ? 10 : 11, family: 'Inter' },
+              font: { size: isMobile ? 10 : 11, family: 'Arial' },
               color: '#94a3b8',
               padding: 8,
             },
