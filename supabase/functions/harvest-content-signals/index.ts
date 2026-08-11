@@ -71,7 +71,7 @@ interface ContentDoc {
   rising_label?: string;
   rising_value?: number;
   engagement?: number;
-  raw?: Record<string, any>;
+  raw?: Record<string, unknown>;
 }
 
 function safeNumber(v: unknown, fallback: number): number {
@@ -546,7 +546,7 @@ serve(async (req) => {
     // 'success' above, so a slow radar call here can never strand the harvest run; the timeout
     // bounds total wall-clock under the pg_cron caller timeout. The weekly pg_cron also has a
     // safety path: generate-content-radar is idempotent and can be re-invoked for the week.
-    let radar: any = { skipped: true };
+    let radar: unknown = { skipped: true };
     try {
       const auth = req.headers.get('Authorization') || `Bearer ${SUPABASE_SERVICE_KEY}`;
       const r = await fetch(`${SUPABASE_URL}/functions/v1/generate-content-radar?week_start=${weekStart}`, { headers: { Authorization: auth }, signal: AbortSignal.timeout(70000) });

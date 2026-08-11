@@ -6,16 +6,18 @@ The credibility and value of the FWI depend entirely on the quality, breadth, an
 
 ## 1. Live Source Inventory (21 sources)
 
-**Total**: 17 composite + 4 context (stored not scored). Last reconciled against the live database and `ingest-signals` code: **2026-08-06**.
+**Total**: 17 composite + 4 context (stored, not scored). Last reconciled against the live database and `ingest-signals` code: **2026-08-11**.
 
 > For the live source-by-source state at any moment, query `data_source_health` — this table, not this doc, is the operational truth.
+
+> **Production readback, 2026-08-11 02:16 UTC:** the pipeline wrote the day's observation successfully at FWI **51.5 (Stable)**, but the read is degraded at **0.63 weighted completeness** with **13 contributing sources**. This is below the 0.75 completeness and 14-source release-health thresholds. The principal incident is one exhausted SerpAPI account affecting four inputs and 23.8% of configured completeness weight. Guardian returns 401, GoFractional's Apify run returns 403, NewsAPI and SerpAPI LinkedIn are silent against their expected cadence, and FRED has never delivered. The UI and API expose the 63% coverage; this release does not conceal or reclassify the incident. Restore or deliberately retire a source only through the documented methodology change process.
 
 ### Demand pillar (50% weight)
 
 | Source | Signal | Method | Cost / call |
 |--------|--------|--------|-------------|
 | **Adzuna** | Fractional job postings, 6 C-suite roles | REST API, `what_phrase` exact-phrase | $0 (free tier) |
-| **SerpAPI Google Jobs** | Independent Google Jobs cross-check | SerpAPI engine, exact phrase per role | ~$0.005 |
+| **SerpAPI Google Jobs** | Second Google Jobs discovery source; may overlap Adzuna results | SerpAPI engine, exact phrase per role | ~$0.005 |
 | **SEC EDGAR Form D** | VC funding pipeline, tech/SaaS, 90-day rolling | EDGAR full-text search | $0 (gov) |
 
 ### Supply pillar (20% weight, redistributes if empty)
@@ -33,7 +35,7 @@ The credibility and value of the FWI depend entirely on the quality, breadth, an
 |--------|--------|--------|-------------|
 | **SerpAPI Google Trends** | Search interest, 90-day, US geo | SerpAPI Trends | ~$0.005 |
 | **NewsAPI** | Article volume, 28-day, exact phrase | REST API | $0 (free tier) |
-| **Mediastack** | Independent news cross-check | REST API | $0 (free tier) |
+| **Mediastack** | Separate news-API cross-check; article sets may overlap | REST API | $0 (free tier) |
 | **Brave News** | News-vertical search | Brave Search API | ~$0.003 |
 | **Brave Web Search** | Total web mentions across sites | Brave Search API | ~$0.003 |
 | **The Guardian** | Elite UK media, 90-day | Guardian Open Platform API | $0 |
@@ -49,7 +51,7 @@ The credibility and value of the FWI depend entirely on the quality, breadth, an
 | **BLS** | JOLTS openings, unemployment, wages | BLS API | Live since 2026-02 |
 | **Census ACS** | Self-employment household percentage | Census API | Live |
 | **OpenAlex** | Academic / thought-leadership coverage | OpenAlex API | Live since 2026-02 |
-| **FRED** | JOLTS, unemployment, initial claims | FRED API | ⚠️ Coded but has never written a signal (`FRED_API_KEY` unset); BLS covers the same macro context |
+| **FRED** | JOLTS, unemployment, initial claims | FRED API | ⚠️ Configured but has never written a signal; BLS covers the same macro context |
 
 ### Retired sources (2026-05-30)
 
@@ -142,18 +144,18 @@ Deliverability: sends go from `ALERT_FROM` (default `alerts@fractionl.ai`). As o
 
 - 🟢 **Public no-auth REST API** — as of 2026-05-30, `supabase/config.toml` sets `verify_jwt=false` for `fwi-api` and `export-brief`, and `fwi-api` was redeployed. The documented bare curl now returns HTTP 200 (previously 401 `UNAUTHORIZED_NO_AUTH_HEADER` from the gateway). The agent-native, query-in-two-minutes, no-auth claim is now true.
   - `GET /fwi-api/current` (no auth) — latest weekly composite + components + weights + delta30d + top movers + full source breakdown + meta (dataCompleteness, nextUpdate). Returns `Cache-Control` and `X-FWI-Score` / `X-FWI-Label` headers.
-  - `GET /fwi-api/history?months=N` (no auth, N clamped 1–12) — weekly data points.
+  - `GET /fwi-api/history?months=N` (no auth, N clamped 1–12) — observed score rows across the requested period.
   - `GET /export-brief` (no auth) — `?format=markdown` (default, downloadable .md) or `?format=json`.
   - `POST /fwi-api/trigger` — service-role bearer only (NOT public).
   - Example: `curl https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current`
 - 🟢 **Markdown brief export** — working via `/export-brief`.
 - 🟢 **Machine-readable discovery surfaces** — `/product-truth.json` and `/llms.txt` shipped this pass for agent and LLM discovery.
-- 🟢 **MCP tools + hosted server** — two tools (`get_fractional_working_index`, `get_fwi_weekly_brief`) exposed by a LIVE hosted MCP server (Streamable HTTP, no auth) at `https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp`. Agents can also call the REST API directly.
+- 🟢 **MCP tools + hosted server** — four tools (`get_fractional_working_index`, `get_fwi_weekly_brief`, `get_content_radar`, `get_content_brief`) exposed by a live stateless Streamable HTTP server at `https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp`. Agents can also call the REST API directly.
 - 🟢 **`/.well-known/ai-plugin.json`** — live discovery surface (HTTP 200).
-- 🟢 **Metered agent API + self-serve keys (live):** `fwi-api` accepts an optional `x-api-key` and meters it per key per day against `api_keys`; the anonymous read stays free and unmetered. A signed-in user mints, lists, or revokes a free key (1,000 req/day) via `manage-api-key` from `pulse.fractionl.ai/pricing` (plaintext shown once, SHA-256 hash stored). Keyed responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining`; higher and enterprise limits via `data@fractionl.ai`.
+- 🟢 **Public API + optional operational keys (live):** `fwi-api` accepts an optional `x-api-key` and counts usage per key per day against `api_keys`; anonymous reads stay free. A signed-in user mints, lists, or revokes a free key (1,000 requests/day) via `manage-api-key` from `pulse.fractionl.ai/pricing` (plaintext shown once, SHA-256 hash stored). Keyed responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining`. This is an operational control, not the paid product.
 
 ### Roadmap (not yet shipped)
-- 🚧 **Self-serve billing for paid API tiers:** the free keyed tier (1,000 req/day) is self-serve and live; higher and enterprise keyed limits are currently arranged with sales (`data@fractionl.ai`) rather than self-checkout.
+- ⛔ **Paid generic API tiers:** not on the commercial roadmap. Public REST and MCP access remain free. Paid value depends on proprietary, privacy-safe partner cohorts.
 
 ---
 
@@ -162,10 +164,10 @@ Deliverability: sends go from `ALERT_FROM` (default `alerts@fractionl.ai`). As o
 ### Near-term (next 1–2 quarters)
 
 - 🚧 **Webhook threshold alerts:** push notifications on band changes, role-level deltas, score crossings
-- ✅ **API key tiered metering** (shipped 2026-07): self-serve free keys and metered `x-api-key` on `fwi-api` are live; see Section 4. Higher and enterprise limits are arranged with sales.
+- ✅ **Operational API key accounting** (shipped 2026-07): self-serve free keys and `x-api-key` rate accounting on `fwi-api` are live; see Section 4.
 - ✅ **Hosted MCP server** (shipped): live at `https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp`; see Section 4.
-- 🚧 **Self-serve billing for paid API tiers:** the free keyed tier is self-serve; higher and enterprise keyed limits are arranged with sales today rather than self-checkout. (The retired $99/mo human Pro tier and waitlist were the pre-2026-07 model; the human dashboard is now free, so there is no human checkout on the current path. A human paid tier could be reintroduced later.)
-- 🚧 **White-label embeddable widget:** single-script gauge + sub-index cards
+- 🚧 **Partner benchmark ingestion:** define the data dictionary, privacy agreement, suppression rules, and partner-quality checks before accepting first-party engagement data.
+- 🚧 **Partner cohort delivery:** private dashboard and export for approved, privacy-safe benchmark cells after dataset release gates are met
 - 🚧 **CSV / Parquet export** for data-licensing customers
 
 ### Source expansion candidates
@@ -173,10 +175,10 @@ Deliverability: sends go from `ALERT_FROM` (default `alerts@fractionl.ai`). As o
 | Candidate | Pillar | Why | Status |
 |-----------|--------|-----|--------|
 | **Crunchbase** | Demand | Funding velocity cross-check beyond Form D | 🟡 Evaluating cost vs uplift |
-| **Indeed Publisher API** | Demand | Cross-check on Adzuna + SerpAPI jobs | 🟡 Evaluating Publisher Program |
+| **Indeed job-listing access** | Demand | Cross-check on Adzuna + SerpAPI jobs | 🟡 Evaluating official access |
 | **A.Team marketplace** | Supply | Direct fractional listings | 🟡 Partnership outreach |
 | **Catalant** | Supply | Project marketplace listings | 🟡 Partnership outreach |
-| **Twitter/X API v2** | Culture | Real-time fractional discourse | 🟡 Evaluating cost vs ToS risk |
+| **Twitter/X API v2** | Culture | Recent fractional discourse | 🟡 Evaluating cost vs ToS risk |
 | **Eventbrite** | Culture | Industry-event signals | 🔴 Backlog |
 | **Substack** | Culture | Newsletter coverage volume | 🔴 Backlog (RSS-based) |
 | **Glassdoor** | Demand | Company reviews mentioning fractional | 🔴 Backlog (ToS-restricted) |
@@ -184,18 +186,18 @@ Deliverability: sends go from `ALERT_FROM` (default `alerts@fractionl.ai`). As o
 
 ### Geographic expansion
 
-- 🟢 US — primary, all sources cover
-- 🟢 UK — Adzuna, Guardian, NewsAPI all cover
-- 🟡 EU — partial Mediastack + Adzuna coverage
+- 🟢 US — primary; the current job, professional-profile, SEC, Census, and BLS collectors are US-scoped
+- 🟡 UK — some English-language news inputs include UK material, but the current demand collectors do not support a UK benchmark
+- 🟡 EU — partial English-language media context only; no current market benchmark
 - 🔴 APAC — backlog, requires regional sources
 
 ### Role expansion
 
-Currently 6 C-suite roles (CFO, CMO, CTO, COO, CRO, CEO). Candidates for expansion (Pro / Enterprise feature):
+Currently 6 C-suite roles (CFO, CMO, CTO, COO, CRO, CEO). Candidates for a future partner benchmark after the core dataset gate:
 
 - Fractional VPs (Sales, Engineering, People)
 - Fractional Heads of (Growth, Product)
-- Industry-vertical sub-indices (FinTech FWI, SaaS FWI, etc.) — Enterprise custom
+- Industry-vertical sub-indices (FinTech FWI, SaaS FWI, etc.) — only with sufficient partner-contributed coverage
 
 ---
 
@@ -221,11 +223,11 @@ A single full ingest run touches every source listed above. Estimated cost per r
 |---------------|---------------------|
 | Adzuna + 6 roles | $0 |
 | SerpAPI (jobs + trends + LinkedIn + supply) | ~$0.10 |
-| Apify (Google Trends + supply trends + Reddit + GoFractional) | ~$0.04 |
+| Apify (Reddit + GoFractional) | ~$0.02 |
 | Brave (news + web) | ~$0.006 |
 | ~~People Data Labs~~ (retired 2026-05-30) | $0 |
 | OpenAI (insights) | ~$0.005 |
-| Free APIs (NewsAPI, Mediastack, FRED, Census, NYT, Guardian, Podchaser, HN, SEC) | $0 |
+| Free APIs (NewsAPI, Mediastack, FRED, Census, Guardian, Podchaser, HN, BLS, OpenAlex, SEC) | $0 |
 | **Total per daily run** | **~$0.50** |
 
 Daily cron × 30 days = ~$15/mo in variable data cost. Real annual variable cost: ~$180.
@@ -297,6 +299,7 @@ See `git log` and `supabase/migrations/`. Highlights:
 - `003_expand_signal_sources.sql` — added 17 sources to `data_source_health`, added `context` signal type
 - `004_fix_cached_insights_columns.sql` — `model_used`/`context` schema sync trigger
 - `005_tighten_signals_rls.sql` — RLS hardening (public read, service-role-only writes)
+- `016_ai_rate_limits.sql` — privacy-preserving hourly rate limit for Ask Pulse
 - `20260402_create_waitlist.sql` — waitlist table + anon-insert policy
 - `f653feb` — Brave Search integration
 - `a07f401` — PDL fix activated supply pillar

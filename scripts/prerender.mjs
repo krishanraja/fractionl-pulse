@@ -60,8 +60,8 @@ const title = haveLive
   : 'Pulse by Fractionl | The Fractional Working Index';
 
 const description = haveLive
-  ? `The fractional executive market is at ${score.toFixed(1)} of 100 (${label})${deltaPhrase ? `, ${deltaPhrase}` : ''}. A weekly composite of 21 data sources across demand, supply, and culture. SEC Form D filings provide financing context, not a validated forecast.`
-  : 'A weekly 0-100 composite index of the fractional executive market, blended from 21 data sources across demand, supply, and culture.';
+  ? `The fractional executive market is at ${score.toFixed(1)} of 100 (${label})${deltaPhrase ? `, ${deltaPhrase}` : ''}. A private composite using 21 tracked inputs across demand, supply, culture, and context. SEC Form D filings provide financing context, not a validated forecast.`
+  : 'A private 0-100 composite index of the fractional executive market, using 21 tracked inputs across demand, supply, culture, and context.';
 
 // ---- schema.org JSON-LD ----
 const datasetLd = {
@@ -73,11 +73,10 @@ const datasetLd = {
   url: SITE,
   sameAs: SITE,
   isAccessibleForFree: true,
-  creator: { '@type': 'Organization', name: 'Fractionl', url: 'https://fractionl.com' },
-  publisher: { '@type': 'Organization', name: 'Fractionl', url: 'https://fractionl.com' },
+  creator: { '@type': 'Organization', name: 'Fractionl', url: 'https://fractionl.ai' },
+  publisher: { '@type': 'Organization', name: 'Fractionl', url: 'https://fractionl.ai' },
   license: 'https://pulse.fractionl.ai',
-  measurementTechnique: 'Weekly composite of 21 independent sources across demand (50%), supply (20%), and culture (30%). SEC Form D filing velocity is included as startup-financing context; its relationship to future fractional demand has not been validated.',
-  temporalCoverage: '2026-03/..',
+  measurementTechnique: 'Private composite using 21 tracked inputs with mixed availability across demand (50%), supply (20%), culture (30%), and excluded context. Inputs are not all statistically independent. SEC Form D filing velocity is financing context; its relationship to future fractional demand has not been validated.',
   variableMeasured: ['Overall FWI', 'Demand', 'Supply', 'Culture'],
   ...(asOf ? { dateModified: asOf } : {}),
   distribution: [
@@ -91,7 +90,7 @@ const orgLd = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
   name: 'Fractionl',
-  url: 'https://fractionl.com',
+  url: 'https://fractionl.ai',
   brand: { '@type': 'Brand', name: 'Pulse by Fractionl' },
   description: 'Fractionl publishes the Fractional Working Index, the weekly market-health index for the fractional executive economy.',
 };
@@ -108,9 +107,9 @@ const noscriptBlock = `
         ${haveLive
           ? `<p><strong>${escape(score.toFixed(1))} / 100 (${escape(label)})</strong>${deltaPhrase ? `, ${escape(deltaPhrase)}` : ''}${asOf ? `, as of ${escape(asOf)}` : ''}.</p>`
           : `<p>A weekly 0-100 composite index of the fractional executive market.</p>`}
-        <p>The FWI is a weekly composite score (0-100) for the fractional executive market (fractional CFO, CMO, CTO, COO, CRO, and interim CEO), blended from 21 independent data sources across three pillars: demand, supply, and culture. ${escape(methodology)}.</p>
+        <p>The FWI is a private composite score (0-100) for the fractional executive market (fractional CFO, CMO, CTO, COO, CRO, and interim CEO), using 21 tracked inputs with mixed availability across demand, supply, culture, and context. The inputs are not all statistically independent. ${escape(methodology)}.</p>
         <p>SEC Form D filing velocity is included as startup-financing context. Pulse has not validated a predictive relationship between those filings and future fractional hiring.</p>
-        <p>Free, no-auth API: <a href="${API}">${API}</a>. Weekly brief: <a href="https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief">export-brief</a>. Published by <a href="https://fractionl.com">Fractionl</a>.</p>
+        <p>Free, no-auth API: <a href="${API}">${API}</a>. Weekly brief: <a href="https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief">export-brief</a>. Published by <a href="https://fractionl.ai">Fractionl</a>.</p>
       </main>
     </noscript>
 `;

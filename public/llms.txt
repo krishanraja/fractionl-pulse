@@ -27,7 +27,7 @@ All paid prices are hypotheses until customers pay. Conditional plans are not ge
 
 ## Coverage
 
-The FWI covers six role-demand lanes: fractional CFO, CMO, CTO, COO, CRO, and interim CEO. It blends 21 tracked inputs across Demand (50%), Supply (20%), and Culture (30%). Sources refresh daily and the composite is interpreted weekly. US coverage is primary and UK coverage secondary. Historical coverage is mixed-frequency and the full three-pillar composite does not exist for the entire period.
+The FWI covers six role-demand lanes: fractional CFO, CMO, CTO, COO, CRO, and interim CEO. It blends 21 tracked inputs across Demand (50%), Supply (20%), and Culture (30%). Sources refresh daily and the composite is interpreted weekly. Current role-demand collectors are US-scoped. English-language cultural inputs can include UK material but do not create a UK market benchmark. Historical coverage is mixed-frequency and the full three-pillar composite does not exist for the entire period.
 
 ## REST API
 

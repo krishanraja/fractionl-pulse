@@ -13,6 +13,31 @@ const NEWS_API_KEY = Deno.env.get('NEWS_API_KEY') || '';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+interface BackfillValue {
+  raw_value: number;
+  normalized_value: number;
+  metadata: Record<string, unknown>;
+}
+
+interface BackfillSignal extends BackfillValue {
+  date: string;
+  source: string;
+  signal_type: string;
+  category: string;
+}
+
+interface WeekResult {
+  week: string;
+  signals_count: number;
+  sources: string[];
+  error?: string;
+}
+
+interface TrendPoint { hasData?: boolean[]; value?: number[] }
+interface TrendItem { interestOverTime_timelineData?: TrendPoint[] }
+
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
+
 const GOOGLE_TRENDS_TERMS = [
   'fractional CMO',
   'fractional CFO',
@@ -74,7 +99,7 @@ async function sleep(ms: number) {
 // --- Source Backfillers ---
 
 async function backfillSecEdgar(weekEnd: string): Promise<{
-  raw_value: number; normalized_value: number; metadata: Record<string, any>;
+  raw_value: number; normalized_value: number; metadata: Record<string, unknown>;
 } | null> {
   try {
     const endDate = new Date(weekEnd);
@@ -107,14 +132,14 @@ async function backfillSecEdgar(weekEnd: string): Promise<{
         end_date: weekEnd,
       },
     };
-  } catch (e) {
-    console.error(`[SEC EDGAR backfill] ${weekEnd} failed:`, e.message);
+  } catch (error: unknown) {
+    console.error(`[SEC EDGAR backfill] ${weekEnd} failed:`, errorMessage(error));
     return null;
   }
 }
 
 async function backfillGoogleTrends(weekStart: string, weekEnd: string): Promise<{
-  raw_value: number; normalized_value: number; metadata: Record<string, any>;
+  raw_value: number; normalized_value: number; metadata: Record<string, unknown>;
 } | null> {
   try {
     // Use Apify with explicit date range
@@ -158,15 +183,15 @@ async function backfillGoogleTrends(weekStart: string, weekEnd: string): Promise
     const resultsResponse = await fetch(
       `https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_KEY}`
     );
-    const results = await resultsResponse.json();
+    const results = await resultsResponse.json() as TrendItem[];
 
     if (!Array.isArray(results) || results.length === 0) return null;
 
-    const termAverages = results.map((item: any) => {
+    const termAverages = results.map((item) => {
       const timeline = item.interestOverTime_timelineData || [];
-      const validPoints = timeline.filter((t: any) => t.hasData && t.hasData[0]);
+      const validPoints = timeline.filter((point) => point.hasData?.[0]);
       if (validPoints.length === 0) return 0;
-      return validPoints.reduce((sum: number, t: any) => sum + (t.value[0] || 0), 0) / validPoints.length;
+      return validPoints.reduce((sum, point) => sum + (point.value?.[0] || 0), 0) / validPoints.length;
     });
 
     const overallAvg = termAverages.reduce((a: number, b: number) => a + b, 0) / termAverages.length;
@@ -181,14 +206,14 @@ async function backfillGoogleTrends(weekStart: string, weekEnd: string): Promise
         date_range: `${weekStart} to ${weekEnd}`,
       },
     };
-  } catch (e) {
-    console.error(`[Google Trends backfill] ${weekEnd} failed:`, e.message);
+  } catch (error: unknown) {
+    console.error(`[Google Trends backfill] ${weekEnd} failed:`, errorMessage(error));
     return null;
   }
 }
 
 async function backfillNewsApi(weekStart: string, weekEnd: string): Promise<{
-  raw_value: number; normalized_value: number; metadata: Record<string, any>;
+  raw_value: number; normalized_value: number; metadata: Record<string, unknown>;
 } | null> {
   try {
     const query = encodeURIComponent(
@@ -215,8 +240,8 @@ async function backfillNewsApi(weekStart: string, weekEnd: string): Promise<{
         search_phrases: ['fractional CMO', 'fractional CFO', 'fractional CTO', 'fractional executive'],
       },
     };
-  } catch (e) {
-    console.error(`[NewsAPI backfill] ${weekEnd} failed:`, e.message);
+  } catch (error: unknown) {
+    console.error(`[NewsAPI backfill] ${weekEnd} failed:`, errorMessage(error));
     return null;
   }
 }
@@ -224,7 +249,7 @@ async function backfillNewsApi(weekStart: string, weekEnd: string): Promise<{
 // Generate estimated Adzuna data (no historical API available)
 // Uses a bounded random walk around a baseline derived from current data
 function generateEstimatedAdzuna(weekEnd: string, weekIndex: number, totalWeeks: number): {
-  raw_value: number; normalized_value: number; metadata: Record<string, any>;
+  raw_value: number; normalized_value: number; metadata: Record<string, unknown>;
 } {
   // Simulate gradual growth trend toward current levels
   // More recent weeks are closer to current market state
@@ -249,7 +274,7 @@ function generateEstimatedAdzuna(weekEnd: string, weekIndex: number, totalWeeks:
 
 // Generate estimated momentum data for weeks without real Google Trends / NewsAPI data
 function generateEstimatedMomentum(weekEnd: string, weekIndex: number, totalWeeks: number): {
-  raw_value: number; normalized_value: number; metadata: Record<string, any>;
+  raw_value: number; normalized_value: number; metadata: Record<string, unknown>;
 } {
   const progressRatio = weekIndex / totalWeeks;
   const baselineScore = 35 + Math.round(progressRatio * 15); // 35 → 50 range
@@ -283,7 +308,7 @@ serve(async (req) => {
   console.log(`[Backfill] Starting ${weeksBack}-week historical backfill (dry_run=${dryRun}, skip_trends=${skipTrends})`);
 
   const weeks = weekDates(weeksBack);
-  const results: any[] = [];
+  const results: WeekResult[] = [];
 
   // Track pipeline run
   const { data: runData } = await supabase
@@ -302,7 +327,7 @@ serve(async (req) => {
       const { weekStart, weekEnd } = weeks[i];
       console.log(`[Backfill] Week ${i + 1}/${weeks.length}: ${weekStart} → ${weekEnd}`);
 
-      const signals: any[] = [];
+      const signals: BackfillSignal[] = [];
 
       // 1. SEC EDGAR (always available historically)
       const edgar = await backfillSecEdgar(weekEnd);
@@ -426,18 +451,19 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
-    console.error('[Backfill] Fatal error:', error.message);
+  } catch (error: unknown) {
+    const message = errorMessage(error);
+    console.error('[Backfill] Fatal error:', message);
 
     if (runData?.id) {
       await supabase.from('pipeline_runs').update({
         completed_at: new Date().toISOString(),
         status: 'error',
-        error: error.message,
+        error: message,
       }).eq('id', runData.id);
     }
 
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

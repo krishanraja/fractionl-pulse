@@ -159,7 +159,7 @@ serve(async (req) => {
     rolesMeasured: measured.length,
     roleAverage,
     roleAverageDisplay: roleAverage != null ? displayLevel(roleAverage) : null,
-    note: 'Per-role demand index (0-100) from Adzuna + SerpAPI Google Jobs over a trailing 7-day window, in the context of the overall weekly FWI. The Form D Lead is a 1 to 3 month leading indicator of demand.',
+    note: 'Per-role demand index (0-100) from Adzuna + SerpAPI Google Jobs over a trailing 7-day window, in the context of the overall weekly FWI. Form D filings provide financing context; their relationship to future fractional demand has not been validated.',
     method: 'For each role, each demand source is averaged across the trailing 7 days, then the sources are averaged together. change7d compares that window to the 7 days before it. Supply is not published per role because the supply sources are not role-differentiated once normalized.',
     display: 'Levels (demand, roleAverage, overall.score) carry full precision here; the *Display fields are the whole numbers every human surface shows, and band is computed from the display value so a label can never contradict the number beside it. Changes (change7d, vsRoleAverage) keep one decimal.',
     roles,

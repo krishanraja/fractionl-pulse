@@ -133,10 +133,15 @@ interface SignalResult {
   category: string;
   raw_value: number;
   normalized_value: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   success: boolean;
   error?: string;
 }
+
+interface SerpTimelinePoint { values: Array<{ extracted_value?: number }> }
+interface ApifyTrendPoint { hasData?: boolean[]; value?: number[] }
+interface ApifyTrendItem { interestOverTime_timelineData?: ApifyTrendPoint[] }
+interface FwiResult { overall_score?: number; error?: string }
 
 function safeNumber(value: unknown, fallback: number): number {
   const num = Number(value);
@@ -372,7 +377,7 @@ async function collectSerpApiJobsSignals(date: string): Promise<SignalResult[]> 
       results.push({
         source: 'serpapi_jobs', signal_type: 'demand', category: role.category,
         raw_value: count, normalized_value: normalized,
-        metadata: { role_phrase: role.phrase, sample_titles: jobs.slice(0, 3).map((j: any) => j.title) },
+        metadata: { role_phrase: role.phrase, sample_titles: jobs.slice(0, 3).map((job: { title?: string }) => job.title) },
         success: true
       });
       console.log(`[SerpAPI Jobs] ${role.phrase}: ${count} jobs -> score ${normalized}`);
@@ -450,7 +455,7 @@ async function collectSerpApiTrendsSignal(date: string): Promise<SignalResult> {
     const termAverages: number[] = [];
     if (recent4.length > 0 && recent4[0].values) {
       for (let i = 0; i < recent4[0].values.length; i++) {
-        const avg = recent4.reduce((sum: number, t: any) => sum + safeNumber(t.values[i]?.extracted_value, 0), 0) / recent4.length;
+        const avg = (recent4 as SerpTimelinePoint[]).reduce((sum, point) => sum + safeNumber(point.values[i]?.extracted_value, 0), 0) / recent4.length;
         termAverages.push(avg);
       }
     }
@@ -492,14 +497,14 @@ async function collectGoogleTrendsSignal(date: string): Promise<SignalResult> {
     }
     if (status !== 'SUCCEEDED') throw new Error(`Trends run ${status} after ${pollCount * 5}s`);
     const resultsResponse = await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_KEY}`);
-    const results = await resultsResponse.json();
+    const results = await resultsResponse.json() as ApifyTrendItem[];
     if (!Array.isArray(results) || results.length === 0) throw new Error('No trends data returned');
     const termAverages = results.map(item => {
       const timeline = item.interestOverTime_timelineData || [];
-      const validPoints = timeline.filter((t: any) => t.hasData && t.hasData[0]);
+      const validPoints = timeline.filter((point) => point.hasData?.[0]);
       const recent4Weeks = validPoints.slice(-4);
       return recent4Weeks.length > 0
-        ? recent4Weeks.reduce((sum: number, t: any) => sum + (t.value[0] || 0), 0) / recent4Weeks.length : 0;
+        ? recent4Weeks.reduce((sum, point) => sum + (point.value?.[0] || 0), 0) / recent4Weeks.length : 0;
     });
     const overallAvg = termAverages.reduce((a, b) => a + b, 0) / termAverages.length;
     return {
@@ -528,8 +533,8 @@ async function collectNewsApiSignal(date: string): Promise<SignalResult> {
     const data = await response.json();
     const count = safeNumber(data.totalResults, 0);
     const articles = (data.articles || []).slice(0, 5);
-    const topArticles = articles.map((a: any) => ({
-      title: a.title || '', url: a.url || '', source: a.source?.name || ''
+    const topArticles = articles.map((article: { title?: string; url?: string; source?: { name?: string } }) => ({
+      title: article.title || '', url: article.url || '', source: article.source?.name || ''
     }));
     console.log(`[NewsAPI] ${count} articles (28d), storing ${topArticles.length} headlines`);
     return {
@@ -559,8 +564,8 @@ async function collectMediastackSignal(date: string): Promise<SignalResult> {
     const data = await response.json();
     const articles = data.data || [];
     const count = safeNumber(data.pagination?.total, articles.length);
-    const topArticles = articles.slice(0, 5).map((a: any) => ({
-      title: a.title || '', url: a.url || '', source: a.source || ''
+    const topArticles = articles.slice(0, 5).map((article: { title?: string; url?: string; source?: string }) => ({
+      title: article.title || '', url: article.url || '', source: article.source || ''
     }));
     console.log(`[Mediastack] ${count} results, ${articles.length} returned`);
     return {
@@ -592,8 +597,8 @@ async function collectGuardianSignal(date: string): Promise<SignalResult> {
     const data = await response.json();
     const count = safeNumber(data.response?.total, 0);
     const articles = (data.response?.results || []).slice(0, 5);
-    const topArticles = articles.map((a: any) => ({
-      title: a.webTitle || '', url: a.webUrl || '', section: a.sectionName || ''
+    const topArticles = articles.map((article: { webTitle?: string; webUrl?: string; sectionName?: string }) => ({
+      title: article.webTitle || '', url: article.webUrl || '', section: article.sectionName || ''
     }));
     console.log(`[Guardian] ${count} articles (90d) -> score ${normalizePrestigeMedia(count)}`);
     return {
@@ -627,9 +632,9 @@ async function collectNYTSignal(date: string): Promise<SignalResult> {
     const data = await response.json();
     const docs = data.response?.docs || [];
     const count = safeNumber(data.response?.meta?.hits, docs.length);
-    const topArticles = docs.slice(0, 5).map((d: any) => ({
-      title: d.headline?.main || '', url: d.web_url || '',
-      facets: (d.des_facet || []).slice(0, 3)
+    const topArticles = docs.slice(0, 5).map((doc: { headline?: { main?: string }; web_url?: string; des_facet?: string[] }) => ({
+      title: doc.headline?.main || '', url: doc.web_url || '',
+      facets: (doc.des_facet || []).slice(0, 3)
     }));
     console.log(`[NYT] ${count} articles (90d) -> score ${normalizePrestigeMedia(count)}`);
     return {
@@ -675,7 +680,7 @@ async function collectPodchaserSignal(_date: string): Promise<SignalResult> {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     const total = safeNumber(data.data?.podcasts?.paginatorInfo?.total, 0);
-    const sampleTitles = (data.data?.podcasts?.data || []).slice(0, 5).map((p: any) => p.title);
+    const sampleTitles = (data.data?.podcasts?.data || []).slice(0, 5).map((podcast: { title?: string }) => podcast.title);
     console.log(`[Podchaser] ${total} podcasts mentioning fractional -> score ${normalizePodcastCount(total)}`);
     return {
       source: 'podchaser', signal_type: 'momentum', category: 'audio_culture',
@@ -735,14 +740,14 @@ async function collectHNSignal(_date: string): Promise<SignalResult> {
     const data = await response.json();
     const hits = data.hits || [];
     const totalHits = safeNumber(data.nbHits, hits.length);
-    const avgPoints = hits.length > 0 ? hits.reduce((s: number, h: any) => s + safeNumber(h.points, 0), 0) / hits.length : 0;
+    const avgPoints = hits.length > 0 ? hits.reduce((sum: number, hit: { points?: number }) => sum + safeNumber(hit.points, 0), 0) / hits.length : 0;
     const normalized = normalizeRedditActivity(totalHits, avgPoints);
     console.log(`[HN] ${totalHits} stories, avg points ${avgPoints.toFixed(1)} -> ${normalized}`);
     return {
       source: 'hn', signal_type: 'momentum', category: 'community_discourse',
       raw_value: totalHits, normalized_value: normalized,
       metadata: { avg_points: Math.round(avgPoints), window: 'past_month',
-        top_stories: hits.slice(0, 3).map((h: any) => ({ title: h.title, url: h.url, points: h.points })) },
+        top_stories: hits.slice(0, 3).map((hit: { title?: string; url?: string; points?: number }) => ({ title: hit.title, url: hit.url, points: hit.points })) },
       success: true
     };
   } catch (error) {
@@ -1014,11 +1019,11 @@ async function collectSupplyTrendsSignal(date: string): Promise<SignalResult> {
       pollCount++;
     }
     if (status !== 'SUCCEEDED') throw new Error(`Run ${status}`);
-    const results = await (await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_KEY}`)).json();
+    const results = await (await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_KEY}`)).json() as ApifyTrendItem[];
     if (!Array.isArray(results) || results.length === 0) throw new Error('No data');
-    const avgs = results.map((item: any) => {
-      const pts = (item.interestOverTime_timelineData || []).filter((t: any) => t.hasData?.[0]).slice(-4);
-      return pts.length > 0 ? pts.reduce((s: number, t: any) => s + (t.value[0] || 0), 0) / pts.length : 0;
+    const avgs = results.map((item) => {
+      const pts = (item.interestOverTime_timelineData || []).filter((point) => point.hasData?.[0]).slice(-4);
+      return pts.length > 0 ? pts.reduce((sum, point) => sum + (point.value?.[0] || 0), 0) / pts.length : 0;
     });
     const overall = avgs.reduce((a, b) => a + b, 0) / avgs.length;
     return {
@@ -1051,7 +1056,7 @@ async function collectSerpApiSupplyTrends(_date: string): Promise<SignalResult> 
     const termAverages: number[] = [];
     if (recent4.length > 0 && recent4[0].values) {
       for (let i = 0; i < recent4[0].values.length; i++) {
-        const avg = recent4.reduce((sum: number, t: any) => sum + safeNumber(t.values[i]?.extracted_value, 0), 0) / recent4.length;
+        const avg = (recent4 as SerpTimelinePoint[]).reduce((sum, point) => sum + safeNumber(point.values[i]?.extracted_value, 0), 0) / recent4.length;
         termAverages.push(avg);
       }
     }
@@ -1174,7 +1179,7 @@ async function collectBLSSignals(_date: string): Promise<SignalResult[]> {
       throw new Error(`BLS status=${data.status}: ${(data.message || []).join('; ')}`);
     }
     for (const seriesDef of BLS_SERIES) {
-      const series = (data.Results?.series || []).find((s: any) => s.seriesID === seriesDef.id);
+      const series = (data.Results?.series || []).find((item: { seriesID?: string }) => item.seriesID === seriesDef.id);
       const latest = series?.data?.[0];
       if (!latest) {
         results.push({
@@ -1226,7 +1231,7 @@ async function collectWikipediaPageviews(date: string): Promise<SignalResult> {
         const res = await fetchWithRetry(url, { headers: { 'User-Agent': ua } }, 2, 10000);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        const totalViews = (data.items || []).reduce((sum: number, it: any) => sum + safeNumber(it.views, 0), 0);
+        const totalViews = (data.items || []).reduce((sum: number, item: { views?: number }) => sum + safeNumber(item.views, 0), 0);
         perPage[page] = totalViews;
       } catch (err) {
         perPage[page] = 0;
@@ -1494,8 +1499,8 @@ serve(async (req) => {
     // round-trips, so this tail work stays well under the caller timeout. The failed batch
     // omits last_success on purpose so a source's prior last_success is preserved.
     const now = new Date().toISOString();
-    const healthyRows: any[] = [];
-    const failedRows: any[] = [];
+    const healthyRows: Array<Record<string, unknown>> = [];
+    const failedRows: Array<Record<string, unknown>> = [];
     for (const src of Object.keys(SOURCE_CONFIDENCE_WEIGHTS)) {
       const srcSignals = allSignals.filter(s => s.source === src);
       if (srcSignals.length === 0) continue;
@@ -1510,7 +1515,7 @@ serve(async (req) => {
     if (failedRows.length > 0) await supabase.from('data_source_health').upsert(failedRows, { onConflict: 'source' });
 
     console.log('[Pipeline] Triggering FWI calculation...');
-    let fwiResult: any = { error: 'FWI calculation not attempted' };
+    let fwiResult: FwiResult = { error: 'FWI calculation not attempted' };
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
@@ -1519,7 +1524,7 @@ serve(async (req) => {
           headers: { 'Authorization': fwiAuthHeader }
         });
         if (fwiResponse.ok) {
-          fwiResult = await fwiResponse.json();
+          fwiResult = await fwiResponse.json() as FwiResult;
           console.log(`[Pipeline] FWI calculation succeeded: ${fwiResult.overall_score}`);
           break;
         }

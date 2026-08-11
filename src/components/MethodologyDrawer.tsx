@@ -21,7 +21,7 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
       <div className="bg-muted/30 p-4 rounded-lg">
         <h4 className="font-medium mb-2 text-foreground">How this works</h4>
         <p className="text-sm text-muted-foreground">
-          The Fractional Working Index is a single weekly score (0-100) that answers one question: is this a good time to hire a fractional executive? It combines 21 data sources across three dimensions: hiring activity, talent availability, and market momentum.
+          The Fractional Working Index is a private 0-100 composite describing measured conditions in the fractional executive market. It uses 21 tracked inputs with mixed availability across hiring activity, talent availability, market momentum, and excluded context.
         </p>
       </div>
 
@@ -65,7 +65,7 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
       </div>
 
       <div className="border-t border-border pt-4">
-        <h4 className="font-medium mb-2 text-foreground text-sm uppercase tracking-wide">21 data sources</h4>
+        <h4 className="font-medium mb-2 text-foreground text-sm uppercase tracking-wide">21 tracked inputs</h4>
         <div className="grid grid-cols-2 gap-1.5 text-xs text-muted-foreground">
           <span>Adzuna Jobs</span><span>SerpAPI Google Jobs</span>
           <span>SEC EDGAR Form D</span><span>SerpAPI Trends</span>
@@ -91,7 +91,7 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
           <p><span className="font-medium text-foreground">SEC filings:</span> Linear (800 tech filings/90d = 50)</p>
           <p><span className="font-medium text-foreground">News:</span> Square-root scale (dampens viral spikes)</p>
           <p><span className="font-medium text-foreground">Trends:</span> Native 0-100 pass-through</p>
-          <p><span className="font-medium text-foreground">Supply:</span> Log scale (10,000 profiles = 100)</p>
+          <p><span className="font-medium text-foreground">Supply:</span> Source-specific log or native scales for profile proxies, marketplace listings, and intent trends</p>
         </div>
       </div>
 
@@ -99,16 +99,16 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
         <h4 className="font-medium mb-2 text-foreground text-sm uppercase tracking-wide">Data integrity</h4>
         <div className="space-y-2 text-xs text-muted-foreground">
           <p><span className="font-medium text-foreground">Anomaly guard:</span> Rejects any signal more than 3 standard deviations from its 8-week rolling average to prevent API glitches from corrupting the index.</p>
-          <p><span className="font-medium text-foreground">Confidence score:</span> Weighted by source reliability. A week where all 21 sources report = 1.0 confidence.</p>
-          <p><span className="font-medium text-foreground">Week-over-week deltas:</span> Movers are calculated against the prior week's actual scores, not static baselines.</p>
+          <p><span className="font-medium text-foreground">Data completeness:</span> Weighted by input quality and uniqueness. A reading where all 21 tracked inputs report = 1.0; this is not prediction accuracy.</p>
+          <p><span className="font-medium text-foreground">Movement:</span> Role movers compare current role demand with the current role average. Non-role movers compare with the prior observed reading.</p>
         </div>
       </div>
 
       <div className="border-t border-border pt-4">
         <h4 className="font-medium mb-2 text-foreground">How to read the score</h4>
         <div className="space-y-1.5 text-sm text-muted-foreground">
-          <p><span className="text-emerald-400 font-medium">75-100 Surging</span> - exceptional demand, great time to hire</p>
-          <p><span className="text-green-400 font-medium">60-74 Growing</span> - strong market, opportunities abundant</p>
+          <p><span className="text-emerald-400 font-medium">75-100 Surging</span> - exceptionally strong measured conditions</p>
+          <p><span className="text-green-400 font-medium">60-74 Growing</span> - strong measured conditions</p>
           <p><span className="text-yellow-400 font-medium">45-59 Stable</span> - balanced, normal conditions</p>
           <p><span className="text-orange-400 font-medium">30-44 Cooling</span> - demand softening, more selectivity</p>
           <p><span className="text-red-400 font-medium">0-29 Contracting</span> - market under pressure</p>

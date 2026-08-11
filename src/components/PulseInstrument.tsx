@@ -213,7 +213,7 @@ const PulseInstrument = ({
   const renderDesktopIndex = () => (
     <div className="pulse-desktop-index">
       <section className="pulse-index-intro">
-        <p className="pulse-overline">Independent market instrument</p>
+        <p className="pulse-overline">Public market instrument</p>
         <h1>Fractional<br />Working Index</h1>
         <p className="pulse-index-deck">One public read on the fractional executive market, with the evidence and limits kept in view.</p>
       </section>
@@ -346,7 +346,7 @@ const PulseInstrument = ({
               <li>Current evidence coverage is {coverage}%.</li>
             </ul>
           )}
-          <div className="pulse-receipts"><span>21 inputs</span><span>6 roles</span><span>US + UK</span></div>
+          <div className="pulse-receipts"><span>21 inputs</span><span>6 roles</span><span>US primary</span></div>
         </section>
         <section>
           <div className="pulse-ask-card-title"><span><BrainCircuit /></span><strong>Interpretation</strong></div>

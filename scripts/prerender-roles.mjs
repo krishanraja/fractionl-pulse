@@ -22,7 +22,6 @@ import { join } from 'node:path';
 
 const ROLES_API = 'https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-roles';
 const BRIEF_API = 'https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief';
-const CIRCLE = 'https://circle.fractionl.ai/?utm_source=pulse&utm_medium=cross_sell&utm_campaign=fwi_dashboard';
 
 // `phrase` is the exact string each demand collector searches for (supabase/
 // functions/ingest-signals/index.ts, FRACTIONAL_ROLES). Naming it on the page is
@@ -73,17 +72,14 @@ function one(n) { return Number(n).toFixed(1); }
 function abs1(n) { return Math.abs(Number(n)).toFixed(1); }
 function signed(n) { return `${n > 0 ? '+' : n < 0 ? '-' : ''}${abs1(n)}`; }
 
-/**
- * What the LEVEL of the reading supports on price. Never quotes a rate: Pulse
- * holds no rate data, so inventing one here would be the worst kind of SEO page.
- */
+/** What the level measures, with an explicit boundary around price claims. */
 function rateRead(r) {
   const base = {
-    Surging: 'Advertised demand for this role is in the top band of the scale. A reading here does not support discounting. Lead with your rate, put it in the first conversation, and flex scope rather than price.',
-    Growing: 'Advertised demand for this role is in the upper half of the scale. A reading here does not support discounting. Publish your rate, hold it, and let scope be the thing that moves.',
-    Stable: 'A stable reading is not a discount signal. It supports publishing a rate and holding it, and competing on speed to first value and clarity of scope rather than on price.',
-    Cooling: 'A cooling reading is a reason to change the shape of the offer, not the rate. A shorter first phase, a tighter scope and a defined end are easier to approve in a soft week. A day rate is the hardest thing to put back up once it has come down.',
-    Contracting: 'Advertised demand is in the bottom band. Hold the rate and shrink the unit instead. A small fixed-scope first engagement is easier to say yes to than a retainer, and it leaves the rate intact for the renewal.',
+    Surging: 'Advertised demand for this role is in the top band of the scale.',
+    Growing: 'Advertised demand for this role is in the upper part of the scale.',
+    Stable: 'Advertised demand for this role is in the stable band of the scale.',
+    Cooling: 'Advertised demand for this role is in the cooling band of the scale.',
+    Contracting: 'Advertised demand for this role is in the bottom band of the scale.',
   }[r.band];
   if (!base) return null;
 
@@ -91,24 +87,24 @@ function rateRead(r) {
   const rel = v == null
     ? ''
     : v >= 3
-      ? ` It is also running ${one(v)} points above the average of the six roles this week, which is the strongest relative position on this page to negotiate from.`
+      ? ` It is ${one(v)} points above the current average of the six tracked roles.`
       : v <= -3
-        ? ` It is running ${abs1(v)} points below the average of the six roles this week, so expect more competition for each opportunity and be sharper about which ones you chase.`
+        ? ` It is ${abs1(v)} points below the current average of the six tracked roles.`
         : ' It is tracking within a few points of the average of the six roles this week.';
-  return base + rel;
+  return `${base}${rel} This is advertised-demand context, not evidence of willingness to pay, achieved fees, or pricing power.`;
 }
 
-/** What the DIRECTION of the reading supports on timing. */
+/** What changed in the observed window, without inventing a conversion claim. */
 function timingRead(r) {
   if (r.change7d == null || r.direction == null || r.prevDemand == null) return null;
   const span = `${lvl(r.prevDemand)} to ${lvl(r.demand)}`;
   if (r.direction === 'rising') {
-    return `Demand rose ${one(r.change7d)} points against the previous seven days (${span}). Rising weeks are when outreach lands. This is the week to work the list you already have rather than the week to go and build a new one.`;
+    return `Advertised demand rose ${one(r.change7d)} points against the previous seven days (${span}). The index does not measure outreach conversion, so use this movement alongside your own pipeline rather than treating it as a timing instruction.`;
   }
   if (r.direction === 'falling') {
-    return `Demand fell ${abs1(r.change7d)} points against the previous seven days (${span}). Falling weeks reward depth over volume: work the warm relationships, and hold the cold push for the turn.`;
+    return `Advertised demand fell ${abs1(r.change7d)} points against the previous seven days (${span}). The index does not measure outreach conversion, so this movement does not determine when to contact prospects.`;
   }
-  return `Demand is effectively flat against the previous seven days (${span}). Nothing in the reading argues for changing what you are already doing this week.`;
+  return `Advertised demand is effectively flat against the previous seven days (${span}). A flat reading is market context, not a recommendation to change or preserve a sales plan.`;
 }
 
 function rankRead(r, total) {
@@ -156,12 +152,12 @@ function faqFor(r, def, overall) {
   const rate = live ? rateRead(r) : null;
   items.push({
     q: `What should a ${lower} charge?`,
-    a: `Pulse does not publish rate data and will not invent it. What the index can tell you is the position you are negotiating from. ${rate || 'Check the live reading at the top of this page before your next pricing conversation.'}`,
+    a: `Pulse does not publish achieved-rate, willingness-to-pay, or win-rate data and will not invent a fee. ${rate || 'Check the live reading at the top of this page for advertised-demand context, then use your own pipeline and evidence for a pricing decision.'}`,
   });
 
   items.push({
     q: `How is the ${lower} demand index calculated?`,
-    a: `It counts job postings that name the phrase "${def.phrase}" explicitly, from two independent sources: Adzuna's US index and Google Jobs via SerpAPI. Each source is averaged across a trailing seven-day window, then the sources are averaged together and normalised onto the same 0 to 100 scale as the FWI demand pillar. It does not count full-time openings for the same title, and it does not count fractional work won by referral rather than by a posting.`,
+    a: `It counts job postings that name the phrase "${def.phrase}" explicitly, from Adzuna's US index and Google Jobs via SerpAPI. The discovery sources may overlap and are not described as independent. Each source is averaged across a trailing seven-day window, then the sources are averaged together and normalised onto the same 0 to 100 scale as the FWI demand pillar. It does not count full-time openings for the same title, and it does not count fractional work won by referral rather than by a posting.`,
   });
 
   return items;
@@ -241,8 +237,8 @@ function rolePage(def, r, data, site) {
     ? `, ${r.direction === 'rising' ? 'up' : r.direction === 'falling' ? 'down' : 'flat within'} ${abs1(r.change7d)} points on the previous seven days`
     : '';
   const desc = live
-    ? `Advertised demand for ${lower} roles reads ${lvl(r.demand)} of 100 (${r.band}) for the week ending ${r.asOf}${move}. What that says about your rate and your timing, from the weekly Fractional Working Index.`
-    : `A weekly 0 to 100 demand index for ${lower} roles, counted from US job postings that name the phrase, and what the reading says about rates and timing.`;
+    ? `Advertised demand for ${lower} roles reads ${lvl(r.demand)} of 100 (${r.band}) for the week ending ${r.asOf}${move}. Measured US job-posting context and its evidence limits, from the Fractional Working Index.`
+    : `A 0 to 100 advertised-demand index for ${lower} roles, counted from US job postings that name the phrase, with its evidence and limits.`;
 
   const faq = faqFor(r, def, overall);
 
@@ -354,20 +350,20 @@ function rolePage(def, r, data, site) {
         overall.demand != null ? `<tr><td>Demand pillar, all roles (weight 50%)</td><td class="num">${lvl(overall.demand)}</td><td class="dim"></td></tr>` : '',
         overall.supply != null ? `<tr><td>Supply pillar (weight 20%)</td><td class="num">${lvl(overall.supply)}</td><td class="dim"></td></tr>` : '',
         overall.culture != null ? `<tr><td>Culture pillar (weight 30%)</td><td class="num">${lvl(overall.culture)}</td><td class="dim"></td></tr>` : '',
-        overall.confidence != null ? `<tr><td>Confidence in this week's composite</td><td class="num">${Math.round(overall.confidence * 100)}%</td><td class="dim">share of sources that reported</td></tr>` : '',
+        overall.confidence != null ? `<tr><td>Data completeness for this reading</td><td class="num">${Math.round(overall.confidence * 100)}%</td><td class="dim">weighted tracked-input coverage, not prediction accuracy</td></tr>` : '',
       ].filter(Boolean).join('')
     : '';
 
   const body = `<div class="wrap">
     <a class="back" href="/">&larr; Pulse, the Fractional Working Index</a>
     <h1>${escape(def.label)} demand index</h1>
-    <p class="lede">What the Fractional Working Index says about demand for ${escape(lower)} work right now, what that means for your rate, and what it means for your timing. Rebuilt from live data every day.</p>
+    <p class="lede">What the Fractional Working Index observes about US advertised demand for ${escape(lower)} work, what changed, and what the evidence cannot establish. Rebuilt from the public data endpoint on each deployment.</p>
 
     ${readingPanel}
 
-    ${rate || timing ? '<h2>What the reading means</h2>' : ''}
-    ${rate ? `<h3>For your rate</h3><p>${escape(rate)}</p>` : ''}
-    ${timing ? `<h3>For your timing</h3><p>${escape(timing)}</p>` : ''}
+    ${rate || timing ? '<h2>How to interpret the reading</h2>' : ''}
+    ${rate ? `<h3>Pricing boundary</h3><p>${escape(rate)}</p>` : ''}
+    ${timing ? `<h3>Observed movement</h3><p>${escape(timing)}</p>` : ''}
     ${live ? `<h3>Financing context</h3><p class="dim">Pulse tracks SEC Form D filing velocity alongside observed job-posting demand. The filing series provides startup-financing context, but Pulse has not validated a predictive relationship between those filings and future fractional hiring. It is documented on the <a href="/">dashboard</a>.</p>` : ''}
 
     ${counts ? `<h2>What was counted</h2>
@@ -378,7 +374,7 @@ function rolePage(def, r, data, site) {
     <div class="tablewrap"><table><tbody>${marketRows}</tbody></table></div>` : ''}
 
     <h2>How this number is built</h2>
-    <p>The ${escape(lower)} demand index counts job postings that name the phrase <strong>&ldquo;${escape(def.phrase)}&rdquo;</strong> explicitly, from two independent sources: Adzuna's US index and Google Jobs via SerpAPI. Each source is averaged across a trailing seven-day window, the sources are then averaged together, and the result is normalised onto the same 0 to 100 scale as the FWI demand pillar.</p>
+    <p>The ${escape(lower)} demand index counts job postings that name the phrase <strong>&ldquo;${escape(def.phrase)}&rdquo;</strong> explicitly, from Adzuna's US index and Google Jobs via SerpAPI. These discovery sources may overlap and are not described as independent. Each source is averaged across a trailing seven-day window, the sources are then averaged together, and the result is normalised onto the same 0 to 100 scale as the FWI demand pillar.</p>
     <p>Bands: 75 and above is Surging, 60 to 75 Growing, 45 to 60 Stable, 30 to 45 Cooling, and below 30 Contracting.</p>
     <p class="dim">What it does not count: full-time openings for the same title, and fractional work won by referral rather than by a posting. That second gap matters, because a large share of fractional engagements never reach a job board at all. Read this as a directional read on <em>advertised</em> demand, not as a census of the market.</p>
     <p class="dim">Pulse does not publish a per-role supply or talent-availability score. The supply sources are not role-differentiated once normalised, so splitting them by role would invent a distinction the data does not contain.</p>
@@ -397,15 +393,9 @@ function rolePage(def, r, data, site) {
       <a href="/feed.xml">RSS</a>
     </div>
 
-    <aside class="cross">
-      <strong>From the read to a plan</strong>
-      <p>The index tells you what the ${escape(lower)} market is doing. Fractionl Circle pressure-tests your own offer against it, in the open, then turns the read into named warm-network moves toward your next retained client. A separate Fractionl product, free to start, Pro at $39 a month. Pulse itself stays free.</p>
-      <a href="${escape(`${CIRCLE}&utm_content=${def.slug}`)}" rel="noopener">Open Fractionl Circle &rarr;</a>
-    </aside>
-
     <footer>
       <p>Published by <a href="https://fractionl.ai">Fractionl</a>, a private composite. Not an official, institutional or government index, and not financial advice.</p>
-      <p>Daily ingest, weekly settle. About 12 weeks of history and accumulating. US primary, UK secondary. Free to cite with attribution to the Fractional Working Index.</p>
+      <p>Sources refresh daily and the composite is interpreted weekly. About 12 months of mixed-frequency history. The current role-demand collectors are US-scoped. Free to cite with attribution to the Fractional Working Index.</p>
     </footer>
   </div>`;
 
