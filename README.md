@@ -133,7 +133,7 @@ Discovery surfaces:
 
 The weighting is Demand 50%, Supply 20%, and Culture 30%. If a pillar has no live data for a reading, its weight is redistributed proportionally and the response exposes the effective weights and completeness.
 
-The tracked inputs include job postings, search interest, company-financing context, professional profiles, marketplace listings, public discourse, news, podcasts, self-employment, and macro context. Context signals enrich interpretation but are excluded from the composite where documented.
+The tracked inputs include job postings, search interest, company-financing context, professional profiles, GoFractional's published operator-network size, public discourse, news, podcasts, self-employment, and macro context. Context signals enrich interpretation but are excluded from the composite where documented.
 
 Integrity controls include:
 
@@ -162,7 +162,7 @@ Core Edge Functions:
 
 | Function | Responsibility |
 |---|---|
-| `prepare-dataforseo-jobs` | Submit idempotent async DataForSEO Google Jobs tasks one hour before ingest |
+| `prepare-dataforseo-jobs` | Submit six idempotent async DataForSEO Google Jobs tasks at 05:00 UTC, record task IDs, and leave retrieval to the 06:00 ingest |
 | `ingest-signals` | Collect and normalise tracked inputs |
 | `calculate-fwi` | Produce the composite and movers |
 | `fwi-api` | Serve current, historical, and protected trigger routes |

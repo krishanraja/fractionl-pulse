@@ -120,7 +120,7 @@ The only authenticated endpoint is `POST /fwi-api/trigger`, which forces an imme
         "sources": [
           "DataForSEO LinkedIn supply proxy",
           "Brave LinkedIn talent proxy",
-          "GoFractional marketplace listings",
+          "GoFractional published operator count",
           "Supply-side search intent (DataForSEO)"
         ],
         "status": "live",

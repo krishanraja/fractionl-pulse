@@ -19,7 +19,7 @@ A 0–100 composite across three dimensions built from **21 tracked inputs**. In
 | Dimension | Weight | What it captures |
 |-----------|--------|------------------|
 | **Demand** | 50% | Adzuna fractional job postings (6 roles) + DataForSEO Google Jobs cross-check + SEC Form D financing context |
-| **Supply** | 20% | DataForSEO LinkedIn proxy + Brave Talent backstop + GoFractional marketplace + DataForSEO supply-intent trends |
+| **Supply** | 20% | DataForSEO LinkedIn proxy + Brave Talent backstop + GoFractional published operator count + DataForSEO supply-intent trends |
 | **Culture** | 30% | DataForSEO Trends + NewsAPI + Mediastack + Brave News + Brave Web + Guardian + Podchaser + Reddit + Hacker News + Wikipedia pageviews |
 
 If a pillar has no live data in a given week, its weight redistributes proportionally and the response surfaces this in `meta.dataCompleteness` and `components.<pillar>.status`.
@@ -225,7 +225,7 @@ Use `X-FWI-Score` and `X-FWI-Label` for lightweight polling without parsing the 
 |--------|------------------|
 | **DataForSEO LinkedIn** | `site:linkedin.com/in "fractional CFO"` result counts as a public profile-volume proxy |
 | **Brave Talent** | Independent public-web profile-volume backstop |
-| **GoFractional marketplace** | Active listings via Apify scraper |
+| **GoFractional published network** | First-party published operator count via the official `apify/web-scraper` actor; stored under the legacy `marketplace` category for compatibility |
 | **DataForSEO Trends (supply intent)** | Searches like "become fractional executive" and "fractional consulting business" |
 
 ### Culture pillar
@@ -349,7 +349,7 @@ See [`MCP_TOOL.md`](./MCP_TOOL.md) for the full tool definition, Claude/OpenAI i
 
 ## Operational Notes
 
-- The pipeline runs daily at **06:00 UTC** via Vercel Cron with a redundant Monday backstop run.
+- Supabase `pg_cron` prepares DataForSEO Jobs at **05:00 UTC** and runs ingestion at **06:00 UTC**. Vercel retains retry and Monday backstop triggers.
 - On failure, `send-pipeline-alert` triggers a Resend email — pipeline reliability is monitored, not hoped for.
 - The dashboard uses **Supabase Realtime** subscriptions on `fwi_scores`, `signals`, `cached_insights`, and `data_source_health` — your dashboard updates within seconds of a successful pipeline run, not on the next user refresh.
 - Per-source health is exposed via the public-readable `data_source_health` table for any agent that wants to audit which sources reported in a given week.

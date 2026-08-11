@@ -12,35 +12,37 @@ The credibility and value of the FWI depend entirely on the quality, breadth, an
 
 > **Pre-cutover production readback, 2026-08-11 02:16 UTC:** the pipeline wrote the day's observation successfully at FWI **51.5 (Stable)**, but the read was degraded at **0.63 weighted completeness** with **13 contributing sources**. The principal incident was an exhausted SerpAPI account affecting four inputs. Guardian returned 401, GoFractional returned 403, NewsAPI was silent, and FRED had never delivered. This historical readback is retained as the rollout baseline; the DataForSEO cutover must be verified against the release gates below before this note is superseded.
 
+> **Post-cutover production readback, 2026-08-11 17:49 UTC:** the same-day ingest completed with **20 healthy sources**, **0.95 run-reported completeness**, and FWI **51.4 (Stable)**. All four legacy `serpapi_*` index inputs delivered through DataForSEO; Guardian and NewsAPI were healthy; BLS wrote three context rows and FRED wrote one Initial Jobless Claims row. Anomaly rejection and the pre-authorization GoFractional failure left persisted current-day completeness at **0.81 across 17 sources**. The official Apify actor was subsequently authorized and a bounded Console canary returned the first-party published count of **15,000** for **$0.011**. The next scheduled ingest will update GoFractional's production `last_success` and is expected to restore persisted completeness to at least 0.85.
+
 ### Demand pillar (50% weight)
 
 | Source | Signal | Method | Cost / call |
 |--------|--------|--------|-------------|
 | **Adzuna** | Fractional job postings, 6 C-suite roles | REST API, `what_phrase` exact-phrase | $0 (free tier) |
-| **DataForSEO Google Jobs** | Second Google Jobs discovery source; may overlap Adzuna results | Async Google Jobs tasks, exact phrase per role | ~$0.006 |
+| **DataForSEO Google Jobs** | Second Google Jobs discovery source; may overlap Adzuna results | Six async Google Jobs tasks, exact phrase per role | ~$0.0036 |
 | **SEC EDGAR Form D** | VC funding pipeline, tech/SaaS, 90-day rolling | EDGAR full-text search | $0 (gov) |
 
 ### Supply pillar (20% weight, redistributes if empty)
 
 | Source | Signal | Method | Cost / call |
 |--------|--------|--------|-------------|
-| **DataForSEO LinkedIn** | `site:linkedin.com/in "fractional CFO"` proxy | DataForSEO organic search | ~$0.012 |
-| **Brave Talent** | Provider-independent LinkedIn-profile backstop | Brave Web Search | ~$0.003 |
-| **GoFractional** | Active marketplace listings | Apify web-scraper actor | ~$0.01 |
-| **DataForSEO Trends (supply intent)** | Searches like "become fractional executive" | DataForSEO Trends | ~$0.002 |
+| **DataForSEO LinkedIn** | `site:linkedin.com/in "fractional CFO"` proxy | Four DataForSEO organic `site:` queries | ~$0.040 |
+| **Brave Talent** | Provider-independent LinkedIn-profile backstop | 4 Brave Web Search calls | ~$0.020 gross |
+| **GoFractional** | First-party published operator-network size | Official `apify/web-scraper` actor; $0.02 hard cap | $0.011 canary |
+| **DataForSEO Trends (supply intent)** | Searches like "become fractional executive" | DataForSEO Trends | ~$0.011 |
 
 ### Culture pillar (30% weight)
 
 | Source | Signal | Method | Cost / call |
 |--------|--------|--------|-------------|
-| **DataForSEO Google Trends** | Search interest, 90-day, US geo | DataForSEO Trends | ~$0.002 |
+| **DataForSEO Google Trends** | Search interest, 90-day, US geo | DataForSEO Trends | ~$0.011 |
 | **NewsAPI** | Article volume, 28-day, exact phrase | REST API | $0 (free tier) |
 | **Mediastack** | Separate news-API cross-check; article sets may overlap | REST API | $0 (free tier) |
-| **Brave News** | News-vertical search | Brave Search API | ~$0.003 |
-| **Brave Web Search** | Total web mentions across sites | Brave Search API | ~$0.003 |
+| **Brave News** | News-vertical search | 1 Brave Search API call | ~$0.005 gross |
+| **Brave Web Search** | Total web mentions across sites | 4 Brave Search API calls | ~$0.020 gross |
 | **The Guardian** | Elite UK media, 90-day | Guardian Open Platform API | $0 |
 | **Podchaser** | Podcast episodes mentioning fractional terms | Podchaser GraphQL API | $0 |
-| **Reddit** | Posts + engagement in relevant subreddits | Apify Reddit scraper | ~$0.005 |
+| **Reddit** | Recent fractional discussions | 3 Brave `site:reddit.com` searches | ~$0.015 gross |
 | **Hacker News** | Stories + points | Algolia HN Search | $0 |
 | **Wikipedia pageviews** | Article-interest volume for fractional-work topics | Wikimedia REST API | $0 |
 
@@ -126,7 +128,7 @@ Every ingest run updates `data_source_health.{status, last_checked, last_success
 
 Every cron + manual run writes a `pipeline_runs` row with status, records inserted, confidence, error, and metadata (which sources succeeded, which failed). Two views — `pipeline_health` and `data_quality_summary` — expose this for the dashboard.
 
-DataForSEO Google Jobs uses a two-stage ledger. `prepare-dataforseo-jobs` submits six idempotent daily tasks at 05:00 UTC and stores task IDs in `pipeline_runs`; `ingest-signals` retrieves the completed results at 06:00 UTC. A running, failed, or ambiguous submission ledger blocks automatic paid resubmission until it is manually reconciled.
+DataForSEO Google Jobs uses a two-stage ledger. `prepare-dataforseo-jobs` submits six idempotent daily tasks at 05:00 UTC and stores task IDs in `pipeline_runs`; `ingest-signals` retrieves the completed results at 06:00 UTC. A running, failed, or ambiguous submission ledger blocks automatic paid resubmission until it is manually reconciled. The only retry override, `retry_rejected_auth=true`, is manual and applies solely to a definitive HTTP 401 ledger with zero task IDs; ambiguous submissions remain blocked.
 
 ### Email alerts
 
@@ -219,20 +221,25 @@ Currently 6 C-suite roles (CFO, CMO, CTO, COO, CRO, CEO). Candidates for a futur
 
 ### Variable per-run costs
 
-A single full ingest run touches every source listed above. Estimated cost per run (worst case, all sources fire):
+A normal daily ingest uses the completed Google Jobs tasks plus the live search inputs. The bounded 2026-08-11 canary measured the DataForSEO portion at approximately **$0.0656**: $0.0036 for six Jobs tasks, $0.040 for four LinkedIn `site:` queries, and $0.022 for two Trends tasks.
+
+Provider prices were last checked on 2026-08-11 against [DataForSEO SERP pricing](https://dataforseo.com/apis/serp-api/pricing), [DataForSEO Google Trends pricing](https://dataforseo.com/pricing/keywords-data/google-trends), and [Brave Search API pricing](https://brave.com/search/api/).
 
 | Source family | Estimated cost / run |
 |---------------|---------------------|
 | Adzuna + 6 roles | $0 |
-| DataForSEO (jobs + trends + LinkedIn + supply) | ~$0.04 to $0.05 |
-| Apify (Reddit + GoFractional) | ~$0.02 |
-| Brave (news + web) | ~$0.006 |
+| DataForSEO (jobs + two Trends tasks + LinkedIn) | ~$0.0656 |
+| Apify (Reddit + GoFractional) | ~$0.016 measured/estimated; GoFractional has a $0.02 hard cap |
+| Weekly DataForSEO Content Radar (7 related-query Trends + 7 PAA tasks) | ~$0.091 per weekly harvest |
+| Brave (12 searches across talent, Reddit, news, and web) | ~$0.060 gross; covered by the recurring $5 monthly credit at current volume |
 | ~~People Data Labs~~ (retired 2026-05-30) | $0 |
 | OpenAI (insights) | ~$0.005 |
 | Free APIs (NewsAPI, Mediastack, FRED, Census, Guardian, Podchaser, HN, BLS, OpenAlex, SEC) | $0 |
-| **Total per daily run** | **~$0.08** |
+| **Total per daily run** | **~$0.14 gross; about $0.08 after the current Brave credit** |
 
-DataForSEO is expected to consume about $1.50 to $2 per month at the configured cadence. Total variable API usage is expected to remain roughly $2 to $3 per month, excluding fixed subscription plans.
+At 30 daily runs, the index collectors consume about **$1.97/month** of DataForSEO credit. At 4.33 weekly harvests, Content Radar adds about **$0.39/month**, for a combined DataForSEO estimate of **$2.36/month** before exceptional manual reruns. Daily Brave usage is about $1.80/month gross and is currently covered by Brave's recurring $5 credit. GoFractional's measured Apify usage adds about $0.33/month at daily cadence. DataForSEO's $50 minimum funded balance does not expire.
+
+The first full Content Radar canary completed on 2026-08-11 with 494 documents (488 after deduplication) and 28 People Also Ask records. Its related-query API responses exposed an object-vs-array parser defect; version 20 fixes that parser using the documented response shape. The paid canary was not repeated automatically.
 
 ### Fixed costs
 
@@ -244,7 +251,7 @@ DataForSEO is expected to consume about $1.50 to $2 per month at the configured 
 | DataForSEO | No monthly fee; $50 minimum funded balance, which does not expire |
 | ~~PDL~~ (retired 2026-05-30) | $0 |
 | Apify | $49 (starter plan) |
-| Brave Search | $5–$50 depending on volume |
+| Brave Search | $5 per 1,000 Search requests, with $5 in recurring monthly credits |
 | Resend | $0–$20 |
 | OpenAI | $20–$100 |
 | Supabase Pro | $25 |
@@ -283,9 +290,9 @@ This is the actual operating cost behind the FWI — useful when prospects ask w
 | NY Times | API, non-commercial dev key | Article counts only — within fair use |
 | Podchaser | API, commercial | Within ToS |
 | People Data Labs | API, commercial | Aggregate counts only, within ToS (retired 2026-05-30; historical signals retained) |
-| Reddit (via Apify) | Scraper | Apify handles ToS; we consume aggregate counts |
+| Reddit (via Brave) | API, commercial | Three aggregate `site:reddit.com` result-set searches; no Reddit content is redistributed |
 | Hacker News | Public Algolia API | Free, no restrictions |
-| GoFractional (via Apify) | Scraper | Aggregate listings counts; respects robots.txt |
+| GoFractional (via Apify) | Scraper | Aggregate first-party published operator count via the official Apify actor; no profile or listing content is redistributed |
 | Google Trends (DataForSEO) | API proxy | Aggregate score values only, within proxy terms |
 
 We store and expose **aggregate signal values**, not raw third-party content. No source is redistributed verbatim.
@@ -302,6 +309,9 @@ See `git log` and `supabase/migrations/`. Highlights:
 - `004_fix_cached_insights_columns.sql` — `model_used`/`context` schema sync trigger
 - `005_tighten_signals_rls.sql` — RLS hardening (public read, service-role-only writes)
 - `016_ai_rate_limits.sql` - privacy-preserving hourly rate limit for Ask the Index
+- `20260811162916_prepare_dataforseo_jobs_cron.sql` — DataForSEO attribution metadata, idempotent Jobs ledger index, and 05:00 UTC preparation cron
+- 2026-08-11 DataForSEO cutover — all four legacy `serpapi_*` index IDs retained for API compatibility while runtime provider metadata identifies DataForSEO
+- 2026-08-11 Content Radar v20 — DataForSEO related-query and People Also Ask collectors, including the documented object-shaped Trends parser fix
 - `20260402_create_waitlist.sql` — waitlist table + anon-insert policy
 - `f653feb` — Brave Search integration
 - `a07f401` — PDL fix activated supply pillar

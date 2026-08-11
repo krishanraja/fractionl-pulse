@@ -38,10 +38,11 @@ const SKIP_SOURCES = (Deno.env.get('SKIP_SOURCES') || '').split(',').map(s => s.
 
 const SOURCE_COST_ESTIMATE: Record<string, number> = {
   adzuna: 0, sec_edgar: 0, newsapi: 0, hn: 0, census_acs: 0, fred: 0, guardian: 0,
-  serpapi_jobs: 0.006, serpapi_trends: 0.002, serpapi_linkedin: 0.012, serpapi_supply_trends: 0.002,
-  brave_news: 0.003, brave_web: 0.003,
+  // Legacy source IDs are retained for API compatibility; current provider is DataForSEO.
+  serpapi_jobs: 0.0036, serpapi_trends: 0.011, serpapi_linkedin: 0.04, serpapi_supply_trends: 0.011,
+  brave_news: 0.005, brave_web: 0.02, brave_talent: 0.02,
   mediastack: 0, nyt: 0, podchaser: 0,
-  people_data_labs: 0.06, reddit: 0, gofractional: 0.01,
+  people_data_labs: 0.06, reddit: 0.015, gofractional: 0.011,
   google_trends: 0.01, supply_trends: 0.01,
   bls: 0, wikipedia_pageviews: 0, openalex: 0,
 };
@@ -1003,7 +1004,7 @@ async function collectGoFractionalSupply(_date: string): Promise<SignalResult> {
     return { source: 'gofractional', signal_type: 'supply', category: 'marketplace',
       raw_value: 0, normalized_value: 10, success: false, error: 'No APIFY_API_KEY' };
   }
-  console.log('[GoFractional] Collecting marketplace listings via Apify web scraper...');
+  console.log('[GoFractional] Collecting published operator count via Apify web scraper...');
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);

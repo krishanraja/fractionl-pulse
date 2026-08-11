@@ -39,8 +39,8 @@ _Source of truth for the system as it ships today. 21 live data sources, core an
 
 | Function | Purpose | Trigger |
 |----------|---------|---------|
-| `prepare-dataforseo-jobs` | Submits six idempotent, normal-priority Google Jobs tasks and records their non-secret task IDs in `pipeline_runs`; chargeable POSTs are never automatically retried | Supabase `pg_cron` at 05:00 UTC + manual |
-| `ingest-signals` | Pulls 21 tracked inputs, normalizes 0–100, runs anomaly guard, upserts `signals`, then fires `calculate-fwi` | Vercel cron (daily + weekly) + manual |
+| `prepare-dataforseo-jobs` | Submits six idempotent, normal-priority Google Jobs tasks and records their non-secret task IDs in `pipeline_runs`; chargeable POSTs are never automatically retried. A manual `retry_rejected_auth=true` is accepted only for a definitive HTTP 401 ledger with zero task IDs | Supabase `pg_cron` at 05:00 UTC + manual |
+| `ingest-signals` | Pulls 21 tracked inputs, normalizes 0–100, runs anomaly guard, upserts `signals`, then fires `calculate-fwi` | Supabase `pg_cron` at 06:00 UTC, Vercel retry/backstop, and manual |
 | `calculate-fwi` | Composites signals into FWI and writes `fwi_scores`; role movers compare with the current six-role average, while non-role movers compare with the prior observation | Called by `ingest-signals` |
 | `generate-pulse-insights` | GPT-4o-mini insight cards, 12-hour cache via `valid_until`; requires the service-role bearer and anchors related queries to the latest settled score date | Scheduled/internal pipeline only |
 | `fwi-api` | Public REST API: `/current`, `/history?months=N`, `/trigger`. Accepts an optional `x-api-key` header for per-key operational rate accounting; anonymous reads stay free | Always-on |
@@ -95,7 +95,7 @@ CREATE UNIQUE INDEX signals_date_source_category_idx
 CREATE INDEX signals_date_type_idx ON signals(date, signal_type);
 ```
 
-`signal_type = 'context'` covers FRED + Census macro signals. They are stored and exposed in API responses but **excluded** from the composite score.
+`signal_type = 'context'` covers BLS, FRED, Census ACS, and OpenAlex signals. They are stored and exposed in API responses but **excluded** from the composite score. BLS is primary for JOLTS, unemployment, and wages; FRED contributes only Initial Jobless Claims at the lower 0.01 confidence weight.
 
 ### `fwi_scores`
 
@@ -255,7 +255,7 @@ Both views are publicly readable for the dashboard's `DataHealthCard`.
 |--------|----------|--------|---------------|
 | **DataForSEO LinkedIn proxy** | `site:linkedin.com/in "fractional CFO"` etc. | Result count proxy | Log scale |
 | **Brave Talent** | Brave Web Search on the same public profile phrases | Provider-independent backstop | Log scale |
-| **GoFractional marketplace** | Apify scraper actor against `gofractional.com` | Active listings | Log scale |
+| **GoFractional published network** | Official `apify/web-scraper` actor against the first-party homepage, with `maxTotalChargeUsd=0.02` | Published operator count (currently advertised as 15,000+) | Log scale |
 | **DataForSEO supply-intent Trends** | DataForSEO Trends on supply-intent terms | "become fractional executive", "fractional consulting business", etc. | Native 0-100 |
 
 ### Culture pillar (30% weight)
@@ -416,10 +416,15 @@ MEDIASTACK_API_KEY
 BRAVE_API_KEY
 GUARDIAN_API_KEY
 PODCHASER_API_KEY
+PODCHASER_CLIENT_ID
+PODCHASER_CLIENT_SECRET
+YOUTUBE_API_KEY
+CENSUS_API_KEY
 FRED_API_KEY
 OPENAI_API_KEY
 RESEND_API_KEY
 SKIP_SOURCES                # optional, comma-separated
+SKIP_CONTENT_SOURCES        # optional, comma-separated Content Radar collectors
 ```
 
 ### Vercel Project (`vercel env`)
