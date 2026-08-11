@@ -264,7 +264,7 @@ function rolePage(def, r, data, site) {
         unitText: 'index, 0 to 100',
         ...(live ? { value: r.demand, minValue: 0, maxValue: 100 } : {}),
       },
-      measurementTechnique: `Job postings naming the exact phrase "${def.phrase}", from Adzuna's US index and Google Jobs via SerpAPI, averaged per source across a trailing seven-day window then averaged across sources, normalised to 0 to 100. The Form D Lead uses SEC Form D filing velocity as a 1 to 3 month leading indicator of fractional executive demand.`,
+      measurementTechnique: `Job postings naming the exact phrase "${def.phrase}", from Adzuna's US index and Google Jobs via SerpAPI, averaged per source across a trailing seven-day window then averaged across sources, normalised to 0 to 100. SEC Form D filing velocity is tracked separately as financing context, not a validated forecast.`,
       spatialCoverage: 'United States',
       temporalCoverage: '2026-03/..',
       ...(live && r.asOf ? { dateModified: r.asOf } : {}),
@@ -368,7 +368,7 @@ function rolePage(def, r, data, site) {
     ${rate || timing ? '<h2>What the reading means</h2>' : ''}
     ${rate ? `<h3>For your rate</h3><p>${escape(rate)}</p>` : ''}
     ${timing ? `<h3>For your timing</h3><p>${escape(timing)}</p>` : ''}
-    ${live ? `<h3>Ahead of the postings</h3><p class="dim">The Form D Lead, Pulse's named method, reads startup-funding filings as a 1 to 3 month forward signal. Companies file within 15 days of a raise and tend to enter the fractional buyer pool one to three months later, so the filing rate turns before advertised demand does. It is tracked on the <a href="/">dashboard</a>.</p>` : ''}
+    ${live ? `<h3>Financing context</h3><p class="dim">Pulse tracks SEC Form D filing velocity alongside observed job-posting demand. The filing series provides startup-financing context, but Pulse has not validated a predictive relationship between those filings and future fractional hiring. It is documented on the <a href="/">dashboard</a>.</p>` : ''}
 
     ${counts ? `<h2>What was counted</h2>
     <div class="tablewrap"><table><thead><tr><th>Source</th><th>Count</th><th>Last read</th><th>What it is</th></tr></thead><tbody>${counts}</tbody></table></div>

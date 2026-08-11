@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../_types.js';
 // .js extension required — see the note in api/health.ts ("type": "module").
 import { loadConfig } from '../_config.js';
 
@@ -14,17 +14,33 @@ const RETRY_DELAY_MS = 5000;
 const COMPLETENESS_ALERT_THRESHOLD = Number(process.env.COMPLETENESS_ALERT_THRESHOLD || '0.75');
 const MIN_HEALTHY_SOURCES = Number(process.env.MIN_HEALTHY_SOURCES || '14');
 
-async function callWithRetry(
+interface IngestResult {
+  signals_collected?: number;
+  confidence?: number;
+  sources_healthy?: number;
+  fwi_result?: { overall_score?: number };
+}
+
+interface CallResult<T> {
+  ok: boolean;
+  result?: T;
+  error?: string;
+  attempts: number;
+}
+
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
+
+async function callWithRetry<T = IngestResult>(
   url: string,
   headers: Record<string, string>,
   label: string,
   retries = MAX_RETRIES,
-): Promise<{ ok: boolean; result?: any; error?: string; attempts: number }> {
+): Promise<CallResult<T>> {
   for (let attempt = 1; attempt <= retries + 1; attempt++) {
     try {
       const res = await fetch(url, { method: 'POST', headers });
       if (res.ok) {
-        return { ok: true, result: await res.json(), attempts: attempt };
+        return { ok: true, result: await res.json() as T, attempts: attempt };
       }
       const errText = await res.text();
       if (attempt <= retries) {
@@ -33,13 +49,14 @@ async function callWithRetry(
         continue;
       }
       return { ok: false, error: `${label} failed after ${attempt} attempts: ${res.status} ${errText}`, attempts: attempt };
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = errorMessage(err);
       if (attempt <= retries) {
-        console.warn(`[Cron] ${label} attempt ${attempt} threw: ${err.message}, retrying...`);
+        console.warn(`[Cron] ${label} attempt ${attempt} threw: ${message}, retrying...`);
         await new Promise(r => setTimeout(r, RETRY_DELAY_MS * attempt));
         continue;
       }
-      return { ok: false, error: `${label} threw after ${attempt} attempts: ${err.message}`, attempts: attempt };
+      return { ok: false, error: `${label} threw after ${attempt} attempts: ${message}`, attempts: attempt };
     }
   }
   return { ok: false, error: `${label}: exhausted retries`, attempts: MAX_RETRIES + 1 };
@@ -74,7 +91,7 @@ async function fetchFailedSources(): Promise<string> {
 async function sendAlert(
   severity: 'critical' | 'warning',
   subject: string,
-  details: Record<string, any>,
+  details: Record<string, unknown>,
 ) {
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/send-pipeline-alert`, {
@@ -89,8 +106,8 @@ async function sendAlert(
     if (!res.ok) {
       console.error('[Alert] Edge function failed:', res.status, await res.text());
     }
-  } catch (err: any) {
-    console.error('[Alert] Send error:', err.message);
+  } catch (err: unknown) {
+    console.error('[Alert] Send error:', errorMessage(err));
   }
 }
 
@@ -119,7 +136,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     'ingest-signals',
   );
 
-  let insights = { ok: false as boolean, result: null as any, attempts: 0 };
+  let insights: CallResult<unknown> = { ok: false, attempts: 0 };
   if (ingest.ok) {
     insights = await callWithRetry(
       `${SUPABASE_URL}/functions/v1/generate-pulse-insights`,
