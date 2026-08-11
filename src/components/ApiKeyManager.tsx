@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -20,9 +20,8 @@ interface ApiKeyManagerProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// Self-serve API key issuance. The dashboard is free; the API is the paid wedge.
-// A signed-in user mints a free-tier key (1k req/day) here and manages it. The
-// plaintext key is shown exactly once.
+// Self-serve API key issuance for operational rate controls. The public API is
+// free and is not Pulse's paid product. The plaintext key is shown exactly once.
 const ApiKeyManager = ({ open, onOpenChange }: ApiKeyManagerProps) => {
   const { user } = useAuth();
   const [keys, setKeys] = useState<ApiKeyRow[]>([]);
@@ -31,25 +30,31 @@ const ApiKeyManager = ({ open, onOpenChange }: ApiKeyManagerProps) => {
   const [freshKey, setFreshKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  async function authFetch(method: string, body?: unknown, query = '') {
+  const authFetch = useCallback(async (method: string, body?: unknown, query = '') => {
     const { data: { session } } = await supabase.auth.getSession();
     return fetch(`${SUPABASE_FUNCTIONS_URL}/manage-api-key${query}`, {
       method,
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token ?? ''}` },
       body: body ? JSON.stringify(body) : undefined,
     });
-  }
+  }, []);
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const res = await authFetch('GET');
       const j = await res.json();
       setKeys(j.keys ?? []);
     } finally { setLoading(false); }
-  }
+  }, [authFetch]);
 
-  useEffect(() => { if (open && user) refresh(); if (!open) { setFreshKey(null); setCopied(false); } }, [open, user]);
+  useEffect(() => {
+    if (open && user) void refresh();
+    if (!open) {
+      setFreshKey(null);
+      setCopied(false);
+    }
+  }, [open, refresh, user]);
 
   async function mint() {
     setMinting(true);
@@ -72,7 +77,7 @@ const ApiKeyManager = ({ open, onOpenChange }: ApiKeyManagerProps) => {
           <KeyRound size={15} className="text-primary" /> API keys
         </DialogTitle>
         <p className="text-[11px] text-muted-foreground mt-1">
-          The dashboard is free. Build on the metered API: free keys get 1,000 requests a day. For higher limits or data licensing, talk to us.
+          The public API is free. Optional keys provide a 1,000-request daily operating limit and make usage visible. Partner benchmarking is a separate, application-only offer.
         </p>
 
         {!user ? (

@@ -41,7 +41,7 @@ const CircleCrossSell = ({ role, content = 'dashboard_aside' }: CircleCrossSellP
         href={circleUrl(content)}
         target="_blank"
         rel="noopener"
-        className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:brightness-110 transition"
+        className="mt-3 inline-flex min-h-11 items-center gap-1 text-[11px] font-semibold text-primary transition hover:brightness-110 lg:min-h-0"
       >
         Open Fractionl Circle
         <ArrowUpRight size={12} className="shrink-0" aria-hidden="true" />

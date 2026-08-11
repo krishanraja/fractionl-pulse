@@ -51,7 +51,7 @@ export interface Mover {
 
 export interface AIInsight {
   id: string;
-  type: 'summary' | 'prediction' | 'alert' | 'opportunity';
+  type: 'summary' | 'prediction' | 'alert' | 'opportunity' | 'trend' | 'recommendation';
   title: string;
   body: string;
   confidence: number;

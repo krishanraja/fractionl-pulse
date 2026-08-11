@@ -54,12 +54,18 @@ async function handleCurrentFWI(): Promise<Response> {
     }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 
-  // Fetch previous score for delta
-  const { data: previous } = await supabase
+  // Fetch the closest observation on or before the 30-day cutoff. The API field
+  // is named delta30d, so comparing with the immediately previous daily row is
+  // a semantic contract violation even when the arithmetic is correct.
+  const cutoff = new Date(`${latest.date}T00:00:00Z`);
+  cutoff.setUTCDate(cutoff.getUTCDate() - 30);
+  const cutoffDate = cutoff.toISOString().slice(0, 10);
+  const { data: previous30d } = await supabase
     .from('fwi_scores')
-    .select('overall_score, demand_score, supply_score, momentum_score')
+    .select('date, overall_score, demand_score, supply_score, momentum_score')
+    .lte('date', cutoffDate)
     .order('date', { ascending: false })
-    .range(1, 1)
+    .limit(1)
     .maybeSingle();
 
   // Fetch top movers
@@ -72,8 +78,8 @@ async function handleCurrentFWI(): Promise<Response> {
 
   const labelKey = getFWILabel(latest.overall_score);
   const labelData = FWI_LABELS[labelKey];
-  const delta30d = previous
-    ? Math.round((latest.overall_score - previous.overall_score) * 10) / 10
+  const delta30d = previous30d
+    ? Math.round((latest.overall_score - previous30d.overall_score) * 10) / 10
     : 0;
 
   const weights = latest.weights || { demand: 0.5, supply: 0.2, culture: 0.3 };
@@ -89,7 +95,7 @@ async function handleCurrentFWI(): Promise<Response> {
       scale: '0-100: <30 Contracting · 30-44 Cooling · 45-59 Stable · 60-74 Growing · 75+ Surging',
       dataSource: latest.confidence >= 0.75 ? 'live' : 'partial',
       dataCompleteness: latest.confidence,
-      dataCompletenessNote: 'Measures what fraction of data sources returned data this week. Does not measure prediction accuracy.',
+      dataCompletenessNote: 'Weighted tracked-input coverage for this reading. Inputs are not all statistically independent, and the value does not measure prediction accuracy.',
       nextUpdate: nextWeeklyUpdate(),
     },
     score: {
@@ -97,6 +103,7 @@ async function handleCurrentFWI(): Promise<Response> {
       label: labelData.label,
       emoji: labelData.emoji,
       delta30d,
+      delta30dComparedWith: previous30d?.date ?? null,
       components: {
         demand: {
           score: latest.demand_score,
@@ -132,7 +139,7 @@ async function handleCurrentFWI(): Promise<Response> {
         description: 'Job posting volume for fractional C-suite roles + VC funding pipeline via SEC filings',
         roles: ['Fractional CFO', 'Fractional CMO', 'Fractional CTO', 'Fractional COO', 'Fractional CRO', 'Interim CEO'],
         sources: ['Adzuna job API', 'SerpAPI Google Jobs', 'SEC EDGAR Form D filings'],
-        leadingIndicator: 'SEC Form D filings predict fractional demand 1-3 months ahead',
+        leadingIndicator: 'SEC Form D filings provide financing context. Their relationship to future fractional demand has not been validated.',
       },
       supply: {
         description: 'Availability and growth of fractional executive talent pool from multiple sources',
@@ -189,7 +196,7 @@ async function handleHistory(months: number): Promise<Response> {
 
   const { data: scores, error } = await supabase
     .from('fwi_scores')
-    .select('date, overall_score, demand_score, supply_score, momentum_score, confidence, notes')
+    .select('date, overall_score, demand_score, supply_score, momentum_score, confidence, notes, metadata')
     .gte('date', since.toISOString().slice(0, 10))
     .order('date', { ascending: true });
 
@@ -211,6 +218,7 @@ async function handleHistory(months: number): Promise<Response> {
       culture: s.momentum_score,
       label: FWI_LABELS[getFWILabel(s.overall_score)]?.label,
       confidence: s.confidence,
+      dataQuality: s.metadata?.data_quality ?? null,
     })),
   }), {
     headers: {

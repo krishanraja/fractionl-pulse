@@ -37,6 +37,11 @@ interface StripeObject {
   [key: string]: unknown;
 }
 
+interface StripeListResponse {
+  data?: StripeObject[];
+  error?: { message?: string };
+}
+
 function authHeaders(): Record<string, string> {
   return {
     Authorization: `Bearer ${STRIPE_KEY}`,
@@ -57,13 +62,13 @@ async function stripePost(path: string, params: Record<string, string>): Promise
   return body as StripeObject;
 }
 
-async function stripeGet(path: string): Promise<any> {
+async function stripeGet(path: string): Promise<StripeListResponse> {
   const res = await fetch(`https://api.stripe.com/v1/${path}`, { headers: authHeaders() });
   const body = await res.json();
   if (!res.ok) {
     throw new Error(`GET ${path} failed: ${body?.error?.message || res.status}`);
   }
-  return body;
+  return body as StripeListResponse;
 }
 
 // The lookup_keys list endpoint is immediately consistent (unlike search), so it

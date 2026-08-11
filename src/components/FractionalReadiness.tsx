@@ -8,7 +8,7 @@ interface FractionalReadinessProps {
   label?: ReturnType<typeof getFWILabel>;
   /** The viewer's own fractional role, if known. Turns the global gauge into a personal read. */
   role?: string | null;
-  /** This week's demand change for the viewer's role vs the market average (percent). */
+  /** Cross-sectional demand position for the role vs the market average (percent). */
   roleMover?: number | null;
 }
 
@@ -23,16 +23,16 @@ const getRoleGuidance = (role: string, mover: number | null): { headline: string
   }
   const pct = `${mover > 0 ? '+' : ''}${Math.round(mover)}%`;
   if (mover >= 10) return {
-    headline: `${role} is running ${pct} vs market`,
-    body: `Your lane is stronger than the wider market this week. A slow month is more likely you than the market. Hold your rate, and lean into outreach.`,
+    headline: `${role} is ${pct} vs market average`,
+    body: `Advertised demand for your lane is above the six-role average in the current source window. This is a cross-sectional comparison, not a week-over-week increase or proof of pricing power.`,
   };
   if (mover > -10) return {
-    headline: `${role} is tracking the market (${pct})`,
-    body: `Your lane is moving with the broader index. Conditions are neutral for ${role}: steady pipeline, no reason to discount.`,
+    headline: `${role} is near market average (${pct})`,
+    body: `Advertised demand for your lane is close to the six-role average in the current source window. Use it as context alongside your own pipeline, not as a rate instruction.`,
   };
   return {
-    headline: `${role} is ${pct} vs market`,
-    body: `Your lane is softer than the wider market this week. Focus on existing relationships and differentiated positioning over new-logo volume.`,
+    headline: `${role} is ${pct} vs market average`,
+    body: `Advertised demand for your lane is below the six-role average in the current source window. This does not measure your local market, referrals, or retained-client demand.`,
   };
 };
 
@@ -125,7 +125,7 @@ const FractionalReadiness = ({ score, label, role, roleMover }: FractionalReadin
 
       <div className="flex-1 flex flex-col items-center justify-center py-3">
         <div className="relative w-28 h-28">
-          <svg className="w-28 h-28 transform -rotate-90" viewBox="0 0 100 100">
+          <svg className="w-28 h-28 transform -rotate-90" viewBox="0 0 100 100" role="img" aria-label={`FWI score ${targetValue} out of 100`}>
             <circle
               cx="50" cy="50" r="42"
               stroke="hsl(var(--border))"
@@ -146,9 +146,10 @@ const FractionalReadiness = ({ score, label, role, roleMover }: FractionalReadin
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
-              <div className="text-[1.75rem] font-bold tabular-nums leading-none tracking-tight" style={{ color: gaugeColor }}>
+              <div className="text-[1.75rem] font-bold tabular-nums leading-none tracking-tight" style={{ color: gaugeColor }} aria-hidden="true">
                 {animatedValue}
               </div>
+              <span className="sr-only">{targetValue}</span>
               <div className="text-[9px] text-muted-foreground font-medium tracking-wider mt-0.5">/ 100</div>
             </div>
           </div>

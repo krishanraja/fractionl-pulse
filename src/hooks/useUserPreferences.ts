@@ -1,16 +1,12 @@
 import * as React from 'react';
 
 export interface UserPreferences {
-  weights: { demand: number; supply: number; culture: number };
-  watchedRoles: string[];
   alerts: { enabled: boolean; threshold: number };
   defaultTimeRange: '30d' | '90d' | '12m' | 'ytd';
   compactMode: boolean;
 }
 
 const defaultPreferences: UserPreferences = {
-  weights: { demand: 0.5, supply: 0.2, culture: 0.3 },
-  watchedRoles: ['Fractional CMO', 'Fractional CFO', 'AI Strategy Consultant'],
   alerts: { enabled: true, threshold: 5 },
   defaultTimeRange: '12m',
   compactMode: false,
@@ -19,7 +15,6 @@ const defaultPreferences: UserPreferences = {
 interface UserPreferencesContextType {
   preferences: UserPreferences;
   updatePreferences: (updates: Partial<UserPreferences>) => void;
-  updateWeights: (weights: UserPreferences['weights']) => void;
   resetPreferences: () => void;
 }
 
@@ -50,17 +45,9 @@ export function UserPreferencesProvider(props: { children: React.ReactNode }) {
     setPreferences(prev => ({ ...prev, ...updates }));
   };
 
-  const updateWeights = (weights: UserPreferences['weights']) => {
-    const total = weights.demand + weights.supply + weights.culture;
-    const normalized = Math.abs(total - 1) > 0.01 
-      ? { demand: weights.demand / total, supply: weights.supply / total, culture: weights.culture / total }
-      : weights;
-    setPreferences(prev => ({ ...prev, weights: normalized }));
-  };
-
   const resetPreferences = () => setPreferences(defaultPreferences);
 
-  const value: UserPreferencesContextType = { preferences, updatePreferences, updateWeights, resetPreferences };
+  const value: UserPreferencesContextType = { preferences, updatePreferences, resetPreferences };
 
   return React.createElement(
     UserPreferencesContext.Provider,

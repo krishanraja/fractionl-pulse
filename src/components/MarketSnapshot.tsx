@@ -1,14 +1,15 @@
 import { motion } from 'framer-motion';
 import { TrendingUp, Building2, Clock, DollarSign, Briefcase, Users, Info } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { fadeInUp, staggerContainer } from '@/lib/motion';
 import { useMarketStats, type MarketStat } from '@/hooks/useMarketStats';
 
-const ICONS: Record<string, any> = {
+const ICONS: Record<string, LucideIcon> = {
   'YoY index change': TrendingUp,
   'Top industries': Building2,
   'Avg engagement': Clock,
   'Cost vs full-time': DollarSign,
-  'Demand driver': Briefcase,
+  'Publishing cadence': Briefcase,
   'Hottest roles': Users,
 };
 
@@ -17,7 +18,7 @@ const COLORS: Record<string, string> = {
   'Top industries': 'text-primary bg-primary/10',
   'Avg engagement': 'text-accent bg-accent/10',
   'Cost vs full-time': 'text-warning bg-warning/10',
-  'Demand driver': 'text-secondary bg-secondary/10',
+  'Publishing cadence': 'text-secondary bg-secondary/10',
   'Hottest roles': 'text-primary bg-primary/10',
 };
 

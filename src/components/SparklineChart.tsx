@@ -12,15 +12,15 @@ interface SparklineChartProps {
   yMax?: number;
 }
 
+const COLOR_MAP: Record<string, string> = {
+  primary: '#6C40FF',
+  accent: '#3B82F6',
+  secondary: '#8B5CF6',
+};
+
 const SparklineChart = ({ data, months, color, yMin, yMax }: SparklineChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
-
-  const colorMap: Record<string, string> = {
-    'primary': '#6C40FF',
-    'accent': '#3B82F6', 
-    'secondary': '#8B5CF6'
-  };
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -39,8 +39,8 @@ const SparklineChart = ({ data, months, color, yMin, yMax }: SparklineChartProps
         labels: months,
         datasets: [{
           data: data,
-          borderColor: colorMap[color] || '#6C40FF',
-          backgroundColor: `${colorMap[color] || '#6C40FF'}20`,
+          borderColor: COLOR_MAP[color] || '#6C40FF',
+          backgroundColor: `${COLOR_MAP[color] || '#6C40FF'}20`,
           borderWidth: 2,
           fill: true,
           tension: 0.3,
@@ -64,7 +64,7 @@ const SparklineChart = ({ data, months, color, yMin, yMax }: SparklineChartProps
             backgroundColor: 'rgba(255, 255, 255, 0.95)',
             titleColor: '#000',
             bodyColor: '#000',
-            borderColor: colorMap[color] || '#6C40FF',
+            borderColor: COLOR_MAP[color] || '#6C40FF',
             borderWidth: 1,
             cornerRadius: 8,
             caretPadding: 8,

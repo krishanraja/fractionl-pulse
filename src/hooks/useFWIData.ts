@@ -99,6 +99,13 @@ interface FWIResult {
   totalWeeks: number;
 }
 
+interface FWIWeights {
+  demand?: number;
+  supply?: number;
+  culture?: number;
+  momentum?: number;
+}
+
 async function fetchFWIData(): Promise<FWIResult> {
   const historyStart = new Date();
   historyStart.setMonth(historyStart.getMonth() - HISTORY_MONTHS);
@@ -156,9 +163,10 @@ async function fetchFWIData(): Promise<FWIResult> {
     : scores;
 
   const latest = scores[scores.length - 1];
+  const weights = (latest.weights ?? {}) as FWIWeights;
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const prev = scores.length >= 2
-    ? (scores.find(s => s.date <= thirtyDaysAgo) || scores[0])
+    ? ([...scores].reverse().find(s => s.date <= thirtyDaysAgo) || scores[0])
     : null;
   const prevIsRecent = prev && prev.date === latest.date;
 
@@ -181,9 +189,9 @@ async function fetchFWIData(): Promise<FWIResult> {
   const liveData: FWIData = {
     asOf: latestDate,
     weights: {
-      demand: (latest.weights as any)?.demand ?? 0.5,
-      supply: (latest.weights as any)?.supply ?? 0.2,
-      culture: (latest.weights as any)?.culture ?? (latest.weights as any)?.momentum ?? 0.3,
+      demand: weights.demand ?? 0.5,
+      supply: weights.supply ?? 0.2,
+      culture: weights.culture ?? weights.momentum ?? 0.3,
     },
     monthly: {
       // displayScores = trailing continuous run of real supply readings (see above), so the
@@ -231,7 +239,10 @@ async function fetchFWIData(): Promise<FWIResult> {
     isLive: true,
     isStale,
     lastUpdated: latestDate,
-    hasBackfilledData: scores.some((s: any) => s.metadata?.backfilled),
+    hasBackfilledData: scores.some((score) => {
+      const metadata = score.metadata as Record<string, unknown> | null;
+      return metadata?.backfilled === true;
+    }),
     hasLiveSupply: hasRealSupply,
     totalWeeks: scores.length,
   };

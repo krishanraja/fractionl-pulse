@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useMediaQuery } from '@/hooks/use-mobile';
 import { RotateCcw } from 'lucide-react';
+import type { UserPreferences } from '@/hooks/useUserPreferences';
 
 interface SettingsSheetProps {
   open: boolean;
@@ -15,85 +16,12 @@ interface SettingsSheetProps {
 }
 
 const SettingsContent = () => {
-  const { preferences, updatePreferences, updateWeights, resetPreferences } = useUserPreferences();
-
-  const handleWeightChange = (key: 'demand' | 'culture', value: number[]) => {
-    const newValue = value[0] / 100;
-    // Only two active weights: demand + culture must sum to 1.0 (supply is 0 until live)
-    const otherKey = key === 'demand' ? 'culture' : 'demand';
-    const newWeights = {
-      demand: key === 'demand' ? newValue : 1 - newValue,
-      supply: 0,
-      culture: key === 'culture' ? newValue : 1 - newValue,
-    };
-    updateWeights(newWeights);
-  };
+  const { preferences, updatePreferences, resetPreferences } = useUserPreferences();
 
   return (
     <div className="space-y-8 py-4">
-      {/* Weights Section */}
-      <div className="space-y-6">
-        <div>
-          <h4 className="font-medium text-foreground mb-1">Index Weights</h4>
-          <p className="text-sm text-muted-foreground">Adjust how each component contributes to the overall score</p>
-        </div>
-        
-        <div className="space-y-6">
-          {/* Demand Weight */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm">Demand</Label>
-              <span className="text-sm font-medium text-primary">{Math.round(preferences.weights.demand * 100)}%</span>
-            </div>
-            <Slider
-              value={[preferences.weights.demand * 100]}
-              onValueChange={(v) => handleWeightChange('demand', v)}
-              max={90}
-              min={50}
-              step={5}
-              className="w-full"
-            />
-          </div>
-
-          {/* Supply Weight */}
-          <div className="space-y-3 opacity-40 pointer-events-none">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm">Supply</Label>
-              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-accent/10 text-accent">
-                Coming Soon
-              </span>
-            </div>
-            <Slider
-              value={[0]}
-              max={80}
-              min={0}
-              step={5}
-              className="w-full"
-              disabled
-            />
-            <p className="text-xs text-muted-foreground">Supply data sources launching soon</p>
-          </div>
-
-          {/* Culture Weight */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm">Culture</Label>
-              <span className="text-sm font-medium text-secondary">{Math.round(preferences.weights.culture * 100)}%</span>
-            </div>
-            <Slider
-              value={[preferences.weights.culture * 100]}
-              onValueChange={(v) => handleWeightChange('culture', v)}
-              max={50}
-              min={10}
-              step={5}
-              className="w-full"
-            />
-          </div>
-        </div>
-      </div>
-
       {/* Display Preferences */}
-      <div className="space-y-4 border-t border-border pt-6">
+      <div className="space-y-4">
         <h4 className="font-medium text-foreground">Display Preferences</h4>
         
         <div className="flex items-center justify-between">
@@ -111,7 +39,7 @@ const SettingsContent = () => {
           <Label className="text-sm">Default Time Range</Label>
           <Select
             value={preferences.defaultTimeRange}
-            onValueChange={(value: any) => updatePreferences({ defaultTimeRange: value })}
+            onValueChange={(value: UserPreferences['defaultTimeRange']) => updatePreferences({ defaultTimeRange: value })}
           >
             <SelectTrigger className="w-full">
               <SelectValue />

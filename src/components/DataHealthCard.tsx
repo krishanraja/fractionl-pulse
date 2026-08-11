@@ -10,7 +10,7 @@ interface SourceHealth {
   source: string;
   status: string;
   last_checked: string | null;
-  metadata: any;
+  metadata: Record<string, unknown> | null;
 }
 
 async function fetchSourceHealth(): Promise<SourceHealth[]> {
@@ -66,11 +66,11 @@ const DataHealthCard = () => {
     return unsub;
   }, [queryClient]);
 
-  const getStatusIcon = (status: string) => {
-    if (status === 'healthy' || status === 'ok') return <CheckCircle2 size={12} className="text-emerald-500" />;
-    if (status === 'degraded' || status === 'stale') return <Clock size={12} className="text-yellow-500" />;
-    if (status === 'error' || status === 'down') return <AlertCircle size={12} className="text-red-500" />;
-    return <Clock size={12} className="text-muted-foreground/40" />;
+  const getStatus = (status: string) => {
+    if (status === 'healthy' || status === 'ok') return { label: 'Healthy', icon: <CheckCircle2 aria-hidden="true" size={12} className="text-emerald-500" /> };
+    if (status === 'degraded' || status === 'stale') return { label: 'Stale', icon: <Clock aria-hidden="true" size={12} className="text-yellow-500" /> };
+    if (status === 'error' || status === 'down' || status === 'failed') return { label: 'Unavailable', icon: <AlertCircle aria-hidden="true" size={12} className="text-red-500" /> };
+    return { label: 'Unknown', icon: <Clock aria-hidden="true" size={12} className="text-muted-foreground/40" /> };
   };
 
   const grouped = CATEGORY_ORDER.map(category => ({
@@ -106,7 +106,7 @@ const DataHealthCard = () => {
           <div>
             <h2 className="text-base sm:text-lg font-semibold text-foreground">Data Pipeline</h2>
             <p className="text-[10px] text-muted-foreground">
-              {healthyCount > 0 ? `${healthyCount} of ${totalTracked}` : totalTracked} sources tracked
+              {healthyCount > 0 ? `${healthyCount} of ${totalTracked} healthy` : `${totalTracked} sources tracked`}
             </p>
           </div>
         </div>
@@ -127,24 +127,25 @@ const DataHealthCard = () => {
             <motion.div key={group.category} variants={fadeInUp} className="space-y-2">
               <div className="section-label">{group.category}</div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {group.items.map(item => (
+                {group.items.map(item => {
+                  const status = getStatus(item.status);
+                  return (
                   <div
                     key={item.source}
                     className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border/60 hover:border-primary/20 transition-colors"
                   >
-                    {getStatusIcon(item.status)}
+                    {status.icon}
                     <div className="flex-1 min-w-0">
                       <span className="text-xs font-medium text-foreground truncate block">
                         {item.display.label}
                       </span>
-                      {item.last_checked && (
-                        <span className="text-[10px] text-muted-foreground/60">
-                          {new Date(item.last_checked).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </span>
-                      )}
+                      <span className="text-[10px] text-muted-foreground/60">
+                        {status.label}{item.last_checked ? ` · checked ${new Date(item.last_checked).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
+                      </span>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </motion.div>
           ))}

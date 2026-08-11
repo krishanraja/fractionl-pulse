@@ -1,278 +1,181 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircleQuestion } from 'lucide-react';
-import AppShell from '@/components/layout/AppShell';
-import AskIndexModal from '@/components/AskIndexModal';
-import HeroSection from '@/components/HeroSection';
-import SubIndexCards from '@/components/SubIndexCards';
-import MarketSnapshot from '@/components/MarketSnapshot';
-import TrendlineChart from '@/components/TrendlineChart';
-import SignalsTable from '@/components/SignalsTable';
-import FractionalReadiness from '@/components/FractionalReadiness';
-import AIInsights from '@/components/AIInsights';
-import CircleCrossSell from '@/components/CircleCrossSell';
-import ContentRadar from '@/components/ContentRadar';
-import DataHealthCard from '@/components/DataHealthCard';
-import MethodologyDrawer from '@/components/MethodologyDrawer';
-import { useUserPreferences } from '@/hooks/useUserPreferences';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import PulseInstrument from '@/components/PulseInstrument';
 import { useFWIData } from '@/hooks/useFWIData';
-import { staggerContainer } from '@/lib/motion';
-import { Link } from 'react-router-dom';
-import { useProGate } from '@/lib/entitlements';
-import { useUserRole, FRACTIONAL_ROLES } from '@/hooks/useUserRole';
-import { displayScore } from '@/lib/format';
+import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
 
-export const getFWILabel = (score: number): { label: string; emoji: string; color: string } => {
-  if (score >= 75) return { label: 'Surging', emoji: '🚀', color: 'text-emerald-400' };
-  if (score >= 60) return { label: 'Growing', emoji: '📈', color: 'text-green-400' };
-  if (score >= 45) return { label: 'Stable', emoji: '→', color: 'text-yellow-400' };
-  if (score >= 30) return { label: 'Cooling', emoji: '📉', color: 'text-orange-400' };
-  return { label: 'Contracting', emoji: '⚠️', color: 'text-red-400' };
+const AIInsights = lazy(() => import('@/components/AIInsights'));
+const AskIndexModal = lazy(() => import('@/components/AskIndexModal'));
+const ContentRadar = lazy(() => import('@/components/ContentRadar'));
+const DataHealthCard = lazy(() => import('@/components/DataHealthCard'));
+const MethodologyDrawer = lazy(() => import('@/components/MethodologyDrawer'));
+const SignalsTable = lazy(() => import('@/components/SignalsTable'));
+
+const VALID_VIEWS = new Set(['dashboard', 'signals', 'insights', 'data', 'role']);
+const ROUTE_ROLES: Record<string, string> = {
+  cmo: 'Fractional CMO',
+  cfo: 'Fractional CFO',
+  cto: 'Fractional CTO',
+  coo: 'Fractional COO',
+  cro: 'Fractional CRO',
+  ceo: 'Interim CEO',
 };
+const ROLE_ROUTES = Object.fromEntries(Object.entries(ROUTE_ROLES).map(([slug, label]) => [label, slug]));
 
 const Index = () => {
-  const [showMethodology, setShowMethodology] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [askOpen, setAskOpen] = useState(false);
-  const { preferences } = useUserPreferences();
+  const [askPrompt, setAskPrompt] = useState('');
+  const [showMethodology, setShowMethodology] = useState(false);
+  const [hasOpenedAsk, setHasOpenedAsk] = useState(false);
+  const [hasOpenedMethodology, setHasOpenedMethodology] = useState(false);
+  const askReturnFocusRef = useRef<HTMLElement | null>(null);
+  const methodologyReturnFocusRef = useRef<HTMLElement | null>(null);
+  const { data, isLoading, refresh } = useFWIData();
+  const { user, signOut } = useAuth();
   const { role, setRole } = useUserRole();
-  const { data: fwiData, isLoading, refresh } = useFWIData();
-  // Single Pro gate: free sees the recent trend, Pro sees the full 12-month
-  // history. Inactive (nothing locked) until self-serve checkout is enabled.
-  const { locked: trendLocked } = useProGate();
+  const roleSlug = location.pathname.startsWith('/fractional-')
+    ? location.pathname.slice('/fractional-'.length)
+    : null;
+  const routeRole = roleSlug ? ROUTE_ROLES[roleSlug] ?? null : null;
+  const effectiveRole = routeRole ?? role;
 
-  const userHasCustomWeights = preferences.weights &&
-    (Math.abs(preferences.weights.demand - 0.5) > 0.01 ||
-     Math.abs(preferences.weights.supply - 0.2) > 0.01);
+  const requestedView = searchParams.get('view') ?? 'dashboard';
+  const activeTab = VALID_VIEWS.has(requestedView) ? requestedView : 'dashboard';
 
-  const data = {
-    ...fwiData,
-    weights: userHasCustomWeights ? preferences.weights : fwiData.weights,
+  useEffect(() => {
+    if (routeRole) {
+      document.title = `${routeRole} market demand | Pulse by Fractionl`;
+      return;
+    }
+    const viewName = activeTab === 'dashboard'
+      ? 'Fractional Working Index'
+      : activeTab === 'insights'
+      ? 'Interpretation'
+      : activeTab === 'data'
+      ? 'Sources'
+      : activeTab === 'role'
+      ? 'My role'
+      : activeTab.charAt(0).toUpperCase() + activeTab.slice(1);
+    document.title = `${viewName} | Pulse by Fractionl`;
+  }, [activeTab, routeRole]);
+
+  const setActiveTab = (tab: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (tab === 'dashboard') next.delete('view');
+    else next.set('view', tab);
+    setSearchParams(next);
   };
 
-  // Label off the same whole number the gauges show, so the band and the score agree.
-  const fwiLabel = getFWILabel(displayScore(data.today.overall));
+  const openAsk = (prompt = '') => {
+    askReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setHasOpenedAsk(true);
+    setAskPrompt(prompt);
+    setAskOpen(true);
+  };
 
-  // The viewer's own lane vs the market this week: the personal signal that turns
-  // the global gauge into "is a slow month me or the market?". Prefer the role's
-  // demand mover, falling back to any signal carrying the role name.
-  type MoverLite = { skill: string; type: string; change_pct: number };
-  const movers: MoverLite[] = data.movers ?? [];
-  const roleMover = role
-    ? (movers.find((m) => m.skill === role && m.type === 'demand')?.change_pct
-       ?? movers.find((m) => m.skill === role)?.change_pct
-       ?? null)
-    : null;
+  const openMethodology = () => {
+    methodologyReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setHasOpenedMethodology(true);
+    setShowMethodology(true);
+  };
 
-  // Free teaser: the most recent 8 readings (was 5, which looked thin). The full
-  // 12-month history is the Pro unlock.
-  const TEASER = 8;
-  const trendData = trendLocked
-    ? {
-        months: data.monthly.months.slice(-TEASER),
-        dates: data.monthly.dates.slice(-TEASER),
-        confidence: data.monthly.confidence.slice(-TEASER),
-        overall: data.monthly.overall.slice(-TEASER),
-        demand: data.monthly.demand.slice(-TEASER),
-        supply: data.monthly.supply.slice(-TEASER),
-        culture: data.monthly.culture.slice(-TEASER),
-      }
-    : data.monthly;
+  const restoreFocus = (target: HTMLElement | null, fallbackSelector: string) => {
+    window.setTimeout(() => {
+      const fallback = document.querySelector<HTMLElement>(fallbackSelector);
+      (target?.isConnected ? target : fallback)?.focus();
+    }, 0);
+  };
 
-  const renderDashboardSkeleton = () => (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="container-width space-y-5 py-5"
-      aria-busy="true"
-      aria-label="Loading the index"
-    >
-      <div className="skeleton-line h-10 rounded-xl" />
-      <div className="glass-card-elevated p-5 sm:p-6 space-y-4">
-        <div className="flex items-center gap-2.5">
-          <div className="skeleton-line w-7 h-7 rounded-lg" />
-          <div className="skeleton-line h-4 w-40" />
+  const secondaryContent = <Suspense fallback={<p role="status" aria-live="polite">Loading this view…</p>}>{activeTab === 'signals'
+    ? (
+      <section aria-labelledby="signals-heading">
+        <div className="pulse-secondary-heading">
+          <span>Signal register</span>
+          <h1 id="signals-heading">What is moving this week</h1>
+          <p>Every observed role and signal, compared with the current market average.</p>
         </div>
-        <div className="skeleton-line h-12 rounded-xl" />
-        <div className="flex gap-1.5">
-          <div className="skeleton-line h-7 w-32 rounded-full" />
-          <div className="skeleton-line h-7 w-28 rounded-full" />
-        </div>
-      </div>
-      <div className="instrument-card p-5 sm:p-6">
-        <div className="flex gap-6">
-          <div className="skeleton-line w-32 h-32 sm:w-36 sm:h-36 rounded-full shrink-0" />
-          <div className="flex-1 space-y-3 pt-2">
-            <div className="skeleton-line h-6 w-28 rounded-full" />
-            <div className="skeleton-line h-7 w-24 rounded-md" />
-            <div className="skeleton-line h-3 w-40" />
-          </div>
-        </div>
-        <div className="mt-5 pt-4 border-t border-hairline flex gap-4">
-          <div className="skeleton-line h-3 w-28" />
-          <div className="skeleton-line h-3 w-28" />
-        </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="glass-card p-4 sm:p-5 space-y-3">
-            <div className="skeleton-line h-4 w-24" />
-            <div className="skeleton-line h-8 w-16" />
-            <div className="skeleton-line h-10 w-full rounded-lg" />
-          </div>
-        ))}
-      </div>
-    </motion.div>
-  );
-
-  const renderDashboard = () => (
-    <motion.div
-      variants={staggerContainer}
-      initial="hidden"
-      animate="show"
-      className="container-width space-y-5 py-5"
-    >
-      {/* Hero: the Fractional Working Index title leads the page */}
-      <HeroSection
-        data={data}
-        fwiLabel={fwiLabel}
-        onShowMethodology={() => setShowMethodology(true)}
-        onRefresh={refresh}
-      />
-
-      {/* Sub-index pillars */}
-      <section>
-        <SubIndexCards data={data} compact={preferences.compactMode} />
+        {isLoading
+          ? <p role="status" aria-live="polite">Retrieving the latest signal register…</p>
+          : <SignalsTable movers={data.movers} />}
       </section>
-
-      {/* Market snapshot */}
-      <section>
-        <MarketSnapshot />
-      </section>
-
-      {/* Trendline chart */}
-      <section className="glass-card p-4 sm:p-5">
-        <div className="section-header">
-          <div>
-            <h2>Market trend</h2>
-            <p>Each point is one week's reading across all sub-indices</p>
-          </div>
-          {data.context?.trendSummary && (
-            <span className="text-[10px] text-muted-foreground hidden sm:inline">{data.context.trendSummary}</span>
-          )}
+    )
+    : activeTab === 'insights'
+    ? (
+      <section aria-labelledby="interpretation-heading">
+        <div className="pulse-secondary-heading">
+          <span>Interpretation register</span>
+          <h1 id="interpretation-heading">What the current evidence can support</h1>
+          <p>AI interpretation is kept separate from measured facts and carries its own confidence.</p>
         </div>
-        <TrendlineChart data={trendData} />
-        {trendLocked && (
-          <Link
-            to="/pricing"
-            className="mt-3 flex items-center justify-center gap-1.5 text-xs text-primary hover:brightness-110 border border-primary/30 rounded-lg py-2 transition"
-          >
-            Unlock the full 12-month history with Pro
-          </Link>
-        )}
-      </section>
-
-      {/* Movers + Readiness */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <section className="lg:col-span-2 glass-card p-4 sm:p-5">
-          <div className="section-header">
-            <div>
-              <h2>This week's movers</h2>
-              <p>Signals notably above or below the index average</p>
-            </div>
-          </div>
-          <SignalsTable movers={data.movers.slice(0, 5)} />
-        </section>
-        <aside className="space-y-4">
-          {!role && (
-            <div className="glass-card p-4 sm:p-5">
-              <p className="text-xs font-semibold text-foreground">Make this personal</p>
-              <p className="text-[11px] text-muted-foreground mt-1 mb-3">Tell us your lane and the index reads for you, not just the market.</p>
-              <div className="flex flex-wrap gap-1.5">
-                {FRACTIONAL_ROLES.map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setRole(r)}
-                    className="text-[11px] text-muted-foreground hover:text-primary bg-muted/40 hover:bg-primary/[0.06] border border-border hover:border-primary/40 rounded-full px-3 py-1.5 transition-all"
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          <FractionalReadiness score={displayScore(data.today.overall)} label={fwiLabel} role={role} roleMover={roleMover} />
-          {/* The Pulse to Circle handoff, sat where the reader has just named
-              their lane. Quiet by design: one card, one text link, no button. */}
-          <CircleCrossSell role={role} />
-        </aside>
-      </div>
-    </motion.div>
-  );
-
-  const renderSignals = () => (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="container-width py-5 space-y-4">
-      <div className="glass-card p-4 sm:p-5">
-        <div className="section-header">
-          <div>
-            <h2>All signals this week</h2>
-            <p>Every role and signal tracked, compared to the market average</p>
-          </div>
-        </div>
-        <SignalsTable movers={data.movers} />
-      </div>
-    </motion.div>
-  );
-
-  const renderInsights = () => (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="container-width py-5">
-      <div className="glass-card p-4 sm:p-5">
         <AIInsights />
-      </div>
-    </motion.div>
-  );
-
-  const renderRadar = () => <ContentRadar />;
-
-  const renderData = () => (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="container-width py-5">
-      <div className="glass-card p-4 sm:p-5">
+      </section>
+    )
+    : activeTab === 'radar'
+    ? <ContentRadar />
+    : activeTab === 'data'
+    ? (
+      <section aria-labelledby="sources-heading">
+        <div className="pulse-secondary-heading">
+          <span>Evidence register</span>
+          <h1 id="sources-heading">Source health and provenance</h1>
+          <p>Tracked inputs, their current status and the boundaries of the published index.</p>
+        </div>
         <DataHealthCard />
-      </div>
-    </motion.div>
-  );
+      </section>
+    )
+    : null}</Suspense>;
 
   return (
-    <AppShell activeTab={activeTab} onTabChange={setActiveTab}>
-      <AnimatePresence mode="wait">
-        {activeTab === 'dashboard' && (isLoading ? renderDashboardSkeleton() : renderDashboard())}
-        {activeTab === 'signals' && renderSignals()}
-        {activeTab === 'insights' && renderInsights()}
-        {activeTab === 'radar' && renderRadar()}
-        {activeTab === 'data' && renderData()}
-      </AnimatePresence>
-
-      <MethodologyDrawer
-        open={showMethodology}
-        onOpenChange={setShowMethodology}
-        weights={data.weights}
+    <>
+      <PulseInstrument
+        data={data}
+        isLoading={isLoading}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        role={effectiveRole}
+        onRoleChange={(nextRole) => {
+          if (routeRole) navigate(`/fractional-${ROLE_ROUTES[nextRole] ?? 'cmo'}`);
+          else void setRole(nextRole);
+        }}
+        onAsk={openAsk}
+        onShowMethodology={openMethodology}
+        onRefresh={refresh}
+        isSignedIn={Boolean(user)}
+        onSignOut={() => { void signOut(); }}
+        secondaryContent={secondaryContent}
       />
 
-      {/* Floating "Ask the index" trigger: opens the overlay instead of taking page space.
-          Offset above the mobile bottom nav; sits bottom-right on desktop. */}
-      {activeTab === 'dashboard' && (
-        <button
-          onClick={() => setAskOpen(true)}
-          aria-label="Ask the index"
-          className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 h-12 w-12 sm:h-auto sm:w-auto sm:px-4 sm:py-3 rounded-full bg-primary text-primary-foreground shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all flex items-center justify-center gap-2"
-        >
-          <MessageCircleQuestion size={20} className="shrink-0" />
-          <span className="hidden sm:inline text-sm font-semibold">Ask the index</span>
-        </button>
+      {hasOpenedMethodology && (
+        <Suspense fallback={<span role="status" className="sr-only">Opening methodology…</span>}>
+          <MethodologyDrawer
+            open={showMethodology}
+            onOpenChange={(open) => {
+              setShowMethodology(open);
+              if (!open) restoreFocus(methodologyReturnFocusRef.current, '.pulse-mobile-menu-button');
+            }}
+            weights={data.weights}
+          />
+        </Suspense>
       )}
 
-      <AskIndexModal open={askOpen} onOpenChange={setAskOpen} defaultRole={role} />
-    </AppShell>
+      {hasOpenedAsk && (
+        <Suspense fallback={<span role="status" className="sr-only">Opening Ask Pulse…</span>}>
+          <AskIndexModal
+            open={askOpen}
+            onOpenChange={(open) => {
+              setAskOpen(open);
+              if (!open) restoreFocus(askReturnFocusRef.current, '.pulse-mobile-bottom-nav button:last-child');
+            }}
+            defaultRole={effectiveRole}
+            initialPrompt={askPrompt}
+          />
+        </Suspense>
+      )}
+    </>
   );
 };
 

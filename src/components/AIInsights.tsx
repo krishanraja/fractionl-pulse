@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { BrainCircuit, TrendingUp, AlertTriangle, Lightbulb, Target, RefreshCw, Sparkles } from 'lucide-react';
-import { supabase, SUPABASE_FUNCTIONS_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
+import { BrainCircuit, TrendingUp, AlertTriangle, Lightbulb, Target, Sparkles } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { onDataChange } from '@/lib/realtime';
 import { staggerContainer, fadeInUp } from '@/lib/motion';
 import type { AIInsight } from '@/lib/types';
@@ -15,9 +16,9 @@ function normalizeConfidence(value: number | undefined): number {
 
 const FALLBACK_INSIGHTS: AIInsight[] = [];
 
-const INSIGHT_CONFIG: Record<string, { icon: any; label: string; color: string }> = {
+const INSIGHT_CONFIG: Record<AIInsight['type'], { icon: LucideIcon; label: string; color: string }> = {
   summary: { icon: BrainCircuit, label: 'Market Summary', color: 'text-primary bg-primary/10 border-primary/20' },
-  prediction: { icon: TrendingUp, label: 'Prediction', color: 'text-accent bg-accent/10 border-accent/20' },
+  prediction: { icon: TrendingUp, label: 'Directional read', color: 'text-accent-foreground bg-accent/20 border-accent/30' },
   trend: { icon: Target, label: 'Trend to Watch', color: 'text-secondary bg-secondary/10 border-secondary/20' },
   alert: { icon: AlertTriangle, label: 'Alert', color: 'text-warning bg-warning/10 border-warning/20' },
   opportunity: { icon: Lightbulb, label: 'Opportunity', color: 'text-success bg-success/10 border-success/20' },
@@ -26,6 +27,29 @@ const INSIGHT_CONFIG: Record<string, { icon: any; label: string; color: string }
 
 interface AIInsightsProps {
   compact?: boolean;
+}
+
+function parseInsight(value: unknown, index: number, generatedAt: string): AIInsight {
+  const record = typeof value === 'object' && value !== null
+    ? value as Record<string, unknown>
+    : {};
+  const validTypes: AIInsight['type'][] = ['summary', 'prediction', 'alert', 'opportunity', 'trend', 'recommendation'];
+  const type = typeof record.type === 'string' && validTypes.includes(record.type as AIInsight['type'])
+    ? record.type as AIInsight['type']
+    : 'summary';
+  const relatedSignals = Array.isArray(record.relatedSignals)
+    ? record.relatedSignals.filter((signal): signal is string => typeof signal === 'string')
+    : [];
+
+  return {
+    id: String(index + 1),
+    type,
+    title: typeof record.title === 'string' ? record.title : 'Insight',
+    body: typeof record.body === 'string' ? record.body : '',
+    confidence: normalizeConfidence(typeof record.confidence === 'number' ? record.confidence : undefined),
+    generatedAt,
+    relatedSignals,
+  };
 }
 
 async function fetchCachedInsights(): Promise<{ insights: AIInsight[]; isLive: boolean; lastUpdated: string | null; isExpired: boolean }> {
@@ -39,15 +63,7 @@ async function fetchCachedInsights(): Promise<{ insights: AIInsight[]; isLive: b
   const isExpired = !!(data?.valid_until && new Date(data.valid_until).getTime() < Date.now());
 
   if (data?.insights_json && Array.isArray(data.insights_json) && data.insights_json.length > 0 && !isExpired) {
-    const mapped: AIInsight[] = (data.insights_json as any[]).map((ins: any, i: number) => ({
-      id: String(i + 1),
-      type: ins.type || 'summary',
-      title: ins.title || 'Insight',
-      body: ins.body || '',
-      confidence: normalizeConfidence(ins.confidence),
-      generatedAt: data.generated_at,
-      relatedSignals: ins.relatedSignals || [],
-    }));
+    const mapped = data.insights_json.map((insight, index) => parseInsight(insight, index, data.generated_at));
     return { insights: mapped, isLive: true, lastUpdated: data.generated_at, isExpired: false };
   }
 
@@ -56,8 +72,6 @@ async function fetchCachedInsights(): Promise<{ insights: AIInsight[]; isLive: b
 
 const AIInsights = ({ compact = false }: AIInsightsProps) => {
   const queryClient = useQueryClient();
-  const [isGenerating, setIsGenerating] = useState(false);
-  const autoGenerateAttempted = useRef(false);
 
   const { data: cached } = useQuery({
     queryKey: ['cached-insights'],
@@ -79,40 +93,6 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
     return unsub;
   }, [queryClient]);
 
-  const generate = useCallback(async () => {
-    setIsGenerating(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token || SUPABASE_ANON_KEY;
-      const res = await fetch(
-        `${SUPABASE_FUNCTIONS_URL}/generate-pulse-insights`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_ANON_KEY,
-          },
-        }
-      );
-      const data = await res.json();
-      if (data.insights && Array.isArray(data.insights)) {
-        queryClient.invalidateQueries({ queryKey: ['cached-insights'] });
-      }
-    } catch (e) {
-      console.error('Insights generation failed:', e);
-    } finally {
-      setIsGenerating(false);
-    }
-  }, [queryClient]);
-
-  useEffect(() => {
-    if (cached && !cached.isLive && cached.isExpired && !autoGenerateAttempted.current) {
-      autoGenerateAttempted.current = true;
-      generate();
-    }
-  }, [cached, generate]);
-
   const displayInsights = compact ? insights.slice(0, 2) : insights;
 
   return (
@@ -130,49 +110,30 @@ const AIInsights = ({ compact = false }: AIInsightsProps) => {
           <div>
             <h2 className="text-base sm:text-lg font-semibold text-foreground">AI Analysis</h2>
             <p className="text-[10px] text-muted-foreground">
-              Generated from {isLive ? '21 live data sources' : 'available data'}
+              Generated from the latest tracked source inputs
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {isLive && (
-            <span className="data-badge bg-emerald-500/10 text-emerald-500">Live</span>
+            <span className="data-badge bg-emerald-500/10 text-emerald-700">Current</span>
           )}
           {lastUpdated && (
             <span className="text-[10px] text-muted-foreground hidden sm:inline">
               {new Date(lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </span>
           )}
-          <button
-            onClick={generate}
-            disabled={isGenerating}
-            className="p-1.5 rounded-lg hover:bg-muted transition-colors"
-            title="Regenerate insights"
-          >
-            <RefreshCw size={14} className={`text-muted-foreground ${isGenerating ? 'animate-spin' : ''}`} />
-          </button>
         </div>
       </div>
 
       {displayInsights.length === 0 && (
         <div className="glass-card p-8 text-center space-y-3">
-          {isGenerating ? (
-            <>
-              <div className="relative mx-auto w-10 h-10">
-                <RefreshCw size={20} className="absolute inset-0 m-auto text-primary animate-spin" />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Analyzing 21 data sources to generate insights...
-              </p>
-            </>
-          ) : (
-            <>
-              <BrainCircuit size={24} className="mx-auto text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">
-                No insights yet. Tap refresh to generate from the latest market signals.
-              </p>
-            </>
-          )}
+          <>
+            <BrainCircuit size={24} className="mx-auto text-muted-foreground/60" />
+            <p className="text-sm text-muted-foreground">
+              Analysis is unavailable until the next validated pipeline run.
+            </p>
+          </>
         </div>
       )}
 

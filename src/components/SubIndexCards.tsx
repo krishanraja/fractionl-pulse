@@ -4,9 +4,10 @@ import SparklineChart from './SparklineChart';
 import RoleBreakdown from './RoleBreakdown';
 import { useSignalContext } from '@/hooks/useSignalContext';
 import { displayScore, formatDelta } from '@/lib/format';
+import type { FWIData } from '@/lib/types';
 
 interface SubIndexCardsProps {
-  data: any;
+  data: FWIData;
   compact?: boolean;
 }
 
@@ -27,7 +28,7 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
     ...data.monthly.demand,
     ...data.monthly.supply,
     ...data.monthly.culture,
-  ].filter((v: number) => Number.isFinite(v));
+  ].filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
   const sparkMin = allSparkValues.length
     ? Math.max(0, Math.floor(Math.min(...allSparkValues)) - 5)
     : 0;
@@ -43,7 +44,7 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
       weight: data.weights.demand,
       score: data.today.demand.score,
       delta: data.today.demand.delta30d,
-      description: 'Active fractional job postings + VC funding pipeline as a leading indicator of upcoming hires.',
+      description: 'Active fractional job postings plus startup-financing context. The financing relationship is not a validated forecast.',
       rawContext: signalContext.demand,
       context: data.context?.demandContext,
       sparklineData: data.monthly.demand,

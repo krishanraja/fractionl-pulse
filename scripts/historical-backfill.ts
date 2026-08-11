@@ -9,6 +9,8 @@
 
 const SUPABASE_URL = 'https://dtlcprcpvdomrehbejhw.supabase.co';
 
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
+
 async function main() {
   const serviceKey = process.env.SUPABASE_SERVICE_KEY;
   const fredKey = process.env.FRED_API_KEY;
@@ -27,7 +29,7 @@ async function main() {
   mondays.reverse();
   console.log(`Backfilling ${mondays.length} weeks: ${mondays[0]} to ${mondays[mondays.length - 1]}`);
 
-  const allSignals: any[] = [];
+  const allSignals: Array<Record<string, unknown>> = [];
 
   for (const date of mondays) {
     console.log(`\n--- ${date} ---`);
@@ -49,7 +51,7 @@ async function main() {
           metadata: { window_days: 90, backfill: true } });
         console.log(`  SEC EDGAR: ${count} filings -> ${normalized}`);
       }
-    } catch (e: any) { console.error(`  SEC EDGAR failed: ${e.message}`); }
+    } catch (error: unknown) { console.error(`  SEC EDGAR failed: ${errorMessage(error)}`); }
 
     // Guardian: historical prestige media
     if (guardianKey) {
@@ -73,7 +75,7 @@ async function main() {
           console.log(`  Guardian: ${count} articles -> ${normalized}`);
         }
         await new Promise(r => setTimeout(r, 1200));
-      } catch (e: any) { console.error(`  Guardian failed: ${e.message}`); }
+      } catch (error: unknown) { console.error(`  Guardian failed: ${errorMessage(error)}`); }
     }
 
     // Hacker News: historical discourse
@@ -86,7 +88,7 @@ async function main() {
         const data = await resp.json();
         const hits = data.hits || [];
         const totalHits = data.nbHits || hits.length;
-        const avgPoints = hits.length > 0 ? hits.reduce((s: number, h: any) => s + (h.points || 0), 0) / hits.length : 0;
+        const avgPoints = hits.length > 0 ? hits.reduce((sum: number, hit: { points?: number }) => sum + (hit.points || 0), 0) / hits.length : 0;
         const postSignal = Math.min(50, Math.sqrt(totalHits) * 8);
         const engSignal = Math.min(50, Math.sqrt(avgPoints) * 5);
         const normalized = Math.min(100, Math.round(postSignal + engSignal));
@@ -96,7 +98,7 @@ async function main() {
         console.log(`  HN: ${totalHits} stories, avg ${avgPoints.toFixed(0)} pts -> ${normalized}`);
       }
       await new Promise(r => setTimeout(r, 500));
-    } catch (e: any) { console.error(`  HN failed: ${e.message}`); }
+    } catch (error: unknown) { console.error(`  HN failed: ${errorMessage(error)}`); }
 
     // FRED: macro context (same data for all weeks -- FRED updates monthly)
     if (fredKey) {
@@ -119,7 +121,7 @@ async function main() {
             console.log(`  FRED ${s.name}: ${value} (${obs?.date})`);
           }
           await new Promise(r => setTimeout(r, 300));
-        } catch (e: any) { console.error(`  FRED ${s.name} failed: ${e.message}`); }
+        } catch (error: unknown) { console.error(`  FRED ${s.name} failed: ${errorMessage(error)}`); }
       }
     }
 
@@ -138,7 +140,7 @@ async function main() {
           metadata: { total_households: total, self_employment_pct: pct, year: 2023, backfill: true } });
         console.log(`  Census ACS: ${pct}% self-employment`);
       }
-    } catch (e: any) { console.error(`  Census failed: ${e.message}`); }
+    } catch (error: unknown) { console.error(`  Census failed: ${errorMessage(error)}`); }
   }
 
   console.log(`\nTotal signals to upsert: ${allSignals.length}`);
@@ -180,8 +182,8 @@ async function main() {
         console.error(`  FWI calc failed for ${date}: ${resp.status}`);
       }
       await new Promise(r => setTimeout(r, 1000));
-    } catch (e: any) {
-      console.error(`  FWI calc error for ${date}: ${e.message}`);
+    } catch (error: unknown) {
+      console.error(`  FWI calc error for ${date}: ${errorMessage(error)}`);
     }
   }
 

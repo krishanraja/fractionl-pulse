@@ -1,20 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0f0a1e"/>
-      <stop offset="100%" stop-color="#1a1035"/>
-    </linearGradient>
-    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#5B3DB8"/>
-      <stop offset="100%" stop-color="#8B5CF6"/>
+    <linearGradient id="amber" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFD99A"/>
+      <stop offset="1" stop-color="#FEC15F"/>
     </linearGradient>
   </defs>
-  <rect width="1200" height="630" fill="url(#bg)"/>
-  <rect x="60" y="520" width="200" height="4" rx="2" fill="url(#accent)"/>
-  <text x="60" y="180" font-family="system-ui,-apple-system,sans-serif" font-size="28" font-weight="500" fill="#8B5CF6" letter-spacing="4">PULSE BY FRACTIONL</text>
-  <text x="60" y="280" font-family="system-ui,-apple-system,sans-serif" font-size="72" font-weight="700" fill="white">The Fractional</text>
-  <text x="60" y="370" font-family="system-ui,-apple-system,sans-serif" font-size="72" font-weight="700" fill="white">Working Index</text>
-  <text x="60" y="450" font-family="system-ui,-apple-system,sans-serif" font-size="24" fill="#9ca3af">Weekly market intelligence from 21 data sources</text>
-  <text x="60" y="490" font-family="system-ui,-apple-system,sans-serif" font-size="24" fill="#9ca3af">Demand · Supply · Momentum</text>
-  <text x="60" y="560" font-family="system-ui,-apple-system,sans-serif" font-size="18" fill="#6b7280">fractionl.ai</text>
+  <rect width="1200" height="630" fill="#111827"/>
+  <circle cx="980" cy="90" r="360" fill="#FEC567" opacity="0.06"/>
+  <text x="72" y="104" font-family="system-ui,-apple-system,sans-serif" font-size="22" font-weight="700" fill="#FEC567" letter-spacing="4">PULSE BY FRACTIONL</text>
+  <text x="72" y="226" font-family="system-ui,-apple-system,sans-serif" font-size="68" font-weight="750" fill="#F8F4EA">The market instrument</text>
+  <text x="72" y="310" font-family="system-ui,-apple-system,sans-serif" font-size="68" font-weight="750" fill="#F8F4EA">for fractional leadership.</text>
+  <text x="72" y="394" font-family="system-ui,-apple-system,sans-serif" font-size="25" fill="#B9C1D0">Demand Â· role movement Â· evidence strength</text>
+  <rect x="72" y="492" width="172" height="4" rx="2" fill="#FEC567"/>
+  <text x="72" y="548" font-family="system-ui,-apple-system,sans-serif" font-size="20" fill="#8F9AAD">pulse.fractionl.ai</text>
+  <g fill="url(#amber)" transform="translate(875 196)">
+    <path d="M0 0h112v112H0z"/>
+    <path d="M126 0l105 36v56l-105 20z"/>
+    <path d="M0 126h112v112H0z"/>
+    <path d="M126 126l45 16v48l-45 17z"/>
+  </g>
 </svg>

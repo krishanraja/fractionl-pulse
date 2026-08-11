@@ -48,7 +48,7 @@ async function fetchRoleBreakdown(): Promise<RoleResult> {
     .eq('date', latestDate)
     .neq('category', 'aggregate');
 
-  let prevMap: Record<string, number> = {};
+  const prevMap: Record<string, number> = {};
   if (prevDate) {
     const { data: prev } = await supabase
       .from('signals')

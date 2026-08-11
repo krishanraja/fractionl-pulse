@@ -1,4 +1,5 @@
 import { TrendingUp, TrendingDown, Briefcase, Users, Megaphone } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { Mover } from '@/lib/types';
 
 interface SignalsTableProps {
@@ -22,7 +23,7 @@ const sanitizeSkillName = (skill: string) => {
 const sanitizeNote = (note: string) =>
   note.replace(/\s*\(Brave\)/gi, '').replace(/\s*\(NewsAPI\)/gi, '');
 
-const TYPE_CONFIG: Record<string, { label: string; dotClass: string; icon: any }> = {
+const TYPE_CONFIG: Record<string, { label: string; dotClass: string; icon: LucideIcon }> = {
   demand: { label: 'Hiring activity', dotClass: 'bg-primary', icon: Briefcase },
   supply: { label: 'Talent availability', dotClass: 'bg-accent', icon: Users },
   culture: { label: 'Market buzz', dotClass: 'bg-secondary', icon: Megaphone },

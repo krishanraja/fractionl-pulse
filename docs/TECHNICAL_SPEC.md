@@ -39,13 +39,13 @@ _Source of truth for the system as it ships today. 21 live data sources, 8 core 
 
 | Function | Purpose | Trigger |
 |----------|---------|---------|
-| `ingest-signals` | Pulls 21 sources, normalizes 0–100, runs anomaly guard, upserts `signals`, then fires `calculate-fwi` | Vercel cron (daily + weekly) + manual |
-| `calculate-fwi` | Composites signals into FWI + movers with WoW deltas, writes `fwi_scores` & `movers` | Called by `ingest-signals` |
-| `generate-pulse-insights` | GPT-4o-mini insight cards, 12-hour cache via `valid_until` | Daily cron + on-demand from frontend |
-| `fwi-api` | Public REST API: `/current`, `/history?months=N`, `/trigger`. Accepts an optional `x-api-key` header that meters the request against `api_keys` per key per day (the metered agent tier); anonymous calls stay free and unmetered | Always-on |
+| `ingest-signals` | Pulls 21 tracked inputs, normalizes 0–100, runs anomaly guard, upserts `signals`, then fires `calculate-fwi` | Vercel cron (daily + weekly) + manual |
+| `calculate-fwi` | Composites signals into FWI and writes `fwi_scores`; role movers compare with the current six-role average, while non-role movers compare with the prior observation | Called by `ingest-signals` |
+| `generate-pulse-insights` | GPT-4o-mini insight cards, 12-hour cache via `valid_until`; requires the service-role bearer and anchors related queries to the latest settled score date | Scheduled/internal pipeline only |
+| `fwi-api` | Public REST API: `/current`, `/history?months=N`, `/trigger`. Accepts an optional `x-api-key` header for per-key operational rate accounting; anonymous reads stay free | Always-on |
 | `export-brief` | Markdown weekly intelligence brief, `?format=json` available | Always-on (`/export-brief`) |
-| `manage-api-key` | Self-serve metered-API key issuance for signed-in users: mint (POST), list (GET), revoke (DELETE). Plaintext key returned exactly once at creation; only the SHA-256 hash is stored | Called from the dashboard `/pricing` page (user JWT) |
-| `backfill-historical` | One-time 12-week backfill of historical-capable sources (FRED, SEC, Guardian, NYT, Census, HN) | Manual |
+| `manage-api-key` | Self-serve operational API-key issuance for signed-in users: mint (POST), list (GET), revoke (DELETE). Plaintext key returned exactly once at creation; only the SHA-256 hash is stored | Called from the dashboard `/pricing` page (user JWT) |
+| `backfill-historical` | Legacy manual backfill utility. It can include explicitly tagged estimates for sources without historical APIs and must never be used to present estimated values as measured observations | Manual; provenance audit required |
 | `send-pipeline-alert` | Sends Resend transactional email (critical/warning) on cron failures | Called by Vercel cron handlers |
 
 ### Vercel Cron (`vercel.json`)
@@ -200,9 +200,9 @@ CREATE TABLE waitlist (
 -- anon insert allowed, service-role read only
 ```
 
-### `api_keys` (metered-API backing store)
+### `api_keys` (operational rate-control backing store)
 
-This is the live backing store for the metered agent API, not a reserved placeholder. Each row is one issued key, owned by the user who minted it, with usage metered per day.
+This is the live backing store for optional API-key rate controls. Each row is one issued key, owned by the user who minted it, with usage counted per day. It is not a paid-plan entitlement table.
 
 ```sql
 -- Columns exercised by manage-api-key (issuance) and fwi-api (metering):
@@ -221,10 +221,11 @@ This is the live backing store for the metered agent API, not a reserved placeho
 
 Rows are created, metered, and revoked **only** by the service-role edge functions (`manage-api-key` and `fwi-api`), so there is no client-facing RLS beyond the existing service-role-only policy. A signed-in user gets at most 5 active keys. See §6 for how `fwi-api` validates and meters a supplied `x-api-key`.
 
-### Security & metering migrations (014, 015)
+### Security and metering migrations (014–016)
 
 - **`014_audit_security_hardening.sql`** (2026-07-06): a security-advisor hardening pass from the product audit. Sets `security_invoker = on` on the `data_quality_summary` and `pipeline_health` views (they no longer bypass RLS), revokes `EXECUTE` on the trigger functions `handle_new_user()`, `update_updated_at_column()`, and `trigger_google_sheets_sync()` from `anon` and `public` (triggers still fire as the function owner), pins `search_path = public` on `check_data_freshness()` and `sync_cached_insights_model()`, and drops a redundant, mis-keyed `user_profiles` policy. Tenant-data isolation (subscriptions, user_profiles, api_keys, waitlist) was already correct and left untouched.
-- **`015_api_keys_user_owned.sql`**: adds `api_keys.user_id` (references `auth.users(id) on delete cascade`) plus the `api_keys_user_id_idx` and `api_keys_key_hash_idx` indexes, so keys can be scoped to their owner for the self-serve metered API.
+- **`015_api_keys_user_owned.sql`**: adds `api_keys.user_id` (references `auth.users(id) on delete cascade`) plus the `api_keys_user_id_idx` and `api_keys_key_hash_idx` indexes, so operational keys can be scoped to their owner.
+- **`016_ai_rate_limits.sql`**: creates an RLS-protected hourly counter and service-role-only RPC for the public Ask Pulse route. The function stores a salted network hash, not a raw IP address, and prunes windows older than 48 hours.
 
 ### Views
 
@@ -249,34 +250,34 @@ Both views are publicly readable for the dashboard's `DataHealthCard`.
 
 | Source | Endpoint | Method | Normalization |
 |--------|----------|--------|---------------|
-| **People Data Labs** | PDL Person Search API per role | Profile counts containing fractional/interim title terms | Log scale calibrated to typical role volumes |
 | **SerpAPI LinkedIn proxy** | `site:linkedin.com/in "fractional CFO"` etc. | Result count proxy | Log scale |
+| **Brave Talent** | Brave Web Search on the same public profile phrases | SerpAPI-independent backstop | Log scale |
 | **GoFractional marketplace** | Apify scraper actor against `gofractional.com` | Active listings | Log scale |
-| **Apify supply-intent Trends** | Apify Google Trends actor on supply-intent terms | "become fractional executive", "fractional consulting business", etc. | Native 0-100 |
-| **SerpAPI supply-intent Trends** | SerpAPI Trends on the same terms | Independent fallback | Native 0-100 |
+| **SerpAPI supply-intent Trends** | SerpAPI Trends on supply-intent terms | "become fractional executive", "fractional consulting business", etc. | Native 0-100 |
 
 ### Culture pillar (30% weight)
 
 | Source | Endpoint | Normalization |
 |--------|----------|---------------|
 | **SerpAPI Google Trends** (primary) | Trends interest-over-time, 90-day, US geo | Mean of last 4 weekly values |
-| **Apify Google Trends** (fallback) | Apify google-trends-scraper actor | Mean of last 4 weekly values |
 | **NewsAPI** | `everything?q="fractional CMO" OR "fractional CFO" OR …&from=28d` | `min(100, sqrt(count) × 15)` |
 | **Mediastack** | News articles, exact phrase | Sqrt scale |
 | **Brave News** | News-vertical search | Sqrt scale |
 | **Brave Web Search** | Web mentions of fractional terms | Sqrt scale |
 | **The Guardian** | Article search, 90-day window | Linear |
-| **NY Times** | Article Search API, 90-day window | Linear |
 | **Podchaser** | GraphQL podcast episode search | Sqrt scale |
 | **Reddit** | Apify Reddit scraper, relevant subreddits | Engagement-weighted |
 | **Hacker News** | Algolia HN Search API | Points + comments scale |
+| **Wikipedia pageviews** | Wikimedia REST API across a fixed six-article set | Log scale of seven-day views |
 
 ### Context (stored, not in composite)
 
 | Source | Series |
 |--------|--------|
-| **FRED** | JOLTS Job Openings · Unemployment Rate · Initial Jobless Claims |
+| **BLS** | JOLTS openings, unemployment, and wages |
+| **FRED** | JOLTS Job Openings, Unemployment Rate, and Initial Jobless Claims; configured but currently not delivering |
 | **Census ACS** | US self-employment household percentage |
+| **OpenAlex** | Academic and thought-leadership coverage |
 
 ### Source skip list
 
@@ -303,7 +304,7 @@ FWI = round( demand_score × W_d + supply_score × W_s + culture_score × W_c , 
 
 ### Confidence (data completeness)
 
-Each source has a domain-weighted contribution baked into `SOURCE_CONFIDENCE_WEIGHTS` (e.g. Adzuna 0.14, PDL 0.10, FRED 0.01). Confidence = `Σ achieved_weight / Σ total_weight`, rounded to 2 decimals.
+Each tracked input has a quality-and-uniqueness weight baked into `SOURCE_CONFIDENCE_WEIGHTS` (for example, Adzuna 0.12, SEC EDGAR 0.09, FRED 0.01). Completeness = `Σ achieved_weight / Σ total_weight`, rounded to 2 decimals.
 
 Confidence is **not** a prediction-accuracy metric — it surfaces in API responses as `meta.dataCompletenessNote`.
 
@@ -330,14 +331,14 @@ X-FWI-Score: 62.4
 X-FWI-Label: Growing
 ```
 
-### Optional `x-api-key` metering (the paid wedge)
+### Optional `x-api-key` rate accounting
 
 `fwi-api` accepts an **optional** `x-api-key` header (`config.toml` keeps `verify_jwt = false`, and CORS allows the header). The read endpoints stay free and no-auth:
 
 - **No key supplied**: the request is served on the free anonymous tier, unmetered and unchanged. The dashboard and existing agents never break.
 - **Key supplied**: `fwi-api` SHA-256-hashes the key, looks it up in `api_keys` by `key_hash`, and meters it per day. An unknown or revoked key returns HTTP 401 (`invalid_or_revoked_api_key`). Within the tier limit, `requests_used` is incremented (reset to 0 when `last_used_at` rolls to a new UTC day) and the response carries `X-RateLimit-Limit` and `X-RateLimit-Remaining`. Over the limit returns HTTP 429 (`rate_limit_exceeded`) with `X-RateLimit-Remaining: 0`.
 
-Tier limits (`TIER_LIMITS` in `fwi-api`): `free` = 1,000 req/day, `pro` = 10,000 req/day, `enterprise` = unlimited (`X-RateLimit-Limit: unlimited`). Users self-serve a free key at `/pricing` via `manage-api-key`; higher and enterprise limits are arranged with sales at `data@fractionl.ai`.
+Technical limits (`TIER_LIMITS` in `fwi-api`): `free` = 1,000 requests/day, `pro` = 10,000 requests/day, `enterprise` = unlimited (`X-RateLimit-Limit: unlimited`). These labels are retained in the current schema for compatibility and do not represent the current commercial packaging. Users self-serve a free key at `/pricing` via `manage-api-key`.
 
 Full schema lives in [`AGENT_INTEGRATION.md`](./AGENT_INTEGRATION.md).
 
@@ -363,27 +364,20 @@ Full schema lives in [`AGENT_INTEGRATION.md`](./AGENT_INTEGRATION.md).
 
 | Component | Purpose |
 |-----------|---------|
-| `HeroSection` | Headline FWI gauge + 30-day delta |
-| `SubIndexCards` | Per-pillar cards with sparklines and drill-in |
-| `MarketSnapshot` | Live "today's reading" panel with movers |
-| `TrendlineChart` | 12-week composite trendline |
+| `PulseInstrument` | Primary desktop and mobile instrument: index level, 30-day movement, timeline, role lens, evidence coverage, decision cues, navigation, and Ask Pulse entry |
+| `AskIndexModal` | Streams an evidence-bounded, rate-limited interpretation grounded in the current public FWI response |
 | `SignalsTable` | Full per-role and per-source signal breakdown |
-| `RoleBreakdown` | Adzuna role-level demand detail |
 | `AIInsights` | Insight cards from `generate-pulse-insights` |
-| `FractionalReadiness` | Personal "should I act?" gauge wired to live FWI + user weights |
 | `DataHealthCard` | Per-source status badges (`data_source_health`) |
 | `MethodologyDrawer` | Transparent methodology explainer |
-| `SettingsSheet` | Custom-weight UI (persisted via `useUserPreferences`) |
 
 ### Hooks
 
 | Hook | Job |
 |------|-----|
 | `useFWIData` | React Query loader for `fwi_scores` + `movers`; computes context + stale flag |
-| `useMarketStats` | Aggregated headline metrics |
-| `useRoleBreakdown` | Role-level Adzuna detail |
-| `useSignalContext` | Humanized context strings per signal |
-| `useUserPreferences` | Custom weights persistence |
+| `useRoleBreakdown` | Loads public per-role demand, current role-average comparisons, and seven-day movement |
+| `useUserRole` | Persists the visitor's selected role and reconciles authenticated profile state |
 | `useAuth` | Supabase auth state |
 
 ### Performance
@@ -417,9 +411,7 @@ NEWS_API_KEY
 MEDIASTACK_API_KEY
 BRAVE_API_KEY
 GUARDIAN_API_KEY
-NYT_API_KEY
 PODCHASER_API_KEY
-PDL_API_KEY
 FRED_API_KEY
 OPENAI_API_KEY
 RESEND_API_KEY
@@ -450,7 +442,7 @@ CRON_SECRET                 # asserted in /api/cron handlers
 |---------|---------------|--------|
 | Dashboard says "stale" | `pipeline_runs` for `source='daily-cron'` | Inspect latest run error; manually `POST /fwi-api/trigger` with service role |
 | One source flat-lined | `data_source_health` row | Check `last_error`, rotate API key if 401, add to `SKIP_SOURCES` if rate-limited until fixed |
-| Score moved sharply | `pipeline_runs.metadata.successful_sources` | Compare against prior week; if a heavyweight source dropped (Adzuna, PDL, SEC), expect movement |
+| Score moved sharply | `pipeline_runs.metadata.successful_sources` | Compare against the prior observed reading; if a heavyweight input dropped (Adzuna, SEC EDGAR, SerpAPI Jobs), expect movement |
 | AI insights stuck | `cached_insights.valid_until` | Force-regenerate by calling `generate-pulse-insights`; OPENAI quota is most common cause |
 | Cron failing | Vercel logs + `pipeline_runs.error` | Resend alert should already have fired. Re-trigger after fix |
 
