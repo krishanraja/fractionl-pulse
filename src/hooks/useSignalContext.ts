@@ -48,8 +48,8 @@ async function fetchSignalContext(): Promise<SignalContext> {
 
   // --- Supply ---
   const supplyParts: string[] = [];
-  // SerpAPI LinkedIn is primary; Brave talent proxy is the fallback so the supply card
-  // stays populated even when SerpAPI is rate-limited.
+  // DataForSEO LinkedIn is primary; Brave talent proxy is the fallback so the supply card
+  // stays populated even when the primary provider is rate-limited.
   const linkedInAgg = find('serpapi_linkedin', 'aggregate') || find('brave_talent', 'aggregate');
   const goFractional = find('gofractional');
   const supplyTrends = find('serpapi_supply_trends');

@@ -12,9 +12,9 @@ interface SubIndexCardsProps {
 }
 
 const SOURCE_COUNTS: Record<string, { count: number; examples: string }> = {
-  demand: { count: 3, examples: 'Adzuna, SerpAPI Jobs, SEC EDGAR' },
-  supply: { count: 4, examples: 'LinkedIn proxy (SerpAPI), Brave talent, GoFractional, Supply Intent' },
-  culture: { count: 10, examples: 'SerpAPI Trends, NewsAPI, Guardian, Podchaser, Reddit, HN, Wikipedia...' },
+  demand: { count: 3, examples: 'Adzuna, DataForSEO Jobs, SEC EDGAR' },
+  supply: { count: 4, examples: 'LinkedIn proxy (DataForSEO), Brave talent, GoFractional, Supply Intent' },
+  culture: { count: 10, examples: 'DataForSEO Trends, NewsAPI, Guardian, Podchaser, Reddit, HN, Wikipedia...' },
 };
 
 const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {

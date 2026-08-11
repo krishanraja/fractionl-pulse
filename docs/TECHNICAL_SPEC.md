@@ -1,6 +1,6 @@
 # Technical Specification: Fractionl Pulse
 
-_Source of truth for the system as it ships today. 21 live data sources, 8 core edge functions (plus supporting content, feed, checkout, and MCP functions), daily Vercel cron pipeline, agent-native API. Generated from the live codebase; see commit history for last update._
+_Source of truth for the system as it ships today. 21 live data sources, core and supporting edge functions, Supabase and Vercel scheduling, and an agent-native API. Generated from the live codebase; see commit history for last update._
 
 ---
 
@@ -39,6 +39,7 @@ _Source of truth for the system as it ships today. 21 live data sources, 8 core 
 
 | Function | Purpose | Trigger |
 |----------|---------|---------|
+| `prepare-dataforseo-jobs` | Submits six idempotent, normal-priority Google Jobs tasks and records their non-secret task IDs in `pipeline_runs`; chargeable POSTs are never automatically retried | Supabase `pg_cron` at 05:00 UTC + manual |
 | `ingest-signals` | Pulls 21 tracked inputs, normalizes 0–100, runs anomaly guard, upserts `signals`, then fires `calculate-fwi` | Vercel cron (daily + weekly) + manual |
 | `calculate-fwi` | Composites signals into FWI and writes `fwi_scores`; role movers compare with the current six-role average, while non-role movers compare with the prior observation | Called by `ingest-signals` |
 | `generate-pulse-insights` | GPT-4o-mini insight cards, 12-hour cache via `valid_until`; requires the service-role bearer and anchors related queries to the latest settled score date | Scheduled/internal pipeline only |
@@ -61,7 +62,9 @@ _Source of truth for the system as it ships today. 21 live data sources, 8 core 
 
 - `daily-ingest.ts` — runs full ingest + insights + retries (2 retries, 5s backoff), writes `pipeline_runs`, fires `send-pipeline-alert` on failure.
 - `weekly-ingest.ts` — Monday backstop run. Same retry envelope.
-- `pg_cron` exists as a redundant safety net inside Postgres (migration `002_pipeline_scheduling.sql`) for Supabase Pro tenants. Vercel cron is primary.
+- Supabase `pg_cron` submits DataForSEO Google Jobs tasks at 05:00 UTC and runs the daily ingest at 06:00 UTC. The one-hour separation lets the standard async Jobs tasks settle before retrieval.
+- Vercel cron remains a retrying trigger and weekly backstop for ingest. It does not submit paid DataForSEO Jobs tasks.
+- The legacy `SERP_API_KEY` may remain in deployed secrets temporarily for rollback, but no current function reads it or calls `serpapi.com`.
 
 ---
 
@@ -243,23 +246,23 @@ Both views are publicly readable for the dashboard's `DataHealthCard`.
 | Source | Endpoint | Roles / scope | Normalization |
 |--------|----------|---------------|---------------|
 | **Adzuna** | `https://api.adzuna.com/v1/api/jobs/us/search/1` per role with `what_phrase` | 6 roles: fractional CFO/CMO/CTO/COO/CRO + interim CEO | `min(100, log10(count+1) / log10(200) × 100)`, floor 15 |
-| **SerpAPI Google Jobs** | Google Jobs engine, exact phrase per role | Same 6 roles | Sqrt scale matched to Adzuna for cross-check |
+| **DataForSEO Google Jobs** | Standard async Google Jobs tasks, exact phrase per role | Same 6 roles | Sqrt scale matched to Adzuna for cross-check |
 | **SEC EDGAR Form D** | `https://efts.sec.gov/LATEST/search-index?forms=D&dateRange=custom&q="software" OR "technology" OR "SaaS"` | Tech/SaaS Form D filings, 90-day rolling | `min(100, count/800 × 50)` — 800 filings/90d = 50 |
 
 ### Supply pillar (20% weight, redistributes if empty)
 
 | Source | Endpoint | Method | Normalization |
 |--------|----------|--------|---------------|
-| **SerpAPI LinkedIn proxy** | `site:linkedin.com/in "fractional CFO"` etc. | Result count proxy | Log scale |
-| **Brave Talent** | Brave Web Search on the same public profile phrases | SerpAPI-independent backstop | Log scale |
+| **DataForSEO LinkedIn proxy** | `site:linkedin.com/in "fractional CFO"` etc. | Result count proxy | Log scale |
+| **Brave Talent** | Brave Web Search on the same public profile phrases | Provider-independent backstop | Log scale |
 | **GoFractional marketplace** | Apify scraper actor against `gofractional.com` | Active listings | Log scale |
-| **SerpAPI supply-intent Trends** | SerpAPI Trends on supply-intent terms | "become fractional executive", "fractional consulting business", etc. | Native 0-100 |
+| **DataForSEO supply-intent Trends** | DataForSEO Trends on supply-intent terms | "become fractional executive", "fractional consulting business", etc. | Native 0-100 |
 
 ### Culture pillar (30% weight)
 
 | Source | Endpoint | Normalization |
 |--------|----------|---------------|
-| **SerpAPI Google Trends** (primary) | Trends interest-over-time, 90-day, US geo | Mean of last 4 weekly values |
+| **DataForSEO Google Trends** (primary) | Trends interest-over-time, 90-day, US geo | Mean of last 4 weekly values |
 | **NewsAPI** | `everything?q="fractional CMO" OR "fractional CFO" OR …&from=28d` | `min(100, sqrt(count) × 15)` |
 | **Mediastack** | News articles, exact phrase | Sqrt scale |
 | **Brave News** | News-vertical search | Sqrt scale |
@@ -275,7 +278,7 @@ Both views are publicly readable for the dashboard's `DataHealthCard`.
 | Source | Series |
 |--------|--------|
 | **BLS** | JOLTS openings, unemployment, and wages |
-| **FRED** | JOLTS Job Openings, Unemployment Rate, and Initial Jobless Claims; configured but currently not delivering |
+| **FRED** | Initial Jobless Claims only; BLS is primary for JOLTS, unemployment, and wages |
 | **Census ACS** | US self-employment household percentage |
 | **OpenAlex** | Academic and thought-leadership coverage |
 
@@ -406,7 +409,8 @@ SUPABASE_SERVICE_ROLE_KEY
 ADZUNA_APP_ID
 ADZUNA_APP_KEY
 APIFY_API_KEY
-SERP_API_KEY
+DATAFORSEO_LOGIN
+DATAFORSEO_PASSWORD
 NEWS_API_KEY
 MEDIASTACK_API_KEY
 BRAVE_API_KEY
@@ -442,7 +446,7 @@ CRON_SECRET                 # asserted in /api/cron handlers
 |---------|---------------|--------|
 | Dashboard says "stale" | `pipeline_runs` for `source='daily-cron'` | Inspect latest run error; manually `POST /fwi-api/trigger` with service role |
 | One source flat-lined | `data_source_health` row | Check `last_error`, rotate API key if 401, add to `SKIP_SOURCES` if rate-limited until fixed |
-| Score moved sharply | `pipeline_runs.metadata.successful_sources` | Compare against the prior observed reading; if a heavyweight input dropped (Adzuna, SEC EDGAR, SerpAPI Jobs), expect movement |
+| Score moved sharply | `pipeline_runs.metadata.successful_sources` | Compare against the prior observed reading; if a heavyweight input dropped (Adzuna, SEC EDGAR, DataForSEO Jobs), expect movement |
 | AI insights stuck | `cached_insights.valid_until` | Force-regenerate by calling `generate-pulse-insights`; OPENAI quota is most common cause |
 | Cron failing | Vercel logs + `pipeline_runs.error` | Resend alert should already have fired. Re-trigger after fix |
 

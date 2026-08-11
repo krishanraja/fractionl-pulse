@@ -155,13 +155,14 @@ The SEC Form D input is treated as a financing-context signal that may precede s
 | Backend | Supabase Postgres and Edge Functions |
 | Auth | Supabase Auth |
 | AI summaries | OpenAI model invoked from server-side functions, with caching and rate controls |
-| Scheduling | Vercel Cron with Supabase-side safety mechanisms |
+| Scheduling | Supabase `pg_cron` for 05:00 DataForSEO Jobs preparation and 06:00 ingest, with Vercel retry/backstop triggers |
 | Deployment | Vercel at `pulse.fractionl.ai` |
 
 Core Edge Functions:
 
 | Function | Responsibility |
 |---|---|
+| `prepare-dataforseo-jobs` | Submit idempotent async DataForSEO Google Jobs tasks one hour before ingest |
 | `ingest-signals` | Collect and normalise tracked inputs |
 | `calculate-fwi` | Produce the composite and movers |
 | `fwi-api` | Serve current, historical, and protected trigger routes |

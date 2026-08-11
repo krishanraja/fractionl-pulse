@@ -108,14 +108,14 @@ async function handleCurrentFWI(): Promise<Response> {
         demand: {
           score: latest.demand_score,
           weight: weights.demand,
-          sources: ['Adzuna fractional job postings', 'SerpAPI Google Jobs cross-check', 'SEC Form D VC filings (90-day)'],
+          sources: ['Adzuna fractional job postings', 'DataForSEO Google Jobs cross-check', 'SEC Form D VC filings (90-day)'],
         },
         supply: {
           score: latest.supply_score,
           weight: weights.supply,
           sources: weights.supply === 0
             ? []
-            : ['SerpAPI LinkedIn supply proxy', 'Brave LinkedIn talent proxy', 'GoFractional marketplace listings', 'Supply-side search intent (SerpAPI)'],
+            : ['DataForSEO LinkedIn supply proxy', 'Brave LinkedIn talent proxy', 'GoFractional marketplace listings', 'Supply-side search intent (DataForSEO)'],
           status: weights.supply === 0 ? 'excluded' : 'live',
           note: weights.supply === 0
             ? 'No supply data available this week, weight redistributed to demand and culture'
@@ -124,7 +124,7 @@ async function handleCurrentFWI(): Promise<Response> {
         culture: {
           score: latest.momentum_score,
           weight: weights.culture,
-          sources: ['Search interest trends (SerpAPI)', 'NewsAPI + Mediastack + Brave News media coverage', 'Guardian prestige media', 'Podchaser podcast mentions', 'Reddit + HN community discourse', 'Brave Web discourse monitoring', 'Wikipedia article interest'],
+          sources: ['Search interest trends (DataForSEO)', 'NewsAPI + Mediastack + Brave News media coverage', 'Guardian prestige media', 'Podchaser podcast mentions', 'Reddit + HN community discourse', 'Brave Web discourse monitoring', 'Wikipedia article interest'],
         },
       },
     },
@@ -138,22 +138,22 @@ async function handleCurrentFWI(): Promise<Response> {
       demand: {
         description: 'Job posting volume for fractional C-suite roles + VC funding pipeline via SEC filings',
         roles: ['Fractional CFO', 'Fractional CMO', 'Fractional CTO', 'Fractional COO', 'Fractional CRO', 'Interim CEO'],
-        sources: ['Adzuna job API', 'SerpAPI Google Jobs', 'SEC EDGAR Form D filings'],
+        sources: ['Adzuna job API', 'DataForSEO Google Jobs', 'SEC EDGAR Form D filings'],
         leadingIndicator: 'SEC Form D filings provide financing context. Their relationship to future fractional demand has not been validated.',
       },
       supply: {
         description: 'Availability and growth of fractional executive talent pool from multiple sources',
         sources: [
-          'SerpAPI LinkedIn profile index (site:linkedin.com/in proxy)',
-          'Brave LinkedIn talent proxy (SerpAPI-independent backstop)',
+          'DataForSEO LinkedIn profile index (site:linkedin.com/in proxy)',
+          'Brave LinkedIn talent proxy (provider-independent backstop)',
           'GoFractional marketplace listings (via Apify scraper)',
-          'Supply-side search intent via SerpAPI Trends',
+          'Supply-side search intent via DataForSEO Trends',
         ],
       },
       culture: {
         description: 'Market awareness and momentum signals from 10+ sources',
         sources: [
-          'Search interest trends (SerpAPI)',
+          'Search interest trends (DataForSEO)',
           'NewsAPI article volume (28-day)',
           'Mediastack news cross-check',
           'The Guardian prestige media (90-day)',

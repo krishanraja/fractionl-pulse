@@ -51,7 +51,7 @@ const BAND_CLASS = {
 
 const SOURCE_LABEL = {
   adzuna: 'Adzuna (US job boards)',
-  serpapi_jobs: 'Google Jobs via SerpAPI',
+  serpapi_jobs: 'Google Jobs via DataForSEO',
 };
 
 function escape(s) {
@@ -115,7 +115,7 @@ function rankRead(r, total) {
 }
 
 /**
- * The concrete counts behind the score. The SerpAPI page cap is disclosed
+ * The concrete counts behind the score. The DataForSEO result depth is disclosed
  * because that collector reads one page of Google Jobs results, so it saturates
  * at ten and must not be read as a volume count.
  */
@@ -157,7 +157,7 @@ function faqFor(r, def, overall) {
 
   items.push({
     q: `How is the ${lower} demand index calculated?`,
-    a: `It counts job postings that name the phrase "${def.phrase}" explicitly, from Adzuna's US index and Google Jobs via SerpAPI. The discovery sources may overlap and are not described as independent. Each source is averaged across a trailing seven-day window, then the sources are averaged together and normalised onto the same 0 to 100 scale as the FWI demand pillar. It does not count full-time openings for the same title, and it does not count fractional work won by referral rather than by a posting.`,
+    a: `It counts job postings that name the phrase "${def.phrase}" explicitly, from Adzuna's US index and Google Jobs via DataForSEO. The discovery sources may overlap and are not described as independent. Each source is averaged across a trailing seven-day window, then the sources are averaged together and normalised onto the same 0 to 100 scale as the FWI demand pillar. It does not count full-time openings for the same title, and it does not count fractional work won by referral rather than by a posting.`,
   });
 
   return items;
@@ -260,7 +260,7 @@ function rolePage(def, r, data, site) {
         unitText: 'index, 0 to 100',
         ...(live ? { value: r.demand, minValue: 0, maxValue: 100 } : {}),
       },
-      measurementTechnique: `Job postings naming the exact phrase "${def.phrase}", from Adzuna's US index and Google Jobs via SerpAPI, averaged per source across a trailing seven-day window then averaged across sources, normalised to 0 to 100. SEC Form D filing velocity is tracked separately as financing context, not a validated forecast.`,
+      measurementTechnique: `Job postings naming the exact phrase "${def.phrase}", from Adzuna's US index and Google Jobs via DataForSEO, averaged per source across a trailing seven-day window then averaged across sources, normalised to 0 to 100. SEC Form D filing velocity is tracked separately as financing context, not a validated forecast.`,
       spatialCoverage: 'United States',
       temporalCoverage: '2026-03/..',
       ...(live && r.asOf ? { dateModified: r.asOf } : {}),
@@ -374,7 +374,7 @@ function rolePage(def, r, data, site) {
     <div class="tablewrap"><table><tbody>${marketRows}</tbody></table></div>` : ''}
 
     <h2>How this number is built</h2>
-    <p>The ${escape(lower)} demand index counts job postings that name the phrase <strong>&ldquo;${escape(def.phrase)}&rdquo;</strong> explicitly, from Adzuna's US index and Google Jobs via SerpAPI. These discovery sources may overlap and are not described as independent. Each source is averaged across a trailing seven-day window, the sources are then averaged together, and the result is normalised onto the same 0 to 100 scale as the FWI demand pillar.</p>
+    <p>The ${escape(lower)} demand index counts job postings that name the phrase <strong>&ldquo;${escape(def.phrase)}&rdquo;</strong> explicitly, from Adzuna's US index and Google Jobs via DataForSEO. These discovery sources may overlap and are not described as independent. Each source is averaged across a trailing seven-day window, the sources are then averaged together, and the result is normalised onto the same 0 to 100 scale as the FWI demand pillar.</p>
     <p>Bands: 75 and above is Surging, 60 to 75 Growing, 45 to 60 Stable, 30 to 45 Cooling, and below 30 Contracting.</p>
     <p class="dim">What it does not count: full-time openings for the same title, and fractional work won by referral rather than by a posting. That second gap matters, because a large share of fractional engagements never reach a job board at all. Read this as a directional read on <em>advertised</em> demand, not as a census of the market.</p>
     <p class="dim">Pulse does not publish a per-role supply or talent-availability score. The supply sources are not role-differentiated once normalised, so splitting them by role would invent a distinction the data does not contain.</p>

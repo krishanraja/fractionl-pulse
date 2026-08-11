@@ -23,13 +23,13 @@ async function fetchSourceHealth(): Promise<SourceHealth[]> {
 
 const SOURCE_DISPLAY: Record<string, { label: string; category: string }> = {
   adzuna: { label: 'Adzuna Jobs', category: 'Demand' },
-  serpapi_jobs: { label: 'Google Jobs (SerpAPI)', category: 'Demand' },
+  serpapi_jobs: { label: 'Google Jobs (DataForSEO)', category: 'Demand' },
   sec_edgar: { label: 'SEC EDGAR Filings', category: 'Demand' },
-  serpapi_linkedin: { label: 'LinkedIn Profiles (SerpAPI)', category: 'Supply' },
+  serpapi_linkedin: { label: 'LinkedIn Profiles (DataForSEO)', category: 'Supply' },
   brave_talent: { label: 'LinkedIn Profiles (Brave)', category: 'Supply' },
   gofractional: { label: 'GoFractional Marketplace', category: 'Supply' },
-  serpapi_supply_trends: { label: 'Supply Intent (SerpAPI)', category: 'Supply' },
-  serpapi_trends: { label: 'Search Trends (SerpAPI)', category: 'Culture' },
+  serpapi_supply_trends: { label: 'Supply Intent (DataForSEO)', category: 'Supply' },
+  serpapi_trends: { label: 'Search Trends (DataForSEO)', category: 'Culture' },
   newsapi: { label: 'NewsAPI', category: 'Culture' },
   mediastack: { label: 'Mediastack News', category: 'Culture' },
   guardian: { label: 'The Guardian', category: 'Culture' },

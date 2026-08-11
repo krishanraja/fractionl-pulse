@@ -110,7 +110,7 @@ The only authenticated endpoint is `POST /fwi-api/trigger`, which forces an imme
         "weight": 0.5,
         "sources": [
           "Adzuna fractional job postings",
-          "SerpAPI Google Jobs cross-check",
+          "DataForSEO Google Jobs cross-check",
           "SEC Form D VC filings (90-day)"
         ]
       },
@@ -118,10 +118,10 @@ The only authenticated endpoint is `POST /fwi-api/trigger`, which forces an imme
         "score": 54.2,
         "weight": 0.2,
         "sources": [
-          "SerpAPI LinkedIn supply proxy",
+          "DataForSEO LinkedIn supply proxy",
           "Brave LinkedIn talent proxy",
           "GoFractional marketplace listings",
-          "Supply-side search intent (SerpAPI)"
+          "Supply-side search intent (DataForSEO)"
         ],
         "status": "live",
         "note": null
@@ -149,7 +149,7 @@ The only authenticated endpoint is `POST /fwi-api/trigger`, which forces an imme
   ],
   "signals": {
     "demand":  { "description": "...", "roles": ["Fractional CFO", "..."], "sources": ["Adzuna", "..."], "leadingIndicator": "SEC Form D filings provide financing context; the relationship to future demand is not validated" },
-    "supply":  { "description": "...", "sources": ["SerpAPI LinkedIn proxy", "Brave Talent", "..."] },
+    "supply":  { "description": "...", "sources": ["DataForSEO LinkedIn proxy", "Brave Talent", "..."] },
     "culture": { "description": "...", "sources": ["Google Trends", "..."] },
     "context": { "description": "Macro and research context signals (not used in composite score)", "sources": ["BLS", "FRED", "Census ACS", "OpenAlex"] }
   }

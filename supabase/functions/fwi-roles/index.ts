@@ -1,13 +1,13 @@
 // fwi-roles: per-role demand indices for the 6 fractional C-suite roles.
 //
 // Each role's demand index is the mean of its normalized demand signals (Adzuna
-// job postings + SerpAPI Google Jobs cross-check) over a trailing 7-day window,
+// job postings + DataForSEO Google Jobs cross-check) over a trailing 7-day window,
 // on the same 0-100 scale as the FWI demand pillar. Honest framing: this is the
 // DEMAND reading for the role, set in the context of the overall weekly FWI.
 // No auth.
 //
 // Why a 7-day window and not a single date: the collectors do not all land on
-// the same calendar day (Adzuna and SerpAPI Google Jobs run on different
+// the same calendar day (Adzuna and DataForSEO Google Jobs run on different
 // cadences and each skips days when a provider is rate limited). The previous
 // implementation pinned every role to the single latest date that had ANY
 // per-role row, so five of the six roles returned null on most days even though
@@ -159,7 +159,7 @@ serve(async (req) => {
     rolesMeasured: measured.length,
     roleAverage,
     roleAverageDisplay: roleAverage != null ? displayLevel(roleAverage) : null,
-    note: 'Per-role demand index (0-100) from Adzuna + SerpAPI Google Jobs over a trailing 7-day window, in the context of the overall weekly FWI. Form D filings provide financing context; their relationship to future fractional demand has not been validated.',
+    note: 'Per-role demand index (0-100) from Adzuna + DataForSEO Google Jobs over a trailing 7-day window, in the context of the overall weekly FWI. Form D filings provide financing context; their relationship to future fractional demand has not been validated.',
     method: 'For each role, each demand source is averaged across the trailing 7 days, then the sources are averaged together. change7d compares that window to the 7 days before it. Supply is not published per role because the supply sources are not role-differentiated once normalized.',
     display: 'Levels (demand, roleAverage, overall.score) carry full precision here; the *Display fields are the whole numbers every human surface shows, and band is computed from the display value so a label can never contradict the number beside it. Changes (change7d, vsRoleAverage) keep one decimal.',
     roles,

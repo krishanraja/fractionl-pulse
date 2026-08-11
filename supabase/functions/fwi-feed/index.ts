@@ -43,12 +43,12 @@ serve(async (req) => {
       const score = Math.round(r.overall_score * 10) / 10;
       const lab = label(score);
       const title = `Fractional Working Index: ${score} (${lab}), week of ${r.date}`;
-      const desc = `The fractional executive market reads ${score} of 100 (${lab}) for the week of ${r.date}. Demand ${component(r.demand_score)}, Supply ${component(r.supply_score)}, Culture ${component(r.momentum_score)}. A private composite published by Fractionl using 21 tracked inputs with mixed availability.`;
+      const desc = `The fractional executive market reads ${score} of 100 (${lab}) for the week of ${r.date}. Demand ${component(r.demand_score)}, Supply ${component(r.supply_score)}, Culture ${component(r.momentum_score)}. A private composite published by Fractionl using 21 tracked inputs with mixed availability; search-derived inputs are supplied by DataForSEO.`;
       return { date: r.date, score, lab, title, desc };
     });
 
   if (format === 'json') {
-    return new Response(JSON.stringify({ feed: 'Fractional Working Index', publisher: 'Fractionl', items }, null, 2), {
+    return new Response(JSON.stringify({ feed: 'Fractional Working Index', publisher: 'Fractionl', searchProvider: 'DataForSEO', items }, null, 2), {
       headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=3600' },
     });
   }

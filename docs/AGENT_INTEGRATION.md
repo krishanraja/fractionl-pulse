@@ -18,9 +18,9 @@ A 0–100 composite across three dimensions built from **21 tracked inputs**. In
 
 | Dimension | Weight | What it captures |
 |-----------|--------|------------------|
-| **Demand** | 50% | Adzuna fractional job postings (6 roles) + SerpAPI Google Jobs cross-check + SEC Form D financing context |
-| **Supply** | 20% | SerpAPI LinkedIn proxy + Brave Talent backstop + GoFractional marketplace + SerpAPI supply-intent trends |
-| **Culture** | 30% | SerpAPI Trends + NewsAPI + Mediastack + Brave News + Brave Web + Guardian + Podchaser + Reddit + Hacker News + Wikipedia pageviews |
+| **Demand** | 50% | Adzuna fractional job postings (6 roles) + DataForSEO Google Jobs cross-check + SEC Form D financing context |
+| **Supply** | 20% | DataForSEO LinkedIn proxy + Brave Talent backstop + GoFractional marketplace + DataForSEO supply-intent trends |
+| **Culture** | 30% | DataForSEO Trends + NewsAPI + Mediastack + Brave News + Brave Web + Guardian + Podchaser + Reddit + Hacker News + Wikipedia pageviews |
 
 If a pillar has no live data in a given week, its weight redistributes proportionally and the response surfaces this in `meta.dataCompleteness` and `components.<pillar>.status`.
 
@@ -216,23 +216,23 @@ Use `X-FWI-Score` and `X-FWI-Label` for lightweight polling without parsing the 
 | Source | What it measures | Why it's defensible |
 |--------|------------------|---------------------|
 | **Adzuna** | 6 fractional C-suite roles, exact phrase matching | Filters out general exec search. Genuine fractional listings. |
-| **SerpAPI Google Jobs** | Same 6 roles via Google Jobs aggregator | Independent cross-check on Adzuna |
+| **DataForSEO Google Jobs** | Same 6 roles via Google Jobs aggregator | Independent cross-check on Adzuna |
 | **SEC EDGAR Form D** | Financing-context filings, tech/SaaS, 90-day rolling | Government data, free API. Pulse treats filing velocity as a possible leading context signal, but the relationship to future fractional hiring has not been validated. |
 
 ### Supply pillar
 
 | Source | What it measures |
 |--------|------------------|
-| **SerpAPI LinkedIn** | `site:linkedin.com/in "fractional CFO"` result counts as a public profile-volume proxy |
+| **DataForSEO LinkedIn** | `site:linkedin.com/in "fractional CFO"` result counts as a public profile-volume proxy |
 | **Brave Talent** | Independent public-web profile-volume backstop |
 | **GoFractional marketplace** | Active listings via Apify scraper |
-| **SerpAPI Trends (supply intent)** | Searches like "become fractional executive" and "fractional consulting business" |
+| **DataForSEO Trends (supply intent)** | Searches like "become fractional executive" and "fractional consulting business" |
 
 ### Culture pillar
 
 | Source | What it measures |
 |--------|------------------|
-| **SerpAPI Google Trends** | Search interest, 90-day, US geo |
+| **DataForSEO Google Trends** | Search interest, 90-day, US geo |
 | **NewsAPI** | 28-day article volume, exact phrase matching |
 | **Mediastack** | Independent news API cross-check |
 | **Brave News** | Third news source for triangulation |
@@ -248,7 +248,7 @@ Use `X-FWI-Score` and `X-FWI-Label` for lightweight polling without parsing the 
 | Source | What it captures |
 |--------|------------------|
 | **BLS** | JOLTS openings, unemployment, and wage series |
-| **FRED** | JOLTS Job Openings, Unemployment Rate, and Initial Jobless Claims; coded but currently not delivering |
+| **FRED** | Initial Jobless Claims only; BLS is primary for JOLTS, unemployment, and wages |
 | **Census ACS** | US self-employment household percentage |
 | **OpenAlex** | Academic and thought-leadership coverage |
 

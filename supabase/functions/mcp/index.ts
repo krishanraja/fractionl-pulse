@@ -65,7 +65,7 @@ const TOOLS = [
   {
     name: 'get_content_radar',
     description:
-      'Get the Fractional Content Radar: this week\'s RISING topics, breakout QUESTIONS, and ready-to-write content ANGLES for the fractional executive audience, with the source receipts that triggered each topic. This is what to publish about this week. Truth-discipline: surfaces relative weekly movement (not absolute search volume); first meaningful velocity from week 2; derived from a multi-source blend (search rising-queries, People-Also-Ask, news, Reddit, Hacker News, podcasts, job postings).',
+      'Get the Fractional Content Radar: this week\'s RISING topics, breakout QUESTIONS, and ready-to-write content ANGLES for the fractional executive audience, with the source receipts that triggered each topic. This is what to publish about this week. Truth-discipline: surfaces relative weekly movement (not absolute search volume); first meaningful velocity from week 2; derived from a multi-source blend (DataForSEO rising queries and People Also Ask, news, Reddit, Hacker News, podcasts, job postings).',
     inputSchema: { type: 'object', properties: {} },
   },
   {

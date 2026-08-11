@@ -10,30 +10,30 @@ The credibility and value of the FWI depend entirely on the quality, breadth, an
 
 > For the live source-by-source state at any moment, query `data_source_health` — this table, not this doc, is the operational truth.
 
-> **Production readback, 2026-08-11 02:16 UTC:** the pipeline wrote the day's observation successfully at FWI **51.5 (Stable)**, but the read is degraded at **0.63 weighted completeness** with **13 contributing sources**. This is below the 0.75 completeness and 14-source release-health thresholds. The principal incident is one exhausted SerpAPI account affecting four inputs and 23.8% of configured completeness weight. Guardian returns 401, GoFractional's Apify run returns 403, NewsAPI and SerpAPI LinkedIn are silent against their expected cadence, and FRED has never delivered. The UI and API expose the 63% coverage; this release does not conceal or reclassify the incident. Restore or deliberately retire a source only through the documented methodology change process.
+> **Pre-cutover production readback, 2026-08-11 02:16 UTC:** the pipeline wrote the day's observation successfully at FWI **51.5 (Stable)**, but the read was degraded at **0.63 weighted completeness** with **13 contributing sources**. The principal incident was an exhausted SerpAPI account affecting four inputs. Guardian returned 401, GoFractional returned 403, NewsAPI was silent, and FRED had never delivered. This historical readback is retained as the rollout baseline; the DataForSEO cutover must be verified against the release gates below before this note is superseded.
 
 ### Demand pillar (50% weight)
 
 | Source | Signal | Method | Cost / call |
 |--------|--------|--------|-------------|
 | **Adzuna** | Fractional job postings, 6 C-suite roles | REST API, `what_phrase` exact-phrase | $0 (free tier) |
-| **SerpAPI Google Jobs** | Second Google Jobs discovery source; may overlap Adzuna results | SerpAPI engine, exact phrase per role | ~$0.005 |
+| **DataForSEO Google Jobs** | Second Google Jobs discovery source; may overlap Adzuna results | Async Google Jobs tasks, exact phrase per role | ~$0.006 |
 | **SEC EDGAR Form D** | VC funding pipeline, tech/SaaS, 90-day rolling | EDGAR full-text search | $0 (gov) |
 
 ### Supply pillar (20% weight, redistributes if empty)
 
 | Source | Signal | Method | Cost / call |
 |--------|--------|--------|-------------|
-| **SerpAPI LinkedIn** | `site:linkedin.com/in "fractional CFO"` proxy | SerpAPI Google Search | ~$0.02 |
-| **Brave Talent** | SerpAPI-independent LinkedIn-profile backstop | Brave Web Search | ~$0.003 |
+| **DataForSEO LinkedIn** | `site:linkedin.com/in "fractional CFO"` proxy | DataForSEO organic search | ~$0.012 |
+| **Brave Talent** | Provider-independent LinkedIn-profile backstop | Brave Web Search | ~$0.003 |
 | **GoFractional** | Active marketplace listings | Apify web-scraper actor | ~$0.01 |
-| **SerpAPI Trends (supply intent)** | Searches like "become fractional executive" | SerpAPI Trends | ~$0.005 |
+| **DataForSEO Trends (supply intent)** | Searches like "become fractional executive" | DataForSEO Trends | ~$0.002 |
 
 ### Culture pillar (30% weight)
 
 | Source | Signal | Method | Cost / call |
 |--------|--------|--------|-------------|
-| **SerpAPI Google Trends** | Search interest, 90-day, US geo | SerpAPI Trends | ~$0.005 |
+| **DataForSEO Google Trends** | Search interest, 90-day, US geo | DataForSEO Trends | ~$0.002 |
 | **NewsAPI** | Article volume, 28-day, exact phrase | REST API | $0 (free tier) |
 | **Mediastack** | Separate news-API cross-check; article sets may overlap | REST API | $0 (free tier) |
 | **Brave News** | News-vertical search | Brave Search API | ~$0.003 |
@@ -51,7 +51,7 @@ The credibility and value of the FWI depend entirely on the quality, breadth, an
 | **BLS** | JOLTS openings, unemployment, wages | BLS API | Live since 2026-02 |
 | **Census ACS** | Self-employment household percentage | Census API | Live |
 | **OpenAlex** | Academic / thought-leadership coverage | OpenAlex API | Live since 2026-02 |
-| **FRED** | JOLTS, unemployment, initial claims | FRED API | ⚠️ Configured but has never written a signal; BLS covers the same macro context |
+| **FRED** | Initial Jobless Claims only | FRED API | Unique claims context; retained at the lower 0.01 confidence weight |
 
 ### Retired sources (2026-05-30)
 
@@ -59,12 +59,12 @@ These had been failing every run for weeks and are fully covered by replacements
 
 | Source | Retired because | Replaced by |
 |--------|-----------------|-------------|
-| **Apify Google Trends** (`google_trends`) | Persistent failures; last signal 2026-04-13 | SerpAPI Trends |
-| **Apify supply trends** (`supply_trends`) | Persistent failures | SerpAPI supply trends |
-| **People Data Labs** | HTTP 404 every run | SerpAPI LinkedIn + Brave Talent |
+| **Apify Google Trends** (`google_trends`) | Persistent failures; last signal 2026-04-13 | DataForSEO Trends |
+| **Apify supply trends** (`supply_trends`) | Persistent failures | DataForSEO supply trends |
+| **People Data Labs** | HTTP 404 every run | DataForSEO LinkedIn + Brave Talent |
 | **NY Times** | HTTP 401 every run | Guardian |
 
-> ⚠️ Note the concentration risk this created: SerpAPI is now the **only** Google Trends provider (demand-side and supply-side) and a major share of demand + supply coverage. A SerpAPI quota exhaustion (HTTP 429) takes out four sources at once — exactly what happened 2026-08-04.
+> The 2026-08-04 incident demonstrated provider concentration risk when one SerpAPI quota took out four inputs. DataForSEO replaces that provider, while Brave remains the independent profile-search backstop.
 
 ---
 
@@ -76,10 +76,10 @@ Each source has a domain-weighted contribution to the data-completeness score, b
 |--------|--------|
 | Adzuna | 0.12 |
 | SEC EDGAR | 0.09 |
-| SerpAPI Jobs | 0.07 |
+| DataForSEO Jobs (`serpapi_jobs`) | 0.07 |
 | Wikipedia pageviews | 0.06 |
-| SerpAPI Trends | 0.05 |
-| SerpAPI LinkedIn | 0.05 |
+| DataForSEO Trends (`serpapi_trends`) | 0.05 |
+| DataForSEO LinkedIn (`serpapi_linkedin`) | 0.05 |
 | Brave Talent | 0.05 |
 | NewsAPI | 0.04 |
 | GoFractional | 0.04 |
@@ -87,7 +87,7 @@ Each source has a domain-weighted contribution to the data-completeness score, b
 | Brave News | 0.03 |
 | Brave Web | 0.03 |
 | Mediastack | 0.03 |
-| SerpAPI supply trends | 0.03 |
+| DataForSEO supply trends (`serpapi_supply_trends`) | 0.03 |
 | Guardian | 0.02 |
 | Podchaser | 0.02 |
 | Reddit | 0.02 |
@@ -109,10 +109,10 @@ For every successful signal, the ingest function fetches the last 8 weeks of val
 ### Cross-source triangulation
 
 - 3 news APIs (NewsAPI, Mediastack, Brave) cover the same culture signal
-- 4 supply sources (SerpAPI LinkedIn, Brave Talent, GoFractional, supply-intent search)
-- 2 demand sources for jobs (Adzuna, SerpAPI Google Jobs)
+- 4 supply sources (DataForSEO LinkedIn, Brave Talent, GoFractional, supply-intent search)
+- 2 demand sources for jobs (Adzuna, DataForSEO Google Jobs)
 
-Single-source disruptions don't take the index down. **Known exception since the 2026-05-30 retirements: Google Trends has only one provider (SerpAPI), and four sources share the single SerpAPI quota — a provider-level 429 degrades demand, supply, and culture simultaneously.**
+Single-source disruptions do not take the index down. Google Trends still has one provider, while the LinkedIn proxy retains Brave as a separate-provider backstop.
 
 ### Idempotent writes
 
@@ -125,6 +125,8 @@ Every ingest run updates `data_source_health.{status, last_checked, last_success
 ### Pipeline run log
 
 Every cron + manual run writes a `pipeline_runs` row with status, records inserted, confidence, error, and metadata (which sources succeeded, which failed). Two views — `pipeline_health` and `data_quality_summary` — expose this for the dashboard.
+
+DataForSEO Google Jobs uses a two-stage ledger. `prepare-dataforseo-jobs` submits six idempotent daily tasks at 05:00 UTC and stores task IDs in `pipeline_runs`; `ingest-signals` retrieves the completed results at 06:00 UTC. A running, failed, or ambiguous submission ledger blocks automatic paid resubmission until it is manually reconciled.
 
 ### Email alerts
 
@@ -175,14 +177,14 @@ Deliverability: sends go from `ALERT_FROM` (default `alerts@fractionl.ai`). As o
 | Candidate | Pillar | Why | Status |
 |-----------|--------|-----|--------|
 | **Crunchbase** | Demand | Funding velocity cross-check beyond Form D | 🟡 Evaluating cost vs uplift |
-| **Indeed job-listing access** | Demand | Cross-check on Adzuna + SerpAPI jobs | 🟡 Evaluating official access |
+| **Indeed job-listing access** | Demand | Cross-check on Adzuna + DataForSEO jobs | 🟡 Evaluating official access |
 | **A.Team marketplace** | Supply | Direct fractional listings | 🟡 Partnership outreach |
 | **Catalant** | Supply | Project marketplace listings | 🟡 Partnership outreach |
 | **Twitter/X API v2** | Culture | Recent fractional discourse | 🟡 Evaluating cost vs ToS risk |
 | **Eventbrite** | Culture | Industry-event signals | 🔴 Backlog |
 | **Substack** | Culture | Newsletter coverage volume | 🔴 Backlog (RSS-based) |
 | **Glassdoor** | Demand | Company reviews mentioning fractional | 🔴 Backlog (ToS-restricted) |
-| **LinkedIn Talent Insights** | Demand + Supply | Direct LinkedIn data | ❄️ Cost-prohibitive ($25K+) — proxy via SerpAPI for now |
+| **LinkedIn Talent Insights** | Demand + Supply | Direct LinkedIn data | ❄️ Cost-prohibitive ($25K+) — proxy via DataForSEO for now |
 
 ### Geographic expansion
 
@@ -222,15 +224,15 @@ A single full ingest run touches every source listed above. Estimated cost per r
 | Source family | Estimated cost / run |
 |---------------|---------------------|
 | Adzuna + 6 roles | $0 |
-| SerpAPI (jobs + trends + LinkedIn + supply) | ~$0.10 |
+| DataForSEO (jobs + trends + LinkedIn + supply) | ~$0.04 to $0.05 |
 | Apify (Reddit + GoFractional) | ~$0.02 |
 | Brave (news + web) | ~$0.006 |
 | ~~People Data Labs~~ (retired 2026-05-30) | $0 |
 | OpenAI (insights) | ~$0.005 |
 | Free APIs (NewsAPI, Mediastack, FRED, Census, Guardian, Podchaser, HN, BLS, OpenAlex, SEC) | $0 |
-| **Total per daily run** | **~$0.50** |
+| **Total per daily run** | **~$0.08** |
 
-Daily cron × 30 days = ~$15/mo in variable data cost. Real annual variable cost: ~$180.
+DataForSEO is expected to consume about $1.50 to $2 per month at the configured cadence. Total variable API usage is expected to remain roughly $2 to $3 per month, excluding fixed subscription plans.
 
 ### Fixed costs
 
@@ -239,7 +241,7 @@ Daily cron × 30 days = ~$15/mo in variable data cost. Real annual variable cost
 | Adzuna API | $0 (free tier ample for 6 roles) |
 | NewsAPI | $0 (free dev tier) — $449 if upgraded |
 | Mediastack | $0 (free tier) |
-| SerpAPI | $50–$150 depending on volume |
+| DataForSEO | No monthly fee; $50 minimum funded balance, which does not expire |
 | ~~PDL~~ (retired 2026-05-30) | $0 |
 | Apify | $49 (starter plan) |
 | Brave Search | $5–$50 depending on volume |
@@ -247,7 +249,7 @@ Daily cron × 30 days = ~$15/mo in variable data cost. Real annual variable cost
 | OpenAI | $20–$100 |
 | Supabase Pro | $25 |
 | Vercel | $0 (Hobby) — $20 (Pro) |
-| **Total** | **~$300–$1,000 / mo** |
+| **Total** | **Varies by optional Apify, Brave, OpenAI, Resend, and hosting plans** |
 
 This is the actual operating cost behind the FWI — useful when prospects ask why a single API can't replicate the index.
 
@@ -271,7 +273,7 @@ This is the actual operating cost behind the FWI — useful when prospects ask w
 | Source | Use type | Notes |
 |--------|----------|-------|
 | Adzuna | API, commercial | Within ToS for derivative analytics |
-| SerpAPI | API, commercial | Paid tier, derivative use OK |
+| DataForSEO | API, commercial | Paid usage, aggregate derivative values only |
 | SEC EDGAR | Public government data | Free, no restrictions |
 | FRED, Census | Public government data | Free, attribution best practice |
 | NewsAPI | API, commercial | Free tier limited, paid tier full commercial |
@@ -284,7 +286,7 @@ This is the actual operating cost behind the FWI — useful when prospects ask w
 | Reddit (via Apify) | Scraper | Apify handles ToS; we consume aggregate counts |
 | Hacker News | Public Algolia API | Free, no restrictions |
 | GoFractional (via Apify) | Scraper | Aggregate listings counts; respects robots.txt |
-| Google Trends (Apify / SerpAPI) | API/scraper proxy | Aggregate score values only, within proxy ToS |
+| Google Trends (DataForSEO) | API proxy | Aggregate score values only, within proxy terms |
 
 We store and expose **aggregate signal values**, not raw third-party content. No source is redistributed verbatim.
 

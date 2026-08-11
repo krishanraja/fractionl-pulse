@@ -34,9 +34,9 @@ interface MoverRow {
 // client recompute reconciles with the published overall_score; the canonical set is kept
 // in metadata.display_weights for reference.
 const WEIGHTS = {
-  demand: 0.50,    // Adzuna + SerpAPI fractional jobs + SEC Form D financing context
-  supply: 0.20,    // SerpAPI + Brave LinkedIn talent proxies, GoFractional, supply-intent trends
-  culture: 0.30    // SerpAPI Trends + NewsAPI/Mediastack/Brave/Guardian + Reddit/HN + Wikipedia
+  demand: 0.50,    // Adzuna + DataForSEO fractional jobs + SEC Form D financing context
+  supply: 0.20,    // DataForSEO + Brave LinkedIn talent proxies, GoFractional, supply-intent trends
+  culture: 0.30    // DataForSEO Trends + NewsAPI/Mediastack/Brave/Guardian + Reddit/HN + Wikipedia
 };
 
 const ROLE_NAMES: Record<string, string> = {
@@ -366,7 +366,7 @@ serve(async (req) => {
       sources_active: uniqueSources,
       movers_count: topMovers.length,
       weights: WEIGHTS,
-      methodology: '21 tracked inputs: Adzuna, SerpAPI Jobs and Trends, SEC Form D, NewsAPI, Guardian, Mediastack, Podchaser, Reddit, Hacker News, Brave Search, GoFractional, Wikipedia, BLS, Census ACS, FRED, and OpenAlex. Context inputs are excluded from the composite.',
+      methodology: '21 tracked inputs: Adzuna, DataForSEO Jobs and Trends, SEC Form D, NewsAPI, Guardian, Mediastack, Podchaser, Reddit, Hacker News, Brave Search, GoFractional, Wikipedia, BLS, Census ACS, FRED, and OpenAlex. Context inputs are excluded from the composite.',
       component_breakdown: {
         demand: {
           sources: signals.filter(s => s.signal_type === 'demand').map(s => `${s.source}/${s.category}`),

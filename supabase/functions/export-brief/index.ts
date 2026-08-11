@@ -145,9 +145,9 @@ ${insightsSection || '_Insights will be generated after the next pipeline run._'
 
 The Fractional Working Index tracks 21 inputs across three dimensions. Inputs are not all statistically independent, and availability varies by reading:
 
-- **Demand (50%):** Adzuna job postings, SerpAPI Google Jobs, SEC EDGAR Form D filings
-- **Supply (20%):** SerpAPI and Brave professional-profile proxies, GoFractional marketplace listings, SerpAPI supply-intent trends
-- **Culture (30%):** SerpAPI Trends, NewsAPI, Mediastack, Brave Search, Guardian, Podchaser, Reddit, Hacker News, and Wikipedia pageviews
+- **Demand (50%):** Adzuna job postings, DataForSEO Google Jobs, SEC EDGAR Form D filings
+- **Supply (20%):** DataForSEO and Brave professional-profile proxies, GoFractional marketplace listings, DataForSEO supply-intent trends
+- **Culture (30%):** DataForSEO Trends, NewsAPI, Mediastack, Brave Search, Guardian, Podchaser, Reddit, Hacker News, and Wikipedia pageviews
 
 BLS, Census ACS, FRED, and OpenAlex provide context and are excluded from the composite. Historical coverage is mixed-frequency. The Form D input is financing context, not a validated prediction of future fractional hiring.
 
