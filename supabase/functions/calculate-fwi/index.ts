@@ -311,7 +311,7 @@ serve(async (req) => {
         vc_pipeline: `${signal.raw_value} tech filings (90d) - ${signal.score > 55 ? 'strong' : signal.score > 45 ? 'moderate' : 'weak'} funding`,
         search_interest: `Search interest trending ${direction}${priorScore != null ? ` vs ${priorScore.toFixed(0)} last week` : ''}`,
         media_coverage: `${signal.raw_value} articles - ${signal.score > 35 ? 'strong' : 'low'} media coverage`,
-        prestige_media: `${signal.raw_value} prestige articles (Guardian/NYT) - ${signal.score > 40 ? 'notable' : 'minimal'} elite coverage`,
+        prestige_media: `${signal.raw_value} prestige articles from The Guardian - ${signal.score > 40 ? 'notable' : 'minimal'} elite coverage`,
         audio_culture: `${signal.raw_value} podcasts discussing fractional work`,
         community_discourse: `${signal.raw_value} community posts - ${signal.score > 40 ? 'active' : 'moderate'} discussion`,
         marketplace: `${signal.raw_value} marketplace listings on GoFractional`,
