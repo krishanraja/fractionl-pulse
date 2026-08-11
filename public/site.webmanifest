@@ -1,7 +1,7 @@
 {
   "name": "Pulse by Fractionl",
   "short_name": "Pulse",
-  "description": "The Fractional Working Index: live market intelligence for the fractional executive economy",
+  "description": "The independent market instrument for fractional leadership",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",
@@ -21,8 +21,8 @@
       "type": "image/png"
     }
   ],
-  "theme_color": "#5B3DB8",
-  "background_color": "#020817",
+  "theme_color": "#111827",
+  "background_color": "#111827",
   "display": "standalone",
   "orientation": "any",
   "start_url": "/",

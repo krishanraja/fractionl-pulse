@@ -20,6 +20,11 @@ interface TrendlineChartProps {
   };
 }
 
+interface TimelinePoint {
+  x: string;
+  y: number | null;
+}
+
 const LOW_CONFIDENCE = 0.6;
 
 const TrendlineChart = ({ data }: TrendlineChartProps) => {
@@ -50,9 +55,8 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
       : data.months.map(m => `${m}-01`);
     const conf = data.confidence ?? [];
     const isLowConf = (i: number) => conf.length === iso.length && conf[i] < LOW_CONFIDENCE;
-    // {x: ISO date, y} points for the time scale. Typed as any[] because Chart.js's default
-    // point type expects a numeric x, while the time scale parses ISO-string x at runtime.
-    const toPoints = (series: (number | null)[]): any[] =>
+    // ISO string points are parsed by the configured time scale at runtime.
+    const toPoints = (series: (number | null)[]): TimelinePoint[] =>
       iso.map((d, i) => ({ x: d, y: series[i] ?? null }));
 
     chartRef.current = new Chart(ctx, {

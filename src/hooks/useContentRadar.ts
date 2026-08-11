@@ -21,7 +21,15 @@ export interface ContentRadarData {
   questions: RadarQuestion[];
   angles: RadarAngle[];
   saturated: string[];
-  stats: Record<string, any> | null;
+  stats: Record<string, unknown> | null;
+}
+
+interface RadarBrief {
+  rising_topics?: RadarTopic[];
+  breakout_questions?: string[];
+  priority_angles?: RadarAngle[];
+  saturated?: string[];
+  stats?: Record<string, unknown>;
 }
 
 const EMPTY: ContentRadarData = {
@@ -40,7 +48,7 @@ async function fetchRadar(): Promise<ContentRadarData> {
   if (!brief) return EMPTY;
 
   const weekStart = brief.week_start as string;
-  const bj = (brief.brief_json || {}) as any;
+  const bj = (brief.brief_json || {}) as RadarBrief;
 
   // Full ranked topic list + all questions for this week (Pro view); brief_json is the curated top set.
   const [{ data: topicRows }, { data: questionRows }] = await Promise.all([
@@ -55,8 +63,8 @@ async function fetchRadar(): Promise<ContentRadarData> {
   ]);
 
   const topics: RadarTopic[] = (topicRows && topicRows.length)
-    ? topicRows.map((t: any) => ({ ...t, radar_score: Number(t.radar_score) || 0 }))
-    : (bj.rising_topics || []).map((t: any) => ({ ...t, radar_score: Number(t.radar_score) || 0 }));
+    ? topicRows.map((topic) => ({ ...topic, radar_score: Number(topic.radar_score) || 0 }))
+    : (bj.rising_topics || []).map((topic) => ({ ...topic, radar_score: Number(topic.radar_score) || 0 }));
 
   const questions: RadarQuestion[] = (questionRows && questionRows.length)
     ? questionRows

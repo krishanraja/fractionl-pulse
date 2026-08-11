@@ -37,7 +37,7 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
               </div>
               <span className="text-sm text-muted-foreground">{(weights.demand * 100).toFixed(0)}% of score</span>
             </div>
-            <p className="text-xs text-muted-foreground pl-5">Adzuna + SerpAPI Google Jobs postings for fractional CFO, CMO, CTO, COO, CRO, and interim CEO roles. SEC Form D filings track VC funding: companies that just raised tend to hire fractional executives 1-3 months later.</p>
+            <p className="text-xs text-muted-foreground pl-5">Adzuna + SerpAPI Google Jobs postings for fractional CFO, CMO, CTO, COO, CRO, and interim CEO roles. SEC Form D filings add startup-financing context. Pulse has not validated a predictive relationship between those filings and future fractional hiring.</p>
           </div>
 
           <div className="p-3 bg-muted/20 rounded-lg space-y-1">

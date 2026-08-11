@@ -10,7 +10,7 @@ interface SourceHealth {
   source: string;
   status: string;
   last_checked: string | null;
-  metadata: any;
+  metadata: Record<string, unknown> | null;
 }
 
 async function fetchSourceHealth(): Promise<SourceHealth[]> {

@@ -108,6 +108,8 @@ const NavigationMenuIndicator = React.forwardRef<
 NavigationMenuIndicator.displayName = NavigationMenuPrimitive.Indicator.displayName;
 
 export {
+  // This component intentionally exports its reusable style contract.
+  // eslint-disable-next-line react-refresh/only-export-components
   navigationMenuTriggerStyle,
   NavigationMenu,
   NavigationMenuList,

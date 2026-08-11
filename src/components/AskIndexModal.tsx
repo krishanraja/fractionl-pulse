@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, MessageCircleQuestion, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -16,17 +16,26 @@ interface AskIndexModalProps {
   onOpenChange: (open: boolean) => void;
   /** The viewer's own fractional role, folded into the situation so the verdict is role-specific. */
   defaultRole?: string | null;
+  /** A question composed in the persistent desktop or mobile instrument surface. */
+  initialPrompt?: string;
 }
 
 // The Verdict Line, now hosted in an on-demand overlay: a visitor types one line
 // about their situation and Pulse streams back a personalized, chart-evidenced
 // verdict grounded in this week's real FWI.
-const AskIndexModal = ({ open, onOpenChange, defaultRole }: AskIndexModalProps) => {
+const AskIndexModal = ({ open, onOpenChange, defaultRole, initialPrompt = '' }: AskIndexModalProps) => {
   const [input, setInput] = useState('');
   const [verdict, setVerdict] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [asked, setAsked] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setInput(initialPrompt);
+    setAsked(false);
+    setVerdict('');
+  }, [initialPrompt, open]);
 
   const run = async (situation: string) => {
     let text = situation.trim();
@@ -100,7 +109,7 @@ const AskIndexModal = ({ open, onOpenChange, defaultRole }: AskIndexModalProps) 
             <MessageCircleQuestion size={15} />
           </span>
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-foreground tracking-tight leading-none">Ask the index</h2>
+            <p className="text-sm font-semibold text-foreground tracking-tight leading-none">Ask the index</p>
             <span className="text-[11px] text-muted-foreground">Your situation, this week's read</span>
           </div>
         </div>
@@ -133,7 +142,7 @@ const AskIndexModal = ({ open, onOpenChange, defaultRole }: AskIndexModalProps) 
               <button
                 key={s}
                 onClick={() => { setInput(s); run(s); }}
-                className="group inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary bg-muted/40 hover:bg-primary/[0.06] border border-border hover:border-primary/40 rounded-full px-3 py-1.5 transition-all"
+                className="group inline-flex min-h-11 items-center gap-1 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-[11px] text-muted-foreground transition-all hover:border-primary/40 hover:bg-primary/[0.06] hover:text-primary lg:min-h-0"
               >
                 <span className="opacity-50 group-hover:opacity-100 transition-opacity">+</span>
                 {s.length > 40 ? s.slice(0, 40) + '...' : s}
