@@ -4,6 +4,7 @@ const FUNCTIONS = 'https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1';
 const SITE = process.env.PULSE_URL || 'https://pulse.fractionl.ai';
 const SKIP_SITE = process.env.SKIP_SITE === '1' || process.argv.includes('--skip-site');
 const results = [];
+let currentOverall;
 
 async function check(name, run) {
   const started = Date.now();
@@ -29,6 +30,7 @@ await check('public current index contract', async () => {
   const { response, body } = await json(`${FUNCTIONS}/fwi-api/current`);
   assert.equal(response.status, 200);
   assert.equal(typeof body?.score?.overall, 'number');
+  currentOverall = body.score.overall;
   assert.equal(response.headers.get('x-fwi-score'), String(body.score.overall));
   assert.ok(body.meta.dataCompleteness >= 0 && body.meta.dataCompleteness <= 1);
   assert.ok(Object.hasOwn(body.score, 'delta30dComparedWith'));
@@ -172,6 +174,12 @@ await check('Ask Pulse streams an evidence-bounded answer', async () => {
   assert.match(last, /INTERPRETATION:/i);
   assert.match(last, /ACTION:/i);
   assert.doesNotMatch(last, /real-time|backtested|predictive accuracy/i);
+  const escapedOverall = String(currentOverall).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  assert.doesNotMatch(
+    last,
+    new RegExp(`Fractional CMO (?:demand|score)[^\\n]{0,40}\\b${escapedOverall}\\b`, 'i'),
+    'Ask Pulse must not relabel the market-wide FWI as a CMO demand score',
+  );
 });
 
 if (!SKIP_SITE) {

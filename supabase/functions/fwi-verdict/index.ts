@@ -2,7 +2,7 @@
 //
 // A visitor types one line ("fractional CMO in the US, deciding whether to raise
 // rates"). This streams back a personalized, chart-evidenced verdict grounded
-// ONLY in this week's real FWI, the relevant role's signal, and the movers, with
+// ONLY in this week's real FWI and any explicitly available role mover, with
 // the Do-Not-Say truth-discipline enforced in the system prompt.
 //
 // Safety: origin-restricted to the Pulse site (not an open LLM proxy), short
@@ -74,6 +74,8 @@ const SYSTEM = `You are the analyst voice of Pulse, publisher of the Fractional 
 
 Rules you must never break (truth-discipline):
 - Use ONLY the live FWI data provided in the user message. Do not invent numbers.
+- The Overall FWI is market-wide. NEVER rename or restate it as a role score, role demand, or a score for the user's role.
+- This payload does not contain an absolute role-demand score. Only cite a role-specific fact when the user message explicitly supplies a permitted role mover for that role. If it says none is available, state that plainly.
 - Never say "real-time data", "backtested", "years of data", or any predictive-accuracy percentage. The FWI is a weekly index (daily ingest, weekly settle).
 - Only the 6 C-suite roles exist (fractional CFO, CMO, CTO, COO, CRO, interim CEO). US primary. Publisher is Fractionl, not an official index.
 - A role mover is a cross-sectional comparison with the current market average. It is NEVER a week-over-week increase, decline, surge, or drop.
@@ -169,7 +171,8 @@ serve(async (req) => {
   // The /fwi-api/current payload emits movers as { role, changePct, ... } (camelCase).
   // Reading snake_case here previously produced "Fractional CMO undefined%" for every
   // mover, so the model got no role signal and every verdict collapsed to a generic read.
-  const movers = (ctx?.topMovers || []).slice(0, 5)
+  const currentMovers = (ctx?.topMovers || []).slice(0, 5);
+  const movers = currentMovers
     .map((m) => {
       const who = m.role ?? m.skill ?? '';
       const chg = m.changePct ?? m.change_pct;
@@ -180,11 +183,21 @@ serve(async (req) => {
   const demand = componentScore(ctx?.score?.components?.demand);
   const supply = componentScore(ctx?.score?.components?.supply);
   const culture = componentScore(ctx?.score?.components?.culture);
+  const roleMover = role
+    ? currentMovers.find((m) => (m.role ?? m.skill ?? '').toLowerCase() === role.toLowerCase())
+    : undefined;
+  const roleMoverChange = roleMover?.changePct ?? roleMover?.change_pct;
+  const permittedRoleFact = !role
+    ? 'No user role was identified.'
+    : roleMover && roleMoverChange != null
+      ? `${role} is ${roleMoverChange > 0 ? '+' : ''}${roleMoverChange}% vs the current market average. This is a cross-sectional mover, not a role score or time change.`
+      : `No current role-specific evidence for ${role} is available in this payload. Do not infer one from the Overall FWI or its component pillars.`;
 
   const dataBlock = `Live FWI data (as of ${ctx.meta.asOf}):
-- Overall FWI: ${score} of 100 (${label}), 30-day change ${delta >= 0 ? '+' : ''}${delta}, compared with ${ctx?.score?.delta30dComparedWith || 'the nearest available observation 30 days earlier'}
+- Overall market FWI: ${score} of 100 (${label}), 30-day change ${delta >= 0 ? '+' : ''}${delta}, compared with ${ctx?.score?.delta30dComparedWith || 'the nearest available observation 30 days earlier'}. This is market-wide and MUST NOT be described as role demand or a score for ${role || 'any role'}.
 - Demand pillar: ${demand}; Supply: ${supply}; Culture: ${culture}
 - Cross-sectional movers vs the current market average (NOT time changes): ${movers || 'n/a'}
+- Permitted role-specific fact: ${permittedRoleFact}
 - SEC Form D filing velocity is financing context. Do not claim it predicts future fractional demand; that relationship has not been validated.
 ${role ? `- The user appears to be a ${role}.` : ''}`;
 
@@ -196,7 +209,7 @@ ${role ? `- The user appears to be a ${role}.` : ''}`;
     body: JSON.stringify({
       model: 'gpt-4o-mini',
       stream: true,
-      temperature: 0.5,
+      temperature: 0,
       max_tokens: 350,
       messages: [
         { role: 'system', content: SYSTEM },
