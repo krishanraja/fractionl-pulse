@@ -9,7 +9,7 @@ _Source of truth for the system as it ships today. 21 live data sources, core an
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │                  CLIENT (React 18 + Vite SPA)                     │
-│  Dashboard · Signals · AI Insights · Methodology · Settings · Auth│
+│  Index · Your Role · Signals · Interpretation · Sources · Ask · Auth│
 │  React Query (5min refetch) + Supabase Realtime subscriptions     │
 └──────────────────────────────┬───────────────────────────────────┘
                                │ HTTPS
@@ -40,9 +40,9 @@ _Source of truth for the system as it ships today. 21 live data sources, core an
 | Function | Purpose | Trigger |
 |----------|---------|---------|
 | `prepare-dataforseo-jobs` | Submits six idempotent, normal-priority Google Jobs tasks and records their non-secret task IDs in `pipeline_runs`; chargeable POSTs are never automatically retried. A manual `retry_rejected_auth=true` is accepted only for a definitive HTTP 401 ledger with zero task IDs | Supabase `pg_cron` at 05:00 UTC + manual |
-| `ingest-signals` | Pulls 21 tracked inputs, normalizes 0–100, runs anomaly guard, upserts `signals`, then fires `calculate-fwi` | Supabase `pg_cron` at 06:00 UTC, Vercel retry/backstop, and manual |
+| `ingest-signals` | Pulls 21 tracked inputs, normalizes 0–100, runs anomaly guard, upserts `signals`, then fires `calculate-fwi` | Vercel daily and Monday schedules, Supabase Monday backstop, and manual |
 | `calculate-fwi` | Composites signals into FWI and writes `fwi_scores`; role movers compare with the current six-role average, while non-role movers compare with the prior observation | Called by `ingest-signals` |
-| `generate-pulse-insights` | GPT-4o-mini insight cards, 12-hour cache via `valid_until`; requires the service-role bearer and anchors related queries to the latest settled score date | Scheduled/internal pipeline only |
+| `generate-pulse-insights` | GPT-4o-mini insight cards, 12-hour cache via `valid_until`; requires the service-role bearer and anchors related queries to the latest score date | Internal pipeline invocation |
 | `fwi-api` | Public REST API: `/current`, `/history?months=N`, `/trigger`. Accepts an optional `x-api-key` header for per-key operational rate accounting; anonymous reads stay free | Always-on |
 | `export-brief` | Markdown weekly intelligence brief, `?format=json` available | Always-on (`/export-brief`) |
 | `manage-api-key` | Self-serve operational API-key issuance for signed-in users: mint (POST), list (GET), revoke (DELETE). Plaintext key returned exactly once at creation; only the SHA-256 hash is stored | Called from the dashboard `/pricing` page (user JWT) |
@@ -60,10 +60,10 @@ _Source of truth for the system as it ships today. 21 live data sources, core an
 }
 ```
 
-- `daily-ingest.ts` — runs full ingest + insights + retries (2 retries, 5s backoff), writes `pipeline_runs`, fires `send-pipeline-alert` on failure.
-- `weekly-ingest.ts` — Monday backstop run. Same retry envelope.
-- Supabase `pg_cron` submits DataForSEO Google Jobs tasks at 05:00 UTC and runs the daily ingest at 06:00 UTC. The one-hour separation lets the standard async Jobs tasks settle before retrieval.
-- Vercel cron remains a retrying trigger and weekly backstop for ingest. It does not submit paid DataForSEO Jobs tasks.
+- `daily-ingest.ts`: runs full ingest and insights with two retries and 5-second backoff, writes `pipeline_runs`, and fires `send-pipeline-alert` on failure.
+- `weekly-ingest.ts`: Monday backstop run with the same retry envelope.
+- Production readback on 11 August 2026 showed Supabase `pg_cron` preparing DataForSEO Google Jobs tasks at 05:00 UTC and retaining a Monday 06:00 UTC ingest backstop. It did not show the older Supabase daily-ingest, daily-insights, or daily-redeploy jobs defined in historical migrations.
+- Vercel schedules the main daily ingest at 06:00 UTC and a redundant Monday run. Neither Vercel route submits paid DataForSEO Jobs tasks.
 - The legacy `SERP_API_KEY` may remain in deployed secrets temporarily for rollback, but no current function reads it or calls `serpapi.com`.
 
 ---
@@ -99,7 +99,7 @@ CREATE INDEX signals_date_type_idx ON signals(date, signal_type);
 
 ### `fwi_scores`
 
-Weekly composite results.
+Score observations written after successful calculation runs.
 
 ```sql
 CREATE TABLE fwi_scores (
@@ -107,7 +107,7 @@ CREATE TABLE fwi_scores (
   date date NOT NULL UNIQUE,
   overall_score numeric(5,2) NOT NULL,
   demand_score numeric(5,2) NOT NULL,
-  supply_score numeric(5,2) NOT NULL,
+  supply_score numeric(5,2), -- nullable when no valid supply reading exists
   momentum_score numeric(5,2) NOT NULL,                  -- "culture" pillar (legacy column name)
   weights jsonb DEFAULT '{"demand":0.5,"supply":0.2,"momentum":0.3}',
   confidence numeric(3,2) DEFAULT 1.0,                   -- weighted source-completeness 0-1
@@ -121,7 +121,7 @@ When supply has no data for a given week, `weights` is rewritten to redistribute
 
 ### `movers`
 
-Top-moving roles & signals per weekly run.
+Top-moving roles and signals per calculation run.
 
 ```sql
 CREATE TABLE movers (
@@ -196,9 +196,11 @@ CREATE TABLE data_source_health (
 
 ```sql
 CREATE TABLE waitlist (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email text NOT NULL UNIQUE,
-  joined_at timestamptz NOT NULL DEFAULT now()
+  role_focus text,
+  source text,
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 -- anon insert allowed, service-role read only
 ```
@@ -292,7 +294,7 @@ Both views are publicly readable for the dashboard's `DataHealthCard`.
 
 ```
 demand_score   = avg(all 'demand' signals)
-supply_score   = avg(all 'supply' signals)   // = 0 if none reported
+supply_score   = avg(all valid 'supply' signals) // = null if none reported
 culture_score  = avg(all 'momentum' signals)
 
 if no supply data:
@@ -360,8 +362,8 @@ Full schema lives in [`AGENT_INTEGRATION.md`](./AGENT_INTEGRATION.md).
 - **State:** React hooks + `@tanstack/react-query` v5
 - **Data freshness:** Supabase Realtime channel `pulse-data-changes` subscribing to `fwi_scores`, `signals`, `cached_insights`, `data_source_health`. React Query cache is invalidated on every change event.
 - **Stale detection:** `useFWIData` flags `isStale` if latest `fwi_scores.date` is more than 48h old.
-- **Auth:** Supabase Auth (email magic link; fractional role captured at signup)
-- **Routing:** `react-router-dom` v6
+- **Auth:** Supabase Auth with email/password, password reset, and Google OAuth; fractional role is captured in profile state
+- **Routing:** `react-router-dom` v7
 
 ### Key Components
 
@@ -385,9 +387,9 @@ Full schema lives in [`AGENT_INTEGRATION.md`](./AGENT_INTEGRATION.md).
 
 ### Performance
 
-- Code-splitting on Index, Login, NotFound routes
+- Index and role pages render through the eager Pulse instrument; Login, Pricing, and NotFound are route-level lazy imports
 - Lazy-loaded charts and Methodology drawer
-- 12-week historical backfill primes trendlines on first load
+- The history API exposes up to 12 months of mixed-frequency observations; daily score rows accumulate from June 2026
 - React Query `refetchInterval: 5min` + Realtime invalidation
 
 ---

@@ -241,10 +241,10 @@ Agent calls `get_fractional_working_index()`, labels role movers as cross-sectio
 Embed an FWI score badge on every product page. Refresh server-side every hour using `Cache-Control: max-age=3600`. Display `X-FWI-Label` as the band.
 
 **4. Weekly AI Market Brief**
-Newsletter agent calls `get_fwi_weekly_brief` every Monday morning, prepends an editorial intro, and ships. Citation block is already included.
+Newsletter agent calls `get_fwi_weekly_brief` every Monday morning and prepares an editorial draft. Publishing requires separate authority. The citation block is already included.
 
 **5. Sales Outbound Personalization**
-Outbound agent calls `get_fractional_working_index`, branches the email opener on the score band ("with the FWI sitting at 64 — Growing — for the third week running…"), and references `topMovers[0].role` to make the message land.
+Outbound agent calls `get_fractional_working_index`, verifies that the observation supports the proposed context, and prepares an account-specific draft. It must not claim a multi-week streak from a single snapshot. Sending and sequence enrolment require separate authority.
 
 **6. Agent Self-Briefing on Conversation Start**
 Customer-facing chat agent calls `get_fractional_working_index` on every new session and stores the snapshot in working memory. All subsequent answers reference today's actual market state.
@@ -253,7 +253,7 @@ Customer-facing chat agent calls `get_fractional_working_index` on every new ses
 
 ## Caching Guidance
 
-The composite settles weekly even though ingestion runs daily. Response headers:
+The composite is recalculated after each successful scheduled ingest. Weekly describes the brief and seven-day role context. Response headers:
 
 ```
 Cache-Control: public, max-age=3600, stale-while-revalidate=86400
@@ -261,7 +261,7 @@ X-FWI-Score: 62.4
 X-FWI-Label: Growing
 ```
 
-Cache aggressively. Inputs refresh daily and the product interprets the composite on a weekly cadence. For lightweight polling, read `X-FWI-Score` / `X-FWI-Label` headers without parsing the body.
+Cache in line with the response headers. The score is recalculated after successful scheduled ingestion, while the brief and role windows use weekly context. For lightweight polling, read `X-FWI-Score` / `X-FWI-Label` headers without parsing the body.
 
 ---
 
@@ -284,9 +284,11 @@ A signed-in user self-serves a free API key (1,000 requests/day) at `pulse.fract
 
 - "Years of historical data": the index has 12+ months of history (from August 2025; full three-pillar composite from April 2026), not years.
 - "Peer-reviewed", "academically validated", or "backtested": none of these are true.
-- "Real-time market intelligence": this phrase is forbidden. It is daily ingest with a weekly composite settle. Say "weekly index" or "live dashboard" instead.
+- "Real-time market intelligence": this phrase is forbidden. Say "recalculated after successful scheduled ingestion" or "current public instrument" instead.
 - Coverage of non-C-suite fractional roles: only the 6 C-suite roles are tracked (fractional CFO, CMO, CTO, COO, CRO, interim CEO).
 - An official, institutional, or government index: the publisher is Fractionl, a private composite.
 - Any claim that Form D filings predict fractional hiring. Pulse tracks them as financing context, and the relationship to future demand has not been validated.
 
 See [`AGENT_BRIEFING.md`](./AGENT_BRIEFING.md) for the full truth-discipline list and outbound playbook.
+
+See [`AUTONOMOUS_GTM_PLAYBOOK.md`](./AUTONOMOUS_GTM_PLAYBOOK.md) for research, qualification, drafting, and external-action boundaries.

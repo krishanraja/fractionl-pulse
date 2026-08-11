@@ -3,13 +3,15 @@
 **Canonical strategy:** [CORPORATE_STRATEGY.md](CORPORATE_STRATEGY.md)
 **Current offer:** Free public instrument plus an application-only Founding Benchmark Partner pilot
 
+**Agent operating contract:** [AUTONOMOUS_GTM_PLAYBOOK.md](AUTONOMOUS_GTM_PLAYBOOK.md). An autonomous agent may research, score, brief, and draft. It must not send, publish, enrol a sequence, spend, change pricing, mutate a CRM, upload customer data, invoice, or contract without separate explicit authority.
+
 ## Who to contact
 
 Prioritise US and UK specialist fractional-executive marketplaces, staffing and placement firms, and collectives that:
 
 - Place several C-suite functions
 - Complete at least 50 engagements a year
-- Have approximately 5 to 50 staff or £1 million to £30 million in revenue
+- Are typically around 5 to 50 staff or £1 million to £30 million in revenue, used as a targeting heuristic rather than a hard gate
 - Store structured engagement data in an ATS, CRM, or marketplace
 - Lack an independent market-intelligence function
 - Can contribute anonymised records under a data agreement

@@ -12,7 +12,7 @@ The credibility and value of the FWI depend entirely on the quality, breadth, an
 
 > **Pre-cutover production readback, 2026-08-11 02:16 UTC:** the pipeline wrote the day's observation successfully at FWI **51.5 (Stable)**, but the read was degraded at **0.63 weighted completeness** with **13 contributing sources**. The principal incident was an exhausted SerpAPI account affecting four inputs. Guardian returned 401, GoFractional returned 403, NewsAPI was silent, and FRED had never delivered. This historical readback is retained as the rollout baseline; the DataForSEO cutover must be verified against the release gates below before this note is superseded.
 
-> **Post-cutover production readback, 2026-08-11 17:49 UTC:** the same-day ingest completed with **20 healthy sources**, **0.95 run-reported completeness**, and FWI **51.4 (Stable)**. All four legacy `serpapi_*` index inputs delivered through DataForSEO; Guardian and NewsAPI were healthy; BLS wrote three context rows and FRED wrote one Initial Jobless Claims row. Anomaly rejection and the pre-authorization GoFractional failure left persisted current-day completeness at **0.81 across 17 sources**. The official Apify actor was subsequently authorized and a bounded Console canary returned the first-party published count of **15,000** for **$0.011**. The next scheduled ingest will update GoFractional's production `last_success` and is expected to restore persisted completeness to at least 0.85.
+> **Post-cutover production readback, 2026-08-11:** the latest score is **51.4 (Stable)** with **0.81 persisted confidence** from 17 contributing sources. The live health table contains the 21 current tracked source IDs. GoFractional was the only current source marked failed and its last successful observation was 2026-07-03. DataForSEO Trends, NewsAPI, and DataForSEO supply-intent trends were marked healthy but their most recent persisted signals were 12, 4, and 7 days old respectively. All four legacy `serpapi_*` IDs use DataForSEO provider metadata. Source health is dynamic, so query `data_source_health` before making a current operational claim.
 
 ### Demand pillar (50% weight)
 
@@ -55,6 +55,10 @@ The credibility and value of the FWI depend entirely on the quality, breadth, an
 | **OpenAlex** | Academic / thought-leadership coverage | OpenAlex API | Live since 2026-02 |
 | **FRED** | Initial Jobless Claims only | FRED API | Unique claims context; retained at the lower 0.01 confidence weight |
 
+### Historical provenance snapshot
+
+Production held 206 score rows on 11 August 2026. Seventy-one rows had measured supply, 76 had unmeasured supply, and 38 older rows carried an explicit `simulated_estimate` supply label from the bounded June backfill. The history API carries the `dataQuality` provenance object for these observations. Do not present the history as uniform measured data and do not remove provenance labels from exports or agent summaries.
+
 ### Retired sources (2026-05-30)
 
 These had been failing every run for weeks and are fully covered by replacements. Their historical signals remain in the `signals` table.
@@ -72,7 +76,7 @@ These had been failing every run for weeks and are fully covered by replacements
 
 ## 2. Source-Confidence Weights
 
-Each source has a domain-weighted contribution to the data-completeness score, baked into `SOURCE_CONFIDENCE_WEIGHTS` in `supabase/functions/ingest-signals/index.ts` (that constant is authoritative; this table mirrors it as of 2026-08-06):
+Each source has a domain-weighted contribution to the data-completeness score, baked into `SOURCE_CONFIDENCE_WEIGHTS` in `supabase/functions/ingest-signals/index.ts` (that constant is authoritative; this table mirrors it as of 2026-08-11):
 
 | Source | Weight |
 |--------|--------|
@@ -98,7 +102,7 @@ Each source has a domain-weighted contribution to the data-completeness score, b
 | FRED | 0.01 |
 | Census ACS | 0.01 |
 
-Weights reflect signal-quality + uniqueness, not raw volume. They do **not** measure prediction accuracy.
+Weights reflect signal quality and uniqueness, not raw volume. They affect reported confidence only. The three score pillars average their valid normalized observations and then use the published 50/20/30 pillar weights. Source-confidence weights do **not** alter the score and do **not** measure prediction accuracy.
 
 ---
 
@@ -147,7 +151,7 @@ Deliverability: sends go from `ALERT_FROM` (default `alerts@fractionl.ai`). As o
 ### Live now
 
 - 🟢 **Public no-auth REST API** — as of 2026-05-30, `supabase/config.toml` sets `verify_jwt=false` for `fwi-api` and `export-brief`, and `fwi-api` was redeployed. The documented bare curl now returns HTTP 200 (previously 401 `UNAUTHORIZED_NO_AUTH_HEADER` from the gateway). The agent-native, query-in-two-minutes, no-auth claim is now true.
-  - `GET /fwi-api/current` (no auth) — latest weekly composite + components + weights + delta30d + top movers + full source breakdown + meta (dataCompleteness, nextUpdate). Returns `Cache-Control` and `X-FWI-Score` / `X-FWI-Label` headers.
+  - `GET /fwi-api/current` (no auth): latest score observation, components, weights, delta30d, top movers, source breakdown, and meta fields. `meta.nextUpdate` is a legacy next-Sunday marker, not the daily ingest time. Returns `Cache-Control` and `X-FWI-Score` / `X-FWI-Label` headers.
   - `GET /fwi-api/history?months=N` (no auth, N clamped 1–12) — observed score rows across the requested period.
   - `GET /export-brief` (no auth) — `?format=markdown` (default, downloadable .md) or `?format=json`.
   - `POST /fwi-api/trigger` — service-role bearer only (NOT public).

@@ -11,9 +11,10 @@ Pulse is the independent market instrument for fractional leadership, showing wh
 - A free public 0 to 100 Fractional Working Index
 - Demand, supply, and culture components
 - Six role-demand pages: CFO, CMO, CTO, COO, CRO, and interim CEO
-- Mixed-frequency history interpreted on a weekly cadence
+- A score recalculated after each successful scheduled ingest, plus a weekly brief and seven-day role windows
 - Public REST endpoints, hosted MCP tools, and a weekly brief
 - Visible methodology, data completeness, and source health
+- Ask the Index, a grounded question interface with a 280-character input limit
 
 ## Who uses it for free
 
@@ -85,16 +86,29 @@ Current MCP tools:
 
 Anonymous reads are free. Optional API keys support operational rate controls; they are not the commercial offer.
 
+## Operating rules
+
+Before doing work, retrieve these sources in order:
+
+1. `https://pulse.fractionl.ai/product-truth.json`
+2. The live `/fwi-api/current` response when the task depends on the current market reading
+3. [AUTONOMOUS_GTM_PLAYBOOK.md](AUTONOMOUS_GTM_PLAYBOOK.md) for marketing or sales work
+4. [SALES_PLAYBOOK.md](SALES_PLAYBOOK.md) for qualification, discovery, or proposals
+
+An agent may research public information, score prospects, prepare briefs, draft content and outreach, and recommend a CRM stage with evidence. Sending, publishing, sequence enrolment, spend, price changes, CRM mutation, customer-data upload, invoicing, and contracting require separate explicit authority.
+
 ## Rules for claims
 
 - Fetch the live score rather than hardcoding a reading.
 - Say “21 tracked inputs,” not “21 independent, healthy sources.”
-- Say “refreshes daily and is interpreted weekly,” not “real-time.”
+- Say “recalculated after successful daily ingestion, with a weekly brief and seven-day role windows,” not “real-time” or “weekly composite.”
 - Acknowledge that current role-demand collectors are US-scoped and cover six roles only. UK cultural material is not a UK market benchmark.
 - Treat role pages as demand indices. Do not invent role-level supply.
 - Do not say the Form D signal predicts demand unless validation supports that claim.
 - Do not promise private cohorts before record-count, privacy, and three-partner independence thresholds are met.
 - Never position advertising companies, publishers, media, journalists, or individual executives as the primary buyer.
+- Never present legacy consumer subscription, checkout, Stripe, or waitlist infrastructure as a live offer.
+- Treat `meta.nextUpdate` as a legacy next-Sunday marker. Use `meta.asOf` and production schedule readback for freshness.
 
 ## Primary call to action
 
@@ -102,3 +116,5 @@ Anonymous reads are free. Optional API keys support operational rate controls; t
 - Qualified firm: **Apply to become a Benchmark Partner** at `data@fractionl.ai`
 
 Canonical commercial strategy: [CORPORATE_STRATEGY.md](CORPORATE_STRATEGY.md)
+
+Documentation governance: [DOCUMENTATION_GOVERNANCE.md](DOCUMENTATION_GOVERNANCE.md)

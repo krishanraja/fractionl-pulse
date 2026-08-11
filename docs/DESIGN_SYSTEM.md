@@ -19,7 +19,7 @@ The interface follows three evidence levels:
 | Index | Current FWI, 30-day movement, timeline, components, and data coverage | Public |
 | My role | Current advertised-demand read for one of six C-suite roles | Public; selection persists locally or to the signed-in profile |
 | Signals | Role and source observations | Public |
-| Interpretation | Cached AI analysis grounded in the latest settled score | Public; unavailable state is explicit |
+| Interpretation | Cached AI analysis grounded in the latest score observation | Public; unavailable state is explicit |
 | Sources | Health, provenance, and methodology limits | Public |
 | Ask the Index | One-question, evidence-bounded explanation | Public; origin-restricted and rate-limited |
 | Partner access | Founding Benchmark Partner application path | Public application; no self-serve paid tier |

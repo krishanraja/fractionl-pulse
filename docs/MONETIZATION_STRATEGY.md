@@ -3,6 +3,8 @@
 **Canonical strategy and evidence:** [CORPORATE_STRATEGY.md](CORPORATE_STRATEGY.md)
 **Status:** Pricing hypotheses for validation, not transaction-validated prices
 
+The current pricing page displays the live free instrument, the £1,500 Founding Benchmark Partner validation offer, and the conditional enterprise tier. The £6,000 Benchmark Membership is strategy-defined but is not displayed as a live tier. Legacy consumer subscription and Stripe infrastructure is dormant and is not a current offer.
+
 ## Commercial model
 
 Pulse separates the public instrument from the paid benchmark.
@@ -64,3 +66,4 @@ These anchors make the tests plausible. They do not validate Pulse's prices.
 - Do not call a plan generally available until its release gate is met.
 - Do not sell a public-source export as a proprietary benchmark.
 - Do not display a cohort below the approved privacy and independent-partner thresholds.
+- Do not let an autonomous agent change a price, issue an invoice, or contract without separate explicit authority.

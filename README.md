@@ -12,7 +12,7 @@ Pulse covers fractional CFO, CMO, CTO, COO, CRO, and interim CEO roles. Current 
 FWI = (Demand × 0.50) + (Supply × 0.20) + (Culture × 0.30)
 ```
 
-Sources refresh daily and the composite is interpreted on a weekly cadence. Pulse is a private composite published by Fractionl, not an official or government index. It is not real-time, peer-reviewed, academically validated, backtested, or a promise of future market performance.
+Pulse recalculates after each successful scheduled ingest. DataForSEO job tasks are prepared at 05:00 UTC, Vercel calls the main ingest at 06:00 UTC daily, and Monday has redundant ingest coverage. Weekly describes the briefing cycle and the seven-day role windows, not the score calculation frequency. Pulse is a private composite published by Fractionl, not an official or government index. It is not real-time, peer-reviewed, academically validated, backtested, or a promise of future market performance.
 
 ## Who it serves
 
@@ -31,7 +31,7 @@ The first commercial hypothesis is a specialist fractional-executive marketplace
 
 - Places several C-suite functions
 - Completes at least 50 engagements per year
-- Has approximately 5 to 50 staff or £1 million to £30 million in revenue
+- Is typically around 5 to 50 staff or £1 million to £30 million in revenue, used as a targeting heuristic rather than a hard gate
 - Stores structured engagement data in an ATS, CRM, or marketplace
 - Lacks an independent market-intelligence function
 - Can contribute privacy-safe anonymised engagement records
@@ -78,11 +78,11 @@ See [docs/CORPORATE_STRATEGY.md](docs/CORPORATE_STRATEGY.md) for the evidence ma
 - Current FWI, demand, supply, and culture components
 - Twelve months of mixed-frequency history, with daily observations accumulating since June 2026
 - Six role-demand pages and cross-sectional role movement
-- Weekly market brief and machine-readable discovery surfaces
+- Weekly market brief, Ask the Index, and machine-readable discovery surfaces
 - Public REST endpoints and four hosted MCP tools
 - Data completeness and per-source health
 - Supabase Auth for saved account context
-- Daily scheduled ingestion and pipeline alerts
+- Daily scheduled ingestion, Monday backstops, and pipeline alerts
 
 Historical coverage is not uniform. Supply and culture do not have live coverage across the entire displayed period. Role pages measure demand, not role-specific supply.
 
@@ -155,7 +155,7 @@ The SEC Form D input is treated as a financing-context signal that may precede s
 | Backend | Supabase Postgres and Edge Functions |
 | Auth | Supabase Auth |
 | AI summaries | OpenAI model invoked from server-side functions, with caching and rate controls |
-| Scheduling | Supabase `pg_cron` for 05:00 DataForSEO Jobs preparation and 06:00 ingest, with Vercel retry/backstop triggers |
+| Scheduling | Supabase `pg_cron` prepares DataForSEO Jobs at 05:00 UTC; Vercel schedules the main ingest at 06:00 UTC daily and a Monday backstop; Supabase retains a Monday ingest backstop |
 | Deployment | Vercel at `pulse.fractionl.ai` |
 
 Core Edge Functions:
@@ -208,6 +208,7 @@ See [.env.example](.env.example) for the complete integration list. Never commit
 npx tsc --noEmit
 npm run build
 npm run lint
+npm run docs:audit
 npm run audit
 npm run audit:json
 npm run smoke:release -- --skip-site
@@ -224,6 +225,8 @@ The audit is read-only. It checks schedule adherence, source health, completenes
 | [Monetization strategy](docs/MONETIZATION_STRATEGY.md) | Packaging, price tests, and commercial rules |
 | [Sales playbook](docs/SALES_PLAYBOOK.md) | Qualification, discovery, pilot, objections, and outreach |
 | [Agent briefing](docs/AGENT_BRIEFING.md) | Current claims, offers, and prohibited language for AI agents |
+| [Autonomous GTM playbook](docs/AUTONOMOUS_GTM_PLAYBOOK.md) | Research, scoring, messaging, qualification, and proposal rules for autonomous marketing and sales agents |
+| [Documentation governance](docs/DOCUMENTATION_GOVERNANCE.md) | Truth hierarchy, status labels, ownership, and reconciliation rules |
 | [Design system](docs/DESIGN_SYSTEM.md) | Information architecture, branding, device-specific layouts, interaction rules, and release acceptance widths |
 | [Technical specification](docs/TECHNICAL_SPEC.md) | Architecture, schema, functions, and calculations |
 | [Agent integration](docs/AGENT_INTEGRATION.md) | REST response and integration reference |

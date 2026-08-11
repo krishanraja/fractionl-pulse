@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build && node scripts/prerender.mjs",
     "build:dev": "vite build --mode development && node scripts/prerender.mjs",
+    "docs:audit": "node scripts/docs-audit.mjs",
     "audit": "node scripts/pipeline-audit.mjs",
     "audit:json": "node scripts/pipeline-audit.mjs --json",
     "audit:baseline": "node scripts/pipeline-audit.mjs --update-baseline",

@@ -1,6 +1,11 @@
 {
-  "schema_version": "1.1",
-  "content_version": "2026-08-10",
+  "schema_version": "1.2",
+  "content_version": "2026-08-11",
+  "last_reconciled": {
+    "date": "2026-08-11",
+    "against": ["production Supabase state", "main branch runtime code", "public Pulse routes", "current commercial evidence"],
+    "governance": "docs/DOCUMENTATION_GOVERNANCE.md"
+  },
   "product": {
     "name": "Pulse by Fractionl",
     "index_name": "Fractional Working Index",
@@ -11,11 +16,12 @@
     "contact": "data@fractionl.ai"
   },
   "canonical_strategy": "docs/CORPORATE_STRATEGY.md",
+  "machine_contract_role": "Machine-readable mirror of the approved commercial and product truth. It does not override production readback or the canonical corporate strategy.",
   "one_liner": "Pulse is the independent market instrument for fractional leadership. It shows whether demand is expanding, which C-suite roles are moving, and how strong the evidence is.",
   "category": "Market intelligence and benchmarking for fractional leadership",
   "what_it_is": [
     "A free public 0-100 composite of fractional-leadership market health",
-    "A daily-refreshing instrument interpreted on a weekly cadence",
+    "An instrument recalculated after successful daily ingestion, with a weekly brief and seven-day role windows",
     "A transparent public distribution layer for readers, researchers, developers, and AI agents",
     "A future cross-partner benchmark, conditional on privacy-safe first-party engagement data"
   ],
@@ -39,7 +45,7 @@
       "segment": "Specialist fractional-executive marketplace, staffing or placement firm, or multi-company talent collective",
       "geography": "United States and United Kingdom",
       "firmographics": [
-        "Approximately 5-50 staff or £1m-£30m annual revenue",
+        "Approximately 5-50 staff or £1m-£30m annual revenue as a targeting heuristic, not a hard qualification gate",
         "At least 50 fractional or interim leadership engagements per year",
         "Places several C-suite functions",
         "Uses an ATS, CRM, marketplace, or structured engagement database",
@@ -109,8 +115,8 @@
       "culture": 0.3
     },
     "tracked_inputs": 21,
-    "cadence": "Sources refresh daily; the composite is interpreted weekly",
-    "history": "About 12 months of mixed-frequency history. Full three-pillar coverage does not exist for the entire period.",
+    "cadence": "DataForSEO Google Jobs tasks are prepared daily at 05:00 UTC. Vercel schedules the main ingest at 06:00 UTC daily and a Monday backstop at 06:00 UTC. Supabase also retains a Monday ingest backstop. The composite is recalculated after each successful ingest; the brief and role windows use a weekly context.",
+    "history": "The public API exposes up to 12 months of mixed-frequency observations. Daily score rows accumulate from June 2026; full three-pillar coverage does not exist for the entire period.",
     "publisher_status": "A private composite published by Fractionl, not an official or government index"
   },
   "offers": {
@@ -143,7 +149,8 @@
       "status": "conditional, not generally available",
       "release_gate": "At least ten active partners, 500 verified trailing-12-month engagements, approved suppression rules, and safe cohorts",
       "price_status": "hypothesis, not transaction-validated",
-      "includes": ["Five seats", "Cohort dashboard", "Quarterly briefing", "CSV or API export of proprietary benchmark outputs"]
+      "includes": ["Five seats", "Cohort dashboard", "Quarterly briefing", "CSV or API export of proprietary benchmark outputs"],
+      "ui_visibility": "Defined as a conditional strategy tier. It is not displayed as a live tier on the current pricing page."
     },
     "enterprise_portfolio": {
       "price": "From £15,000 per year",
@@ -172,7 +179,67 @@
     "history": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/history?months=N",
     "brief": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief",
     "role_indices": "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-roles",
-    "trigger_note": "POST /fwi-api/trigger is service-role only"
+    "trigger_note": "POST /fwi-api/trigger is service-role only",
+    "current_response_note": "meta.nextUpdate is a legacy weekly marker calculated as the next Sunday. Use meta.asOf and production schedule readback for freshness; do not treat nextUpdate as the next daily ingest time.",
+    "ask_the_index": {
+      "endpoint": "fwi-verdict",
+      "status": "live, browser-origin restricted",
+      "input_limit_characters": 280,
+      "rate_limit": "12 requests per network-derived key per hour",
+      "output": "Server-sent event stream with FACT, INTERPRETATION, and ACTION lines grounded in the current public FWI payload"
+    }
+  },
+  "live_product": {
+    "public_routes": ["/", "/fractional-cfo", "/fractional-cmo", "/fractional-cto", "/fractional-coo", "/fractional-cro", "/fractional-ceo", "/pricing", "/login"],
+    "instrument_views": ["Index", "Your role", "Signals", "Interpretation", "Sources and methods", "Ask the Index"],
+    "authentication": "Optional Supabase email/password and Google OAuth account for role persistence and API-key management. Public market surfaces do not require an account.",
+    "operational_api_keys": "Signed-in users may mint up to five active free keys. A free key is metered at 1,000 requests per day. Anonymous public reads remain unmetered.",
+    "content_radar": "Live as public REST, RSS, and two MCP tools. It reports relative content-signal movement, not search volume or market demand. It is not a primary navigation surface in the current Pulse instrument.",
+    "legacy_dormant": [
+      "Consumer subscription and Stripe tables and functions remain for compatibility",
+      "The client Pro gate never locks a public surface",
+      "Consumer checkout is not a current offer or route",
+      "Waitlist and historical account rows do not validate a paid product"
+    ]
+  },
+  "production_snapshot": {
+    "captured_at": "2026-08-11",
+    "volatile": true,
+    "instruction": "Fetch the public API and source-health state for any current claim. This snapshot records the evidence used for documentation reconciliation and must not be treated as a permanently current reading.",
+    "current_fwi": { "as_of": "2026-08-11", "overall": 51.4, "label": "Stable", "confidence": 0.81, "contributing_sources": 17 },
+    "source_health": {
+      "configured_current_sources": 21,
+      "failed": [{ "id": "gofractional", "last_success": "2026-07-03" }],
+      "healthy_but_stale_observations": [
+        { "id": "serpapi_trends", "days_stale": 12 },
+        { "id": "newsapi", "days_stale": 4 },
+        { "id": "serpapi_supply_trends", "days_stale": 7 }
+      ]
+    },
+    "history": { "score_rows": 206, "measured_supply_rows": 71, "unmeasured_supply_rows": 76, "simulated_supply_rows": 38 },
+    "active_supabase_crons": [
+      "pulse-prepare-dataforseo-jobs daily at 05:00 UTC",
+      "weekly-fwi-ingest Monday at 06:00 UTC",
+      "pulse-content-harvest Monday at 06:50 UTC",
+      "pulse-content-brief Monday at 07:10 UTC"
+    ]
+  },
+  "not_live": [
+    "Partner engagement-data ingestion",
+    "A production partner cohort dashboard",
+    "Approved cohort suppression thresholds",
+    "Automated partner-pilot billing or annual-plan checkout",
+    "Webhook threshold alerts",
+    "A generally available Benchmark Membership",
+    "A generally available enterprise benchmark"
+  ],
+  "commercial_operations": {
+    "primary_motion": "Founder-led, named-account validation",
+    "pilot_transaction_path": "Application, qualification, data and privacy review, approved scope, signed agreement, and manual invoicing",
+    "autonomous_agent_playbook": "docs/AUTONOMOUS_GTM_PLAYBOOK.md",
+    "sales_playbook": "docs/SALES_PLAYBOOK.md",
+    "agent_may": ["research public information", "score prospects", "draft account briefs", "draft outreach", "prepare discovery and proposals", "recommend CRM stage with evidence"],
+    "agent_requires_separate_authority_for": ["sending", "publishing", "sequence enrolment", "spend", "price changes", "CRM mutation", "uploading customer data", "issuing invoices", "contracting"]
   },
   "discovery": {
     "llms_txt": "https://pulse.fractionl.ai/llms.txt",
@@ -207,10 +274,12 @@
     "Do not say no competitor exists. Go Fractional publishes free demand and compensation benchmarks.",
     "Do not claim years of uniform historical data.",
     "Do not claim peer review, academic validation, backtesting, or a predictive-accuracy percentage.",
-    "Do not say real-time data or real-time market intelligence.",
+    "Do not say real-time data or real-time market intelligence. Say recalculated after successful daily ingestion and interpreted through a weekly brief or seven-day role window.",
     "Do not claim coverage beyond the six listed C-suite roles or turn UK cultural material into a UK market benchmark. Current role-demand collectors are US-scoped.",
     "Do not publish a per-role supply score. Current role pages measure demand.",
     "Do not claim the Form D signal predicts demand until that relationship is validated.",
-    "Do not use em dashes in user-facing copy."
+    "Do not use em dashes in user-facing copy.",
+    "Do not describe the legacy consumer subscription, Stripe, checkout, or waitlist infrastructure as a current Pulse offer.",
+    "Do not claim the Supabase daily ingest or deploy-hook crons are active. The production schedule must be read back before describing it."
   ]
 }

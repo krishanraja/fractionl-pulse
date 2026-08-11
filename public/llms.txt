@@ -27,7 +27,7 @@ All paid prices are hypotheses until customers pay. Conditional plans are not ge
 
 ## Coverage
 
-The FWI covers six role-demand lanes: fractional CFO, CMO, CTO, COO, CRO, and interim CEO. It blends 21 tracked inputs across Demand (50%), Supply (20%), and Culture (30%). Sources refresh daily and the composite is interpreted weekly. Current role-demand collectors are US-scoped. English-language cultural inputs can include UK material but do not create a UK market benchmark. Historical coverage is mixed-frequency and the full three-pillar composite does not exist for the entire period.
+The FWI covers six role-demand lanes: fractional CFO, CMO, CTO, COO, CRO, and interim CEO. It blends 21 tracked inputs across Demand (50%), Supply (20%), and Culture (30%). The score is recalculated after successful scheduled ingestion; the brief and role windows use weekly context. Current role-demand collectors are US-scoped. English-language cultural inputs can include UK material but do not create a UK market benchmark. Historical coverage is mixed-frequency and the full three-pillar composite does not exist for the entire period.
 
 ## REST API
 
@@ -62,14 +62,18 @@ Go Fractional already publishes free demand, role, and compensation benchmarks. 
 
 - Fetch the current score rather than hardcoding it.
 - Say “21 tracked inputs,” not “21 independent healthy sources.”
-- Say “refreshes daily and is interpreted weekly,” not “real-time.”
+- Say “recalculated after successful scheduled ingestion, with a weekly brief and seven-day role windows,” not “real-time” or “weekly composite.”
 - Do not claim peer review, academic validation, backtesting, or predictive accuracy.
 - Do not invent role-level supply. Role pages measure demand.
 - Do not sell an individual executive a benchmark-only subscription.
 - Do not describe a publisher, journalist, AI agent, or advertising company as the economic buyer.
 - Do not call paid plans generally available before their dataset release gates are met.
+- Do not describe legacy consumer subscriptions, checkout, Stripe, or waitlist infrastructure as a current offer.
+- Research, scoring, briefs, drafts, and recommendations may be automated. Sending, publishing, sequence enrolment, spend, pricing changes, CRM writes, customer-data upload, invoicing, and contracting require separate explicit authority.
 
 Machine-readable truth: https://pulse.fractionl.ai/product-truth.json
+
+Autonomous GTM operating rules: https://github.com/krishanraja/fractionl-pulse/blob/main/docs/AUTONOMOUS_GTM_PLAYBOOK.md
 
 Public product: https://pulse.fractionl.ai
 

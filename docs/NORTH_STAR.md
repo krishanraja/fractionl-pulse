@@ -22,7 +22,7 @@ No cohort is publishable unless it meets the agreed minimum record count and inc
 
 ## Current product and paid hypothesis
 
-- **Live:** Free public index, components, history, role pages, brief, REST API, MCP tools, and methodology.
+- **Live:** Free public index, components, mixed-frequency history, six US-scoped role-demand pages, Ask the Index, weekly brief, REST API, MCP tools, sources and methods, optional accounts, and free API-key management.
 - **Validation offer:** £1,500 for a 90-day Founding Benchmark Partner pilot, maximum ten firms.
 - **Conditional annual offer:** £6,000 per year only after ten active partners and 500 verified engagements.
 - **Conditional enterprise offer:** From £15,000 per year only after 1,500 verified engagements and sufficient cohort coverage.
@@ -32,6 +32,8 @@ Paid prices are hypotheses until real customers pay. The free API is a distribut
 ## Explicit non-goals
 
 Pulse is not for adtech or publishers. It is not a job marketplace, career coach, official index, personal rate adviser, or generic staffing data feed. Individual fractional executives are the free audience, not the primary economic buyer.
+
+Pulse does not yet publish a UK market benchmark, role-level executive availability, partner engagement-data ingestion, a partner cohort dashboard, automated partner billing, or a generally available paid benchmark.
 
 ## Near-term validation gate
 

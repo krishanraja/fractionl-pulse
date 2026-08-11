@@ -44,7 +44,7 @@ These endpoints are genuinely no-auth in production. As of 2026-05-30 the exact 
 
 ### `GET /fwi-api/current`
 
-Returns the latest weekly score with all components and top movers.
+Returns the latest score observation with all components and top movers. The score is recalculated after each successful scheduled ingest.
 
 ```bash
 curl https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current
@@ -125,7 +125,7 @@ interface FWICurrentResponse {
     dataSource: 'live' | 'partial';       // 'live' if confidence >= 0.75
     dataCompleteness: number;             // 0-1, weighted source completeness
     dataCompletenessNote: string;         // disclaimer that this is NOT prediction accuracy
-    nextUpdate: string;                   // ISO timestamp of next scheduled run
+    nextUpdate: string;                   // legacy next-Sunday marker; do not use as daily schedule truth
   };
   score: {
     overall: number;                      // 0-100
@@ -135,7 +135,7 @@ interface FWICurrentResponse {
     delta30dComparedWith: string | null;  // date of the observed comparison row
     components: {
       demand: {
-        score: number;
+        score: number | null;
         weight: number;                   // 0.5 normally, redistributed if pillar is empty
         sources: string[];
       };
@@ -183,10 +183,10 @@ interface FWIHistoryResponse {
     date: string;
     overall: number;
     demand: number;
-    supply: number;
+    supply: number | null;
     culture: number;                      // exposed as 'culture' on output (column is 'momentum_score')
     label: string;
-    confidence: number;                   // 0-1, data completeness for that week
+    confidence: number;                   // 0-1, data completeness for that observation
     dataQuality: {
       supply: 'measured' | 'unmeasured';
       supply_signal_count: number;
@@ -271,10 +271,10 @@ Pulse uses Form D filing velocity as one financing-context input. Go Fractional 
 
 ## Caching Strategy
 
-The pipeline runs daily but the FWI composite settles weekly. Build integrations accordingly:
+The main pipeline is scheduled daily and the FWI is recalculated after each successful ingest. The weekly brief and role endpoint use weekly context. Build integrations accordingly:
 
 - **Widgets / embeds:** serve from your own cache, refresh every 24h
-- **AI agent context:** cache in session memory for 24h, re-fetch on Monday
+- **AI agent context:** cache in session memory for no more than 24 hours; re-fetch whenever the task requires the current reading
 - **API responses:** `Cache-Control: public, max-age=3600, stale-while-revalidate=86400` on `/current`
 - **Lightweight polling:** read `X-FWI-Score` / `X-FWI-Label` headers without parsing body
 - **Webhook alternative (planned):** subscribe via webhook when threshold alerts ship
@@ -323,7 +323,7 @@ See [`MCP_TOOL.md`](./MCP_TOOL.md) for the full tool definition, Claude/OpenAI i
 **1. AI Talent Scout**
 > "Is now a good time for a Series B company to hire a fractional CMO?"
 
-→ Query `/fwi-api/current`, read demand score + CMO mover position + culture trend, return timing recommendation.
+→ Query `/fwi-api/current`, read the demand score, CMO comparison, and culture trend, then return measured context and material limitations. Do not convert the index into personal or deterministic hiring advice.
 
 **2. VC Portfolio Analyst**
 > "Which fractional executive roles are seeing the most demand growth this quarter?"
@@ -338,18 +338,18 @@ See [`MCP_TOOL.md`](./MCP_TOOL.md) for the full tool definition, Claude/OpenAI i
 **4. Weekly Market Brief Newsletter**
 > Automated newsletter writer.
 
-→ Pull `/export-brief` every Monday, paste Markdown into the newsletter template, ship.
+→ Pull `/export-brief` every Monday and prepare a newsletter draft. Publishing requires separate authority.
 
 **5. Sales Outbound Agent**
 > Agent that writes personalized outbound based on weekly market state.
 
-→ Pull `/current`, branch the email opener on `score.label`, reference `topMovers[0].role` for relevance.
+→ Pull `/current`, use only defensible context, and prepare a draft. Sending or sequence enrolment requires separate authority.
 
 ---
 
 ## Operational Notes
 
-- Supabase `pg_cron` prepares DataForSEO Jobs at **05:00 UTC** and runs ingestion at **06:00 UTC**. Vercel retains retry and Monday backstop triggers.
+- Supabase `pg_cron` prepares DataForSEO Jobs at **05:00 UTC** and retains a Monday 06:00 UTC ingest backstop. Vercel schedules the main 06:00 UTC daily ingest and a Monday backstop.
 - On failure, `send-pipeline-alert` triggers a Resend email — pipeline reliability is monitored, not hoped for.
 - The dashboard uses **Supabase Realtime** subscriptions on `fwi_scores`, `signals`, `cached_insights`, and `data_source_health` — your dashboard updates within seconds of a successful pipeline run, not on the next user refresh.
 - Per-source health is exposed via the public-readable `data_source_health` table for any agent that wants to audit which sources reported in a given week.

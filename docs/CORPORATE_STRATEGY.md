@@ -1,6 +1,6 @@
 # Pulse Corporate Strategy
 
-**Status:** Canonical commercial strategy as of 10 August 2026
+**Status:** Canonical commercial strategy as of 11 August 2026
 
 **Owner:** Fractionl
 
@@ -8,6 +8,8 @@
 **Review trigger:** 25 qualified buyer interviews, 10 signed data-sharing letters of intent, or a material change to the index methodology
 
 This document is the source of truth for corporate strategy, ideal customer profile, packaging, pricing, and product marketing. `public/product-truth.json` is the machine-readable expression of the same strategy. Technical behaviour remains documented in the API and methodology files.
+
+The product truth hierarchy and document ownership rules are defined in [DOCUMENTATION_GOVERNANCE.md](DOCUMENTATION_GOVERNANCE.md). Marketing and sales agents must also follow [AUTONOMOUS_GTM_PLAYBOOK.md](AUTONOMOUS_GTM_PLAYBOOK.md). Production readback overrides prose when live state changes.
 
 ## 1. Strategic decision
 
@@ -47,7 +49,7 @@ The first question is live. The second is the paid product hypothesis and requir
 **Firmographic fit:**
 
 - Places multiple C-suite functions, rather than a single professional niche
-- Approximately 5 to 50 staff or £1 million to £30 million in annual revenue
+- Approximately 5 to 50 staff or £1 million to £30 million in annual revenue as a targeting heuristic, not a hard qualification gate
 - At least 50 fractional or interim leadership engagements per year
 - Uses an ATS, CRM, marketplace, or structured engagement database
 - Does not employ a full independent market-intelligence team
@@ -241,7 +243,7 @@ Kill or reposition the paid membership if fewer than five of 25 qualified firms 
 
 ## 10. Evidence matrix
 
-Research retrieved 10 August 2026. Vendor studies are useful directional evidence and are labelled accordingly.
+Research reconciled 11 August 2026. Vendor studies are useful directional evidence and are labelled accordingly. Listed prices and vendor-reported demand are evidence of market behaviour or budget adjacency, not proof that a buyer will purchase Pulse.
 
 | Claim | Evidence | Limits | Confidence | Decision effect |
 |---|---|---|---|---|
