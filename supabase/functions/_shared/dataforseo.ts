@@ -142,7 +142,12 @@ export function parseRelatedQueries(task: DataForSeoTask<Record<string, unknown>
   const lists = items.filter((item) => item.type === 'google_trends_queries_list');
   const output: Array<{ query: string; value: number }> = [];
   for (const list of lists) {
-    const containers = [list, ...(Array.isArray(list.data) ? list.data as Array<Record<string, unknown>> : [])];
+    const dataContainers = Array.isArray(list.data)
+      ? list.data as Array<Record<string, unknown>>
+      : list.data && typeof list.data === 'object'
+        ? [list.data as Record<string, unknown>]
+        : [];
+    const containers = [list, ...dataContainers];
     for (const container of containers) {
       for (const group of ['top', 'rising']) {
         const rows = Array.isArray(container[group]) ? container[group] as Array<Record<string, unknown>> : [];

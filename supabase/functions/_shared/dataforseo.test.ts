@@ -23,10 +23,10 @@ test('parses valid Trends, related-query, organic, PAA, and Jobs fixtures', () =
     status_code: 20000,
     result: [{ items: [{
       type: 'google_trends_queries_list',
-      data: [{
+      data: {
         top: [{ query: 'fractional cfo cost', value: 80 }],
         rising: [{ query: 'fractional ai officer', value: 120 }],
-      }],
+      },
     }] }],
   };
   assert.deepEqual(parseRelatedQueries(relatedTask), [
