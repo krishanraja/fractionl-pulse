@@ -25,8 +25,8 @@ const sanitizeNote = (note: string) =>
 
 const TYPE_CONFIG: Record<string, { label: string; dotClass: string; icon: LucideIcon }> = {
   demand: { label: 'Hiring activity', dotClass: 'bg-primary', icon: Briefcase },
-  supply: { label: 'Talent availability', dotClass: 'bg-accent', icon: Users },
-  culture: { label: 'Market buzz', dotClass: 'bg-secondary', icon: Megaphone },
+  supply: { label: 'Executive availability', dotClass: 'bg-accent', icon: Users },
+  culture: { label: 'Market interest', dotClass: 'bg-secondary', icon: Megaphone },
 };
 
 const SignalsTable = ({ movers }: SignalsTableProps) => {

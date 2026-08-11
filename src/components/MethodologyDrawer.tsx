@@ -1,8 +1,22 @@
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
-import { Button } from '@/components/ui/button';
-import { Download, X } from 'lucide-react';
+import { ChevronDown, ExternalLink, X } from 'lucide-react';
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer';
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { useMediaQuery } from '@/hooks/use-mobile';
+import { useVisualViewport } from '@/hooks/useVisualViewport';
 import { SUPABASE_FUNCTIONS_URL } from '@/lib/supabase';
 
 interface MethodologyDrawerProps {
@@ -15,141 +29,144 @@ interface MethodologyDrawerProps {
   };
 }
 
-const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weights'] }) => {
-  return (
-    <div className="space-y-6 py-4">
-      <div className="bg-muted/30 p-4 rounded-lg">
-        <h4 className="font-medium mb-2 text-foreground">How this works</h4>
-        <p className="text-sm text-muted-foreground">
-          The Fractional Working Index is a private 0-100 composite describing measured conditions in the fractional executive market. It uses 21 tracked inputs with mixed availability across hiring activity, talent availability, market momentum, and excluded context.
-        </p>
+const SCORE_BANDS = [
+  ['75-100', 'Surging', 'Very strong activity'],
+  ['60-74', 'Growing', 'Strong activity'],
+  ['45-59', 'Stable', 'Typical activity'],
+  ['30-44', 'Cooling', 'Activity is slowing'],
+  ['0-29', 'Contracting', 'Weak activity'],
+];
+
+const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weights'] }) => (
+  <div className="pulse-method-content">
+    <section className="pulse-method-lead" aria-labelledby="method-overview-heading">
+      <span>In plain English</span>
+      <h3 id="method-overview-heading">One score for current market conditions</h3>
+      <p>Pulse combines 21 data inputs into a score from 0 to 100. The score shows current conditions for fractional executives in the US market. It is a measured snapshot, not a forecast.</p>
+    </section>
+
+    <section className="pulse-method-section" aria-labelledby="method-measures-heading">
+      <div className="pulse-method-section-heading">
+        <span>01</span>
+        <h3 id="method-measures-heading">What goes into the score</h3>
       </div>
+      <div className="pulse-method-measures">
+        <article>
+          <div><span>Hiring demand</span><strong>{(weights.demand * 100).toFixed(0)}%</strong></div>
+          <p>Open roles and hiring signals for fractional CFO, CMO, CTO, COO, CRO, and interim CEO work.</p>
+        </article>
+        <article>
+          <div><span>Executive availability</span><strong>{(weights.supply * 100).toFixed(0)}%</strong></div>
+          <p>Signals showing how many executives are available or looking to move into fractional work.</p>
+        </article>
+        <article>
+          <div><span>Market interest</span><strong>{(weights.culture * 100).toFixed(0)}%</strong></div>
+          <p>Search, news, podcast, community, and research activity around fractional leadership.</p>
+        </article>
+      </div>
+    </section>
 
-      <div className="space-y-4">
-        <h4 className="font-medium text-foreground text-sm uppercase tracking-wide">What we measure</h4>
-
-        <div className="space-y-3">
-          <div className="p-3 bg-muted/20 rounded-lg space-y-1">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                <span className="font-medium text-foreground">Hiring activity</span>
-              </div>
-              <span className="text-sm text-muted-foreground">{(weights.demand * 100).toFixed(0)}% of score</span>
-            </div>
-            <p className="text-xs text-muted-foreground pl-5">Adzuna + SerpAPI Google Jobs postings for fractional CFO, CMO, CTO, COO, CRO, and interim CEO roles. SEC Form D filings add startup-financing context. Pulse has not validated a predictive relationship between those filings and future fractional hiring.</p>
+    <section className="pulse-method-section" aria-labelledby="method-bands-heading">
+      <div className="pulse-method-section-heading">
+        <span>02</span>
+        <h3 id="method-bands-heading">How to read the score</h3>
+      </div>
+      <div className="pulse-method-bands">
+        {SCORE_BANDS.map(([range, label, meaning]) => (
+          <div key={label}>
+            <span>{range}</span>
+            <strong>{label}</strong>
+            <p>{meaning}</p>
           </div>
+        ))}
+      </div>
+    </section>
 
-          <div className="p-3 bg-muted/20 rounded-lg space-y-1">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-accent" />
-                <span className="font-medium text-foreground">Talent availability</span>
-              </div>
-              <span className="text-sm text-muted-foreground">{(weights.supply * 100).toFixed(0)}% of score</span>
-            </div>
-            <p className="text-xs text-muted-foreground pl-5">SerpAPI and Brave LinkedIn profile proxies (a redundant pair so the reading survives a single-vendor outage), GoFractional marketplace listings, and supply-intent search trends (searches like "become fractional executive").</p>
+    <section className="pulse-method-section" aria-labelledby="technical-details-heading">
+      <div className="pulse-method-section-heading">
+        <span>03</span>
+        <h3 id="technical-details-heading">Technical details</h3>
+      </div>
+      <div className="pulse-method-details">
+        <details>
+          <summary>Sources and weightings <ChevronDown aria-hidden="true" /></summary>
+          <div>
+            <p><strong>Hiring demand:</strong> Adzuna and Google Jobs postings. SEC Form D filings provide startup-financing context, but Pulse has not validated them as a predictor of future fractional hiring.</p>
+            <p><strong>Executive availability:</strong> LinkedIn profile proxies from two providers, GoFractional marketplace listings, and searches about becoming a fractional executive.</p>
+            <p><strong>Market interest:</strong> Google Trends, NewsAPI, Mediastack, Brave News, Brave web search, The Guardian, Podchaser, Reddit, Hacker News, Wikipedia, OpenAlex, FRED, BLS, and Census data.</p>
           </div>
-
-          <div className="p-3 bg-muted/20 rounded-lg space-y-1">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-secondary" />
-                <span className="font-medium text-foreground">Market momentum</span>
-              </div>
-              <span className="text-sm text-muted-foreground">{(weights.culture * 100).toFixed(0)}% of score</span>
-            </div>
-            <p className="text-xs text-muted-foreground pl-5">Search-interest trends, NewsAPI + Mediastack + Brave News coverage, Guardian prestige media mentions, Podchaser podcast episodes, Reddit + Hacker News community discourse, and Wikipedia article interest.</p>
+        </details>
+        <details>
+          <summary>How different data is put on the same scale <ChevronDown aria-hidden="true" /></summary>
+          <div>
+            <p>Each source uses different units. Pulse converts them to a common 0-100 scale before combining them.</p>
+            <ul>
+              <li>Job postings use a log scale, where 200 listings equals 100.</li>
+              <li>SEC filings use a linear scale, where 800 technology filings over 90 days equals 50.</li>
+              <li>News uses a square-root scale to reduce the effect of viral spikes.</li>
+              <li>Search trends retain their native 0-100 scale.</li>
+              <li>Availability sources use their own calibrated log or native scales.</li>
+            </ul>
           </div>
-        </div>
+        </details>
+        <details>
+          <summary>Data quality checks and limitations <ChevronDown aria-hidden="true" /></summary>
+          <div>
+            <p>Pulse rejects a signal more than three standard deviations from its eight-week average so an API error cannot distort the index.</p>
+            <p>Data coverage shows the weighted availability, quality, and uniqueness of the current inputs. It does not show prediction accuracy.</p>
+            <p>Role comparisons use current hiring demand. Other movement compares the latest reading with the previous observed reading.</p>
+          </div>
+        </details>
+        <details>
+          <summary>Update schedule and missing data <ChevronDown aria-hidden="true" /></summary>
+          <div>
+            <p>The pipeline runs every morning at 6am UTC, with a weekly Monday baseline. A source outage can lower data coverage or delay a reading.</p>
+            <p>Historical coverage may include clearly identified backfilled estimates. The current headline score does not invent a missing component.</p>
+          </div>
+        </details>
       </div>
+    </section>
+  </div>
+);
 
-      <div className="border-t border-border pt-4">
-        <h4 className="font-medium mb-2 text-foreground text-sm uppercase tracking-wide">21 tracked inputs</h4>
-        <div className="grid grid-cols-2 gap-1.5 text-xs text-muted-foreground">
-          <span>Adzuna Jobs</span><span>SerpAPI Google Jobs</span>
-          <span>SEC EDGAR Form D</span><span>SerpAPI Trends</span>
-          <span>NewsAPI</span><span>Mediastack</span>
-          <span>Brave News</span><span>Brave Web Search</span>
-          <span>The Guardian</span><span>Podchaser</span>
-          <span>Reddit</span><span>Hacker News</span>
-          <span>SerpAPI LinkedIn</span><span>Brave Talent Proxy</span>
-          <span>GoFractional</span><span>SerpAPI Supply Trends</span>
-          <span>BLS (JOLTS)</span><span>Wikipedia Pageviews</span>
-          <span>OpenAlex Research</span><span>FRED Macro Data</span>
-          <span>Census ACS</span>
-        </div>
-      </div>
-
-      <div className="border-t border-border pt-4">
-        <h4 className="font-medium mb-2 text-foreground text-sm uppercase tracking-wide">Normalization</h4>
-        <p className="text-xs text-muted-foreground mb-3">
-          Each source returns different units. We normalize to 0-100 using calibrated scales:
-        </p>
-        <div className="space-y-2 text-xs text-muted-foreground">
-          <p><span className="font-medium text-foreground">Job postings:</span> Log scale (200 listings = 100)</p>
-          <p><span className="font-medium text-foreground">SEC filings:</span> Linear (800 tech filings/90d = 50)</p>
-          <p><span className="font-medium text-foreground">News:</span> Square-root scale (dampens viral spikes)</p>
-          <p><span className="font-medium text-foreground">Trends:</span> Native 0-100 pass-through</p>
-          <p><span className="font-medium text-foreground">Supply:</span> Source-specific log or native scales for profile proxies, marketplace listings, and intent trends</p>
-        </div>
-      </div>
-
-      <div className="border-t border-border pt-4">
-        <h4 className="font-medium mb-2 text-foreground text-sm uppercase tracking-wide">Data integrity</h4>
-        <div className="space-y-2 text-xs text-muted-foreground">
-          <p><span className="font-medium text-foreground">Anomaly guard:</span> Rejects any signal more than 3 standard deviations from its 8-week rolling average to prevent API glitches from corrupting the index.</p>
-          <p><span className="font-medium text-foreground">Data completeness:</span> Weighted by input quality and uniqueness. A reading where all 21 tracked inputs report = 1.0; this is not prediction accuracy.</p>
-          <p><span className="font-medium text-foreground">Movement:</span> Role movers compare current role demand with the current role average. Non-role movers compare with the prior observed reading.</p>
-        </div>
-      </div>
-
-      <div className="border-t border-border pt-4">
-        <h4 className="font-medium mb-2 text-foreground">How to read the score</h4>
-        <div className="space-y-1.5 text-sm text-muted-foreground">
-          <p><span className="text-emerald-400 font-medium">75-100 Surging</span> - exceptionally strong measured conditions</p>
-          <p><span className="text-green-400 font-medium">60-74 Growing</span> - strong measured conditions</p>
-          <p><span className="text-yellow-400 font-medium">45-59 Stable</span> - balanced, normal conditions</p>
-          <p><span className="text-orange-400 font-medium">30-44 Cooling</span> - demand softening, more selectivity</p>
-          <p><span className="text-red-400 font-medium">0-29 Contracting</span> - market under pressure</p>
-        </div>
-      </div>
-
-      <div className="bg-gradient-to-r from-primary/10 to-secondary/10 p-4 rounded-lg border border-primary/20">
-        <h4 className="font-medium mb-1 text-foreground">Scheduled daily</h4>
-        <p className="text-sm text-muted-foreground">
-          The pipeline is scheduled every morning at 6am UTC, with a weekly Monday baseline. Source outages can reduce coverage or delay a reading; the Sources view shows the current state. Historical coverage can include backfilled estimates, while the current headline does not invent a missing pillar reading.
-        </p>
-      </div>
-
-      <Button
-        className="w-full"
-        onClick={() => window.open(`${SUPABASE_FUNCTIONS_URL}/fwi-api/current`, '_blank')}
-      >
-        <Download size={16} className="mr-2" />
-        View raw data (JSON)
-      </Button>
-    </div>
-  );
-};
+const MethodologyFooter = () => (
+  <footer className="pulse-method-footer">
+    <a href={`${SUPABASE_FUNCTIONS_URL}/fwi-api/current`} target="_blank" rel="noreferrer">
+      View the current raw data
+      <ExternalLink aria-hidden="true" />
+    </a>
+  </footer>
+);
 
 const MethodologyDrawer = ({ open, onOpenChange, weights }: MethodologyDrawerProps) => {
-  const isMobile = useMediaQuery("(max-width: 768px)");
+  const isCompact = useMediaQuery('(max-width: 1023.98px)');
+  const visualViewport = useVisualViewport(open);
+  const compactViewportStyle = isCompact && visualViewport.height
+    ? { height: visualViewport.height, maxHeight: visualViewport.height, top: visualViewport.offsetTop }
+    : undefined;
 
-  if (isMobile) {
+  if (isCompact) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[85vh]">
-          <DrawerClose className="absolute right-3 top-3 z-10 grid h-11 w-11 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Close methodology">
-            <X aria-hidden="true" size={18} />
-          </DrawerClose>
-          <DrawerHeader className="text-left">
-            <DrawerTitle>How we calculate this</DrawerTitle>
-            <DrawerDescription>What goes into the Fractional Working Index</DrawerDescription>
+      <Drawer open={open} onOpenChange={onOpenChange} shouldScaleBackground={false}>
+        <DrawerContent
+          className="pulse-overlay-theme pulse-method-surface pulse-method-drawer"
+          overlayClassName="pulse-overlay-backdrop"
+          hideHandle
+          style={compactViewportStyle}
+        >
+          <DrawerHeader className="pulse-overlay-header">
+            <div>
+              <DrawerTitle>Sources and methods</DrawerTitle>
+              <DrawerDescription>A plain-English guide to the data behind today's index.</DrawerDescription>
+            </div>
+            <DrawerClose className="pulse-overlay-close" aria-label="Close sources and methods">
+              <X aria-hidden="true" />
+            </DrawerClose>
           </DrawerHeader>
-          <div className="px-4 pb-8 overflow-y-auto">
+          <div className="pulse-method-scroll">
             <MethodologyContent weights={weights} />
           </div>
+          <MethodologyFooter />
         </DrawerContent>
       </Drawer>
     );
@@ -157,12 +174,24 @@ const MethodologyDrawer = ({ open, onOpenChange, weights }: MethodologyDrawerPro
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>How we calculate this</SheetTitle>
-          <SheetDescription>What goes into the Fractional Working Index</SheetDescription>
+      <SheetContent
+        className="pulse-overlay-theme pulse-method-surface pulse-method-sheet"
+        overlayClassName="pulse-overlay-backdrop"
+        hideDefaultClose
+      >
+        <SheetHeader className="pulse-overlay-header">
+          <div>
+            <SheetTitle>Sources and methods</SheetTitle>
+            <SheetDescription>A plain-English guide to the data behind today's index.</SheetDescription>
+          </div>
+          <SheetClose className="pulse-overlay-close" aria-label="Close sources and methods">
+            <X aria-hidden="true" />
+          </SheetClose>
         </SheetHeader>
-        <MethodologyContent weights={weights} />
+        <div className="pulse-method-scroll">
+          <MethodologyContent weights={weights} />
+        </div>
+        <MethodologyFooter />
       </SheetContent>
     </Sheet>
   );

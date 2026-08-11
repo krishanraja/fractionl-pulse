@@ -101,7 +101,7 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
             pointHoverRadius: subHover,
           },
           {
-            label: 'Talent availability',
+            label: 'Executive availability',
             data: toPoints(data.supply),
             borderColor: '#8B5CF6',
             backgroundColor: 'transparent',
@@ -119,7 +119,7 @@ const TrendlineChart = ({ data }: TrendlineChartProps) => {
             borderDash: [4, 4],
           },
           {
-            label: 'Market buzz',
+            label: 'Market interest',
             data: toPoints(data.culture),
             borderColor: '#10B981',
             backgroundColor: 'transparent',

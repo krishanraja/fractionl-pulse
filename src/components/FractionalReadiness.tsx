@@ -39,7 +39,7 @@ const getRoleGuidance = (role: string, mover: number | null): { headline: string
 const getGuidance = (score: number): { headline: string; body: string } => {
   if (score >= 75) return {
     headline: 'Strong market conditions',
-    body: 'Hiring activity and talent availability are both elevated. Fractional executives have strong leverage right now.',
+    body: 'Hiring demand and executive availability are both elevated. Compare this with your own pipeline before changing rates or capacity.',
   };
   if (score >= 60) return {
     headline: 'Favorable conditions',

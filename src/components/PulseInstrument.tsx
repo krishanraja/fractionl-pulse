@@ -53,6 +53,7 @@ interface PulseInstrumentProps {
   onRefresh: () => void;
   isSignedIn: boolean;
   onSignOut: () => void;
+  overlayOpen: boolean;
   secondaryContent?: ReactNode;
 }
 
@@ -68,6 +69,7 @@ const PulseInstrument = ({
   onRefresh,
   isSignedIn,
   onSignOut,
+  overlayOpen,
   secondaryContent,
 }: PulseInstrumentProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -112,7 +114,7 @@ const PulseInstrument = ({
     : `The market is ${band.lower}, ${deltaIsPositive ? 'with upward movement over 30 days.' : 'with downward movement over 30 days.'}`;
 
   const roleSentence = selectedRole && roleVsMarket != null
-    ? `${selectedRole.label} demand is ${Math.abs(roleVsMarket) < 0.5 ? 'in line with' : roleVsMarket > 0 ? 'above' : 'below'} the market demand reading.`
+    ? `${selectedRole.label} demand is ${Math.abs(roleVsMarket) < 0.5 ? 'in line with' : roleVsMarket > 0 ? 'above' : 'below'} overall hiring demand.`
     : `No current role-specific demand reading is available for ${activeRole}.`;
 
   const decisionCue = band.label === 'Contracting' || band.label === 'Cooling'
@@ -174,7 +176,7 @@ const PulseInstrument = ({
     <section className={mobile ? 'pulse-mobile-role-card' : 'pulse-role-lens'} aria-labelledby={mobile ? 'mobile-role-heading' : 'role-lens-heading'}>
       <div className="pulse-role-heading-row">
         <div>
-          <span className="pulse-section-kicker">Role lens</span>
+          <span className="pulse-section-kicker">Your role</span>
           <h2 id={mobile ? 'mobile-role-heading' : 'role-lens-heading'}>{activeRole}</h2>
         </div>
         <label className="pulse-role-select-label">
@@ -186,22 +188,22 @@ const PulseInstrument = ({
       </div>
       <div className="pulse-role-metrics">
         <div>
-          <span>Role demand</span>
+          <span>Demand for this role</span>
           <strong>{isLoading || rolesLoading ? '--' : roleDemand ?? '--'}</strong>
           <small>{isLoading ? 'Retrieving' : selectedRole?.wowChange == null ? 'Current read' : `${selectedRole.wowChange > 0 ? '+' : ''}${formatDelta(selectedRole.wowChange)} WoW`}</small>
         </div>
         <div>
-          <span>Market demand</span>
+          <span>Overall hiring demand</span>
           <strong>{isLoading ? '--' : displayScore(data.today.demand.score)}</strong>
           <small>{isLoading ? 'Retrieving' : data.today.demand.delta30d == null ? 'New series' : `${data.today.demand.delta30d > 0 ? '+' : ''}${formatDelta(data.today.demand.delta30d)} / 30d`}</small>
         </div>
         <div>
-          <span>Talent availability</span>
+          <span>Executive availability</span>
           <strong>{isLoading || data.today.supply.score == null ? '--' : displayScore(data.today.supply.score)}</strong>
           <small>{isLoading ? 'Retrieving' : data.today.supply.score == null ? 'Not measured' : 'Market-wide'}</small>
         </div>
         <div>
-          <span>Market buzz</span>
+          <span>Market interest</span>
           <strong>{isLoading ? '--' : displayScore(data.today.culture.score)}</strong>
           <small>{isLoading ? 'Retrieving' : 'Market-wide'}</small>
         </div>
@@ -234,7 +236,7 @@ const PulseInstrument = ({
         </div>
         <div className="pulse-score-meta">
           <strong>{isLoading ? '--' : `${coverage}%`}</strong>
-          <span>{isLoading ? 'checking coverage' : 'evidence coverage'}</span>
+          <span>{isLoading ? 'checking data coverage' : 'data coverage'}</span>
           <small>{isLoading ? 'Checking live sources' : `As of ${new Date(`${data.asOf}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}`}</small>
           <button type="button" onClick={onRefresh} aria-label="Refresh index"><RefreshCw /></button>
         </div>
@@ -253,8 +255,8 @@ const PulseInstrument = ({
         <div className="pulse-calibration-grid">
           {[
             ['Hiring activity', data.weights.demand, 'Demand'],
-            ['Talent availability', data.weights.supply, 'Supply'],
-            ['Market buzz', data.weights.culture, 'Culture'],
+            ['Executive availability', data.weights.supply, 'Availability'],
+            ['Market interest', data.weights.culture, 'Interest'],
           ].map(([label, weight, short]) => (
             <div key={String(label)}>
               <div><span>{String(label)}</span><strong>{Math.round(Number(weight) * 100)}%</strong></div>
@@ -284,9 +286,9 @@ const PulseInstrument = ({
     },
     {
       id: 'do' as const,
-      title: 'What to do',
+      title: 'What to consider',
       body: isLoading ? 'A decision cue will appear after the evidence is verified.' : decisionCue,
-      detail: 'This is a decision cue, not financial advice. Open Ask Pulse with your exact role, geography and decision for a bounded interpretation.',
+      detail: 'This is a decision cue, not financial advice. Open Ask the Index with your exact role, geography and decision for a bounded interpretation.',
       icon: ArrowUpRight,
     },
   ];
@@ -298,7 +300,7 @@ const PulseInstrument = ({
         <strong>{isLoading ? '--' : score}</strong>
         <div className={`pulse-mobile-band ${band.className}`}>{band.label}<i /></div>
         <p>{isLoading ? 'Retrieving latest evidence' : `${deltaIsPositive && !deltaIsFlat ? '+' : ''}${formatDelta(delta)} / 30 days`}</p>
-        <div className="pulse-mobile-coverage"><span>{isLoading ? 'Checking evidence coverage' : `${coverage}% evidence coverage`}</span><span>{isLoading ? 'Live sources' : data.asOf}</span></div>
+        <div className="pulse-mobile-coverage"><span>{isLoading ? 'Checking data coverage' : `${coverage}% data coverage`}</span><span>{isLoading ? 'Live sources' : data.asOf}</span></div>
       </section>
       {isLoading ? <div className="pulse-mobile-trend pulse-loading-copy" role="status" aria-live="polite">Loading current timeline…</div> : renderTrend(true)}
       <section className="pulse-mobile-decisions" aria-label="Index interpretation">
@@ -315,7 +317,7 @@ const PulseInstrument = ({
         })}
       </section>
       <button type="button" className="pulse-mobile-provenance" onClick={onShowMethodology}>
-        <FileText /> View methodology and evidence <ArrowRight />
+        <FileText /> Sources and methods <ArrowRight />
       </button>
     </div>
   );
@@ -323,14 +325,14 @@ const PulseInstrument = ({
   const renderAskPanel = () => (
     <aside className="pulse-ask-panel" aria-labelledby="ask-panel-heading">
       <div className="pulse-ask-heading">
-        <span id="ask-panel-heading">Ask Pulse</span>
-        <button type="button" onClick={() => setAskPrompt('')} aria-label="Clear Ask Pulse question"><Minus /></button>
+        <span id="ask-panel-heading">Ask the Index</span>
+        <button type="button" onClick={() => setAskPrompt('')} aria-label="Clear Ask the Index question"><Minus /></button>
       </div>
       <form onSubmit={submitAsk} className="pulse-ask-form">
         <label htmlFor="pulse-ask-question">Your decision</label>
         <div>
           <input id="pulse-ask-question" value={askPrompt} onChange={(event) => setAskPrompt(event.target.value)} maxLength={280} placeholder="What are you deciding?" />
-          <button type="submit" aria-label="Ask Pulse" disabled={!askPrompt.trim()}><Send /></button>
+          <button type="submit" aria-label="Ask the Index" disabled={!askPrompt.trim()}><Send /></button>
         </div>
       </form>
 
@@ -343,31 +345,31 @@ const PulseInstrument = ({
             <ul>
               <li>FWI is {score}, classified {band.lower}.</li>
               <li>Hiring activity is {displayScore(data.today.demand.score)}.</li>
-              <li>Current evidence coverage is {coverage}%.</li>
+              <li>Current data coverage is {coverage}%.</li>
             </ul>
           )}
           <div className="pulse-receipts"><span>21 inputs</span><span>6 roles</span><span>US primary</span></div>
         </section>
         <section>
-          <div className="pulse-ask-card-title"><span><BrainCircuit /></span><strong>Interpretation</strong></div>
+          <div className="pulse-ask-card-title"><span><BrainCircuit /></span><strong>What the data suggests</strong></div>
           <p>{isLoading ? 'Interpretation will appear after the current evidence is verified.' : `${marketSentence} ${roleSentence}`}</p>
           <div className="pulse-receipts"><span>Index level</span><span>30-day movement</span></div>
         </section>
         <section className="is-decision">
-          <div className="pulse-ask-card-title"><span><ArrowUpRight /></span><strong>Decision cue</strong></div>
+          <div className="pulse-ask-card-title"><span><ArrowUpRight /></span><strong>What to consider</strong></div>
           <p>{isLoading ? 'A decision cue will appear after the current evidence is verified.' : decisionCue}</p>
-          <button type="button" onClick={() => onAsk(askPrompt)}>Ask with my situation <ArrowRight /></button>
+          <button type="button" onClick={() => onAsk(askPrompt)}>Ask about my situation <ArrowRight /></button>
         </section>
       </div>
 
       <button className="pulse-provenance-link" type="button" onClick={onShowMethodology}>
-        <FileText /> View provenance <span>21 tracked inputs</span><ArrowRight />
+        <FileText /> Sources and methods <span>21 tracked inputs</span><ArrowRight />
       </button>
     </aside>
   );
 
   const mobileMain = activeTab === 'role'
-    ? <div className="pulse-mobile-role-view">{renderRoleLens(true)}<p>Role demand is a real observed series. Talent availability and market buzz remain market-wide because the current sources do not support defensible role-level splits.</p></div>
+    ? <div className="pulse-mobile-role-view">{renderRoleLens(true)}<p>We can measure hiring demand for this role. We do not yet have reliable role-by-role data for executive availability or market interest, so those two scores reflect the overall market.</p></div>
     : activeTab === 'dashboard'
     ? renderMobileIndex()
     : <div className="pulse-mobile-secondary">{secondaryContent}</div>;
@@ -400,7 +402,7 @@ const PulseInstrument = ({
               );
             })}
           </nav>
-          <button type="button" onClick={onShowMethodology} aria-label="Methodology"><Info /><span>Method</span></button>
+          <button type="button" onClick={onShowMethodology} aria-label="Sources and methods"><Info /><span>Methods</span></button>
           {isSignedIn ? (
             <button type="button" onClick={onSignOut} aria-label="Sign out"><LogOut /><span>Exit</span></button>
           ) : (
@@ -413,7 +415,7 @@ const PulseInstrument = ({
             <button type="button" onClick={() => selectTab('signals')}><LayoutGrid /> Signals</button>
             <button type="button" onClick={() => selectTab('insights')}><BrainCircuit /> Interpretation</button>
             <button type="button" onClick={() => selectTab('data')}><Database /> Sources</button>
-            <button type="button" onClick={() => { onShowMethodology(); setMenuOpen(false); }}><Info /> Methodology</button>
+            <button type="button" onClick={() => { onShowMethodology(); setMenuOpen(false); }}><Info /> Sources and methods</button>
             <Link to="/pricing"><FileText /> Partner access</Link>
             {isSignedIn
               ? <button type="button" onClick={() => { onSignOut(); setMenuOpen(false); }}><LogOut /> Sign out</button>
@@ -430,11 +432,13 @@ const PulseInstrument = ({
 
         <div className="pulse-desktop-only">{renderAskPanel()}</div>
 
-        <nav className="pulse-mobile-bottom-nav" aria-label="Mobile primary navigation">
-          <button type="button" onClick={() => selectTab('dashboard')} className={activeTab === 'dashboard' ? 'is-active' : ''}><Activity /><span>Index</span></button>
-          <button type="button" onClick={() => selectTab('role')} className={activeTab === 'role' ? 'is-active' : ''}><UserRound /><span>My role</span></button>
-          <button type="button" onClick={() => onAsk(askPrompt)}><MessageSquareText /><span>Ask</span></button>
-        </nav>
+        {!overlayOpen && (
+          <nav className="pulse-mobile-bottom-nav" aria-label="Mobile primary navigation">
+            <button type="button" onClick={() => selectTab('dashboard')} className={activeTab === 'dashboard' ? 'is-active' : ''}><Activity /><span>Index</span></button>
+            <button type="button" onClick={() => selectTab('role')} className={activeTab === 'role' ? 'is-active' : ''}><UserRound /><span>My role</span></button>
+            <button type="button" onClick={() => onAsk(askPrompt)}><MessageSquareText /><span>Ask</span></button>
+          </nav>
+        )}
       </div>
     </div>
   );

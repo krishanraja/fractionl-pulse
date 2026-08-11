@@ -301,7 +301,7 @@ See `git log` and `supabase/migrations/`. Highlights:
 - `003_expand_signal_sources.sql` — added 17 sources to `data_source_health`, added `context` signal type
 - `004_fix_cached_insights_columns.sql` — `model_used`/`context` schema sync trigger
 - `005_tighten_signals_rls.sql` — RLS hardening (public read, service-role-only writes)
-- `016_ai_rate_limits.sql` — privacy-preserving hourly rate limit for Ask Pulse
+- `016_ai_rate_limits.sql` - privacy-preserving hourly rate limit for Ask the Index
 - `20260402_create_waitlist.sql` — waitlist table + anon-insert policy
 - `f653feb` — Brave Search integration
 - `a07f401` — PDL fix activated supply pillar

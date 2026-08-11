@@ -273,11 +273,11 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
-              Talent availability <span className="font-semibold text-foreground/80 tabular-nums">{Math.round((data.weights.supply ?? 0.2) * 100)}%</span>
+              Executive availability <span className="font-semibold text-foreground/80 tabular-nums">{Math.round((data.weights.supply ?? 0.2) * 100)}%</span>
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0" />
-              Market buzz <span className="font-semibold text-foreground/80 tabular-nums">{Math.round((data.weights.culture ?? data.weights.momentum ?? 0.3) * 100)}%</span>
+              Market interest <span className="font-semibold text-foreground/80 tabular-nums">{Math.round((data.weights.culture ?? data.weights.momentum ?? 0.3) * 100)}%</span>
             </span>
           </div>
         </div>

@@ -48,7 +48,7 @@ const Index = () => {
 
   useEffect(() => {
     if (routeRole) {
-      document.title = `${routeRole} market demand | Pulse by Fractionl`;
+      document.title = `${routeRole} hiring demand | Pulse by Fractionl`;
       return;
     }
     const viewName = activeTab === 'dashboard'
@@ -107,9 +107,9 @@ const Index = () => {
     ? (
       <section aria-labelledby="interpretation-heading">
         <div className="pulse-secondary-heading">
-          <span>Interpretation register</span>
-          <h1 id="interpretation-heading">What the current evidence can support</h1>
-          <p>AI interpretation is kept separate from measured facts and carries its own confidence.</p>
+          <span>What the data suggests</span>
+          <h1 id="interpretation-heading">What the current data can support</h1>
+          <p>AI explanation is kept separate from measured facts and shows how confident it is.</p>
         </div>
         <AIInsights />
       </section>
@@ -120,9 +120,9 @@ const Index = () => {
     ? (
       <section aria-labelledby="sources-heading">
         <div className="pulse-secondary-heading">
-          <span>Evidence register</span>
-          <h1 id="sources-heading">Source health and provenance</h1>
-          <p>Tracked inputs, their current status and the boundaries of the published index.</p>
+          <span>Data sources</span>
+          <h1 id="sources-heading">Where the data comes from</h1>
+          <p>The inputs behind the index, whether they are current, and what the score cannot tell us.</p>
         </div>
         <DataHealthCard />
       </section>
@@ -146,6 +146,7 @@ const Index = () => {
         onRefresh={refresh}
         isSignedIn={Boolean(user)}
         onSignOut={() => { void signOut(); }}
+        overlayOpen={askOpen || showMethodology}
         secondaryContent={secondaryContent}
       />
 
@@ -163,7 +164,7 @@ const Index = () => {
       )}
 
       {hasOpenedAsk && (
-        <Suspense fallback={<span role="status" className="sr-only">Opening Ask Pulse…</span>}>
+        <Suspense fallback={<span role="status" className="sr-only">Opening Ask the Index…</span>}>
           <AskIndexModal
             open={askOpen}
             onOpenChange={(open) => {

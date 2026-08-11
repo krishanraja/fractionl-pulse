@@ -213,7 +213,7 @@ npm run audit:json
 npm run smoke:release -- --skip-site
 ```
 
-The audit is read-only. It checks schedule adherence, source health, completeness, and provenance against the committed baseline. A degraded audit is an incident to investigate, not a result to hide. `smoke:release` exercises the public APIs, MCP compatibility, security boundaries, Ask Pulse stream, discovery files, and live site routes; set `PULSE_URL` to verify a preview before production.
+The audit is read-only. It checks schedule adherence, source health, completeness, and provenance against the committed baseline. A degraded audit is an incident to investigate, not a result to hide. `smoke:release` exercises the public APIs, MCP compatibility, security boundaries, Ask the Index stream, discovery files, and live site routes; set `PULSE_URL` to verify a preview before production.
 
 ## Documentation map
 

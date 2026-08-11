@@ -4,11 +4,11 @@ This is the implementation contract for Pulse's public product experience. The s
 
 ## Product idea
 
-Pulse is a public market instrument. The current index, its movement, evidence coverage, timeline, and six-role lens stay visible without sign-in. Interpretation is a separate layer. Commercial access is a partner application, not a gate in front of the public index.
+Pulse is a public market instrument. The current index, its movement, data coverage, timeline, and six-role view stay visible without sign-in. Explanation is a separate layer. Commercial access is a partner application, not a gate in front of the public index.
 
 The interface follows three evidence levels:
 
-1. **Measured fact:** index level, components, dates, movement, role demand, and completeness.
+1. **Measured fact:** index level, components, dates, movement, demand for the selected role, and data coverage.
 2. **Interpretation:** bounded language that explains what the measured state can support.
 3. **Decision cue:** an invitation to combine Pulse with the user's own pipeline, geography, and constraints. It is not financial advice or a prediction.
 
@@ -16,12 +16,12 @@ The interface follows three evidence levels:
 
 | Surface | Job | Access |
 |---|---|---|
-| Index | Current FWI, 30-day movement, timeline, components, and evidence coverage | Public |
+| Index | Current FWI, 30-day movement, timeline, components, and data coverage | Public |
 | My role | Current advertised-demand read for one of six C-suite roles | Public; selection persists locally or to the signed-in profile |
 | Signals | Role and source observations | Public |
 | Interpretation | Cached AI analysis grounded in the latest settled score | Public; unavailable state is explicit |
 | Sources | Health, provenance, and methodology limits | Public |
-| Ask Pulse | One-question, evidence-bounded interpretation | Public; origin-restricted and rate-limited |
+| Ask the Index | One-question, evidence-bounded explanation | Public; origin-restricted and rate-limited |
 | Partner access | Founding Benchmark Partner application path | Public application; no self-serve paid tier |
 | Sign in | Optional profile, role persistence, and operational API-key management | Authenticated utility |
 
@@ -35,8 +35,8 @@ Pulse uses purposeful layouts rather than shrinking one desktop dashboard.
 
 - Persistent dark navigation rail on the left.
 - Editorial index canvas in the centre.
-- Persistent Ask Pulse panel on the right, separating facts, interpretation, and the decision cue.
-- Role lens and methodology remain in the main reading path.
+- Persistent Ask the Index panel on the right, separating facts, explanation, and what to consider.
+- Your role and sources and methods remain in the main reading path.
 
 ### Compact desktop and landscape tablet: 1024px to 1279px
 
@@ -48,9 +48,9 @@ Pulse uses purposeful layouts rather than shrinking one desktop dashboard.
 
 - Brand header and compact overflow menu.
 - Score-first index view, then timeline and expandable interpretation cards.
-- Dedicated My role view instead of compressing the desktop role lens.
+- Dedicated My role view instead of compressing the desktop role comparison.
 - Bottom navigation for Index, My role, and Ask.
-- Ask Pulse opens as a focus-managed modal with practical touch targets.
+- Ask the Index opens as a full-height, focus-managed task surface that follows the visible viewport when the keyboard opens.
 
 The acceptance widths are 320, 375, 390, 768, 1024, 1280, 1440, and 1920 pixels. No width may introduce horizontal page scroll, clipped navigation labels, unreachable actions, or hover-only information.
 
@@ -77,16 +77,46 @@ Pulse's instrument palette is defined on `.pulse-product-frame`:
 
 Amber is an accent, not body-text colour. Status bands also use a word label and shape or direction, never colour alone.
 
+### Typography
+
+Pulse uses the typography already established by the public homepage. Both the product frame and portal-rendered overlays inherit these tokens:
+
+| Token | Stack | Use |
+|---|---|---|
+| `--pulse-font-ui` | Arial, Helvetica, sans-serif | Navigation, controls, labels, metadata, and buttons |
+| `--pulse-font-editorial` | Georgia, Times New Roman, serif | Headline score, major titles, user questions, and interpretive narrative |
+
+The role, not the component library, chooses the font. A dialog or drawer must not fall back to the generic global Inter theme when it belongs to Pulse.
+
+### Plain-language vocabulary
+
+Primary interfaces use familiar language. Technical terms remain available inside expanded details and developer documentation.
+
+| Product language | Technical equivalent |
+|---|---|
+| Your role | Role lens |
+| Demand for this role | Role demand |
+| Overall hiring demand | Market demand |
+| Executive availability | Talent supply or availability |
+| Market interest | Culture or market momentum |
+| Data coverage | Evidence coverage or data completeness |
+| Sources and methods | Methodology and provenance |
+| What the data suggests | Interpretation |
+| What to consider | Decision cue |
+
 ## Interaction rules
 
 - Every control has a visible keyboard focus ring and a semantic label.
 - Mobile primary targets are at least 44px high.
 - Dialogs trap focus while open and restore focus to the invoking control when closed.
+- Pulse overlays render above the sticky header and mobile navigation. The bottom navigation is removed from the rendered and focus layers while an overlay is open.
+- Mobile overlays use `window.visualViewport` when available and `100dvh` as a fallback. Their header and footer stay fixed inside the visible viewport while the content area scrolls independently.
+- The viewport includes `viewport-fit=cover` and `interactive-widget=resizes-content`; all fixed mobile actions include safe-area padding.
 - Reduced-motion preferences remove non-essential motion.
 - Loading, unavailable, stale, and degraded-data states are stated in words; missing values render as unavailable, never zero.
-- Ask Pulse accepts at most 280 characters, requires a live FWI context, returns `FACT`, `INTERPRETATION`, and `ACTION`, and fails closed when rate control or the live index is unavailable.
+- Ask the Index accepts at most 280 characters, requires a live FWI context, returns `FACT`, `INTERPRETATION`, and `ACTION`, and fails closed when rate control or the live index is unavailable.
 - AI text may interpret supplied evidence but may not create market facts, localise a US-scoped reading, call a role comparison a time trend, or turn media attention into pricing power.
 
 ## Change control
 
-Before release, verify the public index, role selection, all navigation states, methodology, Ask Pulse, authentication, and degraded states with keyboard and touch-sized viewports. The portable concept in `design/pulse-deciding-sentence-v1.html` records the approved direction; it is not runtime code or a substitute for testing the rendered product.
+Before release, verify the public index, role selection, all navigation states, Sources and Methods, Ask the Index, authentication, and degraded states with keyboard and touch-sized viewports. At 320, 375, 390, and 768 pixels, test a reduced visual viewport that simulates an Android keyboard. The composer, close control, and methods footer must remain visible and tappable, with no bottom navigation above them. Complete a physical Android Chrome and Samsung Keyboard check before calling keyboard behavior production-verified. The portable concept in `design/pulse-deciding-sentence-v1.html` records the approved direction; it is not runtime code or a substitute for testing the rendered product.

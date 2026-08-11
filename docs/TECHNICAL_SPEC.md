@@ -228,7 +228,7 @@ Rows are created, metered, and revoked **only** by the service-role edge functio
 
 - **`014_audit_security_hardening.sql`** (2026-07-06): a security-advisor hardening pass from the product audit. Sets `security_invoker = on` on the `data_quality_summary` and `pipeline_health` views (they no longer bypass RLS), revokes `EXECUTE` on the trigger functions `handle_new_user()`, `update_updated_at_column()`, and `trigger_google_sheets_sync()` from `anon` and `public` (triggers still fire as the function owner), pins `search_path = public` on `check_data_freshness()` and `sync_cached_insights_model()`, and drops a redundant, mis-keyed `user_profiles` policy. Tenant-data isolation (subscriptions, user_profiles, api_keys, waitlist) was already correct and left untouched.
 - **`015_api_keys_user_owned.sql`**: adds `api_keys.user_id` (references `auth.users(id) on delete cascade`) plus the `api_keys_user_id_idx` and `api_keys_key_hash_idx` indexes, so operational keys can be scoped to their owner.
-- **`016_ai_rate_limits.sql`**: creates an RLS-protected hourly counter and service-role-only RPC for the public Ask Pulse route. The function stores a salted network hash, not a raw IP address, and prunes windows older than 48 hours.
+- **`016_ai_rate_limits.sql`**: creates an RLS-protected hourly counter and service-role-only RPC for the public Ask the Index route. The function stores a salted network hash, not a raw IP address, and prunes windows older than 48 hours.
 
 ### Views
 
@@ -367,12 +367,12 @@ Full schema lives in [`AGENT_INTEGRATION.md`](./AGENT_INTEGRATION.md).
 
 | Component | Purpose |
 |-----------|---------|
-| `PulseInstrument` | Primary desktop and mobile instrument: index level, 30-day movement, timeline, role lens, evidence coverage, decision cues, navigation, and Ask Pulse entry |
-| `AskIndexModal` | Streams an evidence-bounded, rate-limited interpretation grounded in the current public FWI response |
+| `PulseInstrument` | Primary desktop and mobile instrument: index level, 30-day movement, timeline, your role, data coverage, decision cues, navigation, and Ask the Index entry. It owns `overlayOpen` so fixed mobile navigation is removed while a modal surface is active. |
+| `AskIndexModal` | Streams an evidence-bounded, rate-limited explanation grounded in the current public FWI response. Below 1024px it is a full-height composer sized from `window.visualViewport`, with `100dvh` fallback and a keyboard-safe fixed composer. |
 | `SignalsTable` | Full per-role and per-source signal breakdown |
 | `AIInsights` | Insight cards from `generate-pulse-insights` |
 | `DataHealthCard` | Per-source status badges (`data_source_health`) |
-| `MethodologyDrawer` | Transparent methodology explainer |
+| `MethodologyDrawer` | Plain-first Sources and Methods explainer. It uses a branded viewport-safe drawer below 1024px and a branded right sheet on larger screens, with technical detail disclosed through native expandable sections. |
 
 ### Hooks
 

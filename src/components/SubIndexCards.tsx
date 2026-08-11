@@ -55,7 +55,7 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
     },
     {
       key: 'supply',
-      title: 'Talent Availability',
+      title: 'Executive Availability',
       icon: Users,
       weight: data.weights.supply,
       score: data.today.supply.score,
@@ -71,7 +71,7 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
     },
     {
       key: 'culture',
-      title: 'Market Buzz',
+      title: 'Market Interest',
       icon: Megaphone,
       weight: data.weights.culture,
       score: data.today.culture.score,

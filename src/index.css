@@ -382,6 +382,657 @@
 }
 
 @layer components {
+  /* Pulse overlays render through portals, so they carry the product theme. */
+  .pulse-overlay-backdrop {
+    z-index: var(--pulse-layer-backdrop) !important;
+    background: hsl(216 65% 6% / 0.74) !important;
+    backdrop-filter: blur(3px);
+  }
+
+  .pulse-overlay-theme {
+    z-index: var(--pulse-layer-overlay) !important;
+    border-color: var(--pulse-ink) !important;
+    background-color: var(--pulse-paper) !important;
+    background-image:
+      linear-gradient(hsl(216 65% 9% / 0.018) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(216 65% 9% / 0.014) 1px, transparent 1px);
+    background-size: 24px 24px;
+    color: var(--pulse-ink) !important;
+    font-family: var(--pulse-font-ui);
+  }
+
+  .pulse-overlay-theme *,
+  .pulse-overlay-theme *::before,
+  .pulse-overlay-theme *::after {
+    box-sizing: border-box;
+  }
+
+  .pulse-overlay-theme button,
+  .pulse-overlay-theme input,
+  .pulse-overlay-theme a {
+    border-radius: 0;
+  }
+
+  .pulse-overlay-theme button:focus-visible,
+  .pulse-overlay-theme input:focus-visible,
+  .pulse-overlay-theme a:focus-visible,
+  .pulse-overlay-theme summary:focus-visible {
+    outline: 2px solid var(--pulse-ink);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 5px var(--pulse-amber-soft);
+  }
+
+  .pulse-overlay-header {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    flex: 0 0 auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 14px;
+    margin: 0;
+    padding: 22px 24px 20px;
+    border-bottom: 1px solid var(--pulse-ink);
+    background: hsl(42 44% 97% / 0.97);
+    text-align: left;
+  }
+
+  .pulse-overlay-header h2 {
+    margin: 0;
+    color: var(--pulse-ink);
+    font-family: var(--pulse-font-editorial);
+    font-size: 30px;
+    font-weight: 400;
+    letter-spacing: -0.035em;
+    line-height: 1;
+  }
+
+  .pulse-overlay-header p {
+    max-width: 540px;
+    margin: 8px 0 0;
+    color: var(--pulse-ink-soft);
+    font-family: var(--pulse-font-editorial);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .pulse-overlay-heading-mark {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    background: var(--pulse-ink);
+    color: #fff8e8;
+  }
+
+  .pulse-overlay-heading-mark svg {
+    width: 20px;
+    height: 20px;
+    stroke-width: 1.7;
+  }
+
+  .pulse-overlay-close {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    place-items: center;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--pulse-ink);
+  }
+
+  .pulse-overlay-close:hover {
+    border-color: var(--pulse-rule);
+    background: var(--pulse-paper-deep);
+  }
+
+  .pulse-overlay-close svg {
+    width: 21px;
+    height: 21px;
+    stroke-width: 1.7;
+  }
+
+  /* Ask the Index */
+  .pulse-ask-surface {
+    display: grid !important;
+    width: min(680px, calc(100vw - 48px)) !important;
+    max-width: 680px !important;
+    max-height: min(760px, calc(100dvh - 48px));
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 0 !important;
+    overflow: hidden;
+    padding: 0 !important;
+    border: 1px solid var(--pulse-ink) !important;
+    border-radius: var(--pulse-radius-panel) !important;
+    box-shadow: 0 30px 80px -34px hsl(216 65% 4% / 0.72) !important;
+  }
+
+  .pulse-ask-scroll {
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 24px;
+    scrollbar-gutter: stable;
+  }
+
+  .pulse-ask-intro > p {
+    max-width: 520px;
+    margin: 0;
+    color: var(--pulse-ink-soft);
+    font-family: var(--pulse-font-editorial);
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  .pulse-ask-suggestions {
+    display: grid;
+    gap: 8px;
+    margin-top: 20px;
+  }
+
+  .pulse-ask-suggestions button {
+    display: grid;
+    min-height: 56px;
+    grid-template-columns: minmax(0, 1fr) 22px;
+    align-items: center;
+    gap: 14px;
+    padding: 13px 14px;
+    border: 1px solid var(--pulse-rule);
+    background: hsl(42 44% 98% / 0.74);
+    color: var(--pulse-ink);
+    text-align: left;
+  }
+
+  .pulse-ask-suggestions button:hover {
+    border-color: var(--pulse-ink);
+    background: var(--pulse-paper-deep);
+  }
+
+  .pulse-ask-suggestions button span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-family: var(--pulse-font-editorial);
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .pulse-ask-suggestions button svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .pulse-ask-answer {
+    scroll-margin-top: 16px;
+    padding: 2px 0 18px;
+  }
+
+  .pulse-ask-answer > span {
+    display: block;
+    margin-bottom: 14px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .pulse-ask-answer > p {
+    margin: 0;
+    color: var(--pulse-ink-soft);
+    font-family: var(--pulse-font-editorial);
+    font-size: 18px;
+    line-height: 1.58;
+    white-space: pre-wrap;
+  }
+
+  .pulse-ask-answer > p i {
+    display: inline-block;
+    width: 3px;
+    height: 1em;
+    margin-left: 4px;
+    background: var(--pulse-amber);
+    animation: pulse 1s ease-in-out infinite;
+    vertical-align: -0.12em;
+  }
+
+  .pulse-ask-answer > small {
+    display: block;
+    margin-top: 20px;
+    padding-top: 12px;
+    border-top: 1px solid var(--pulse-rule-soft);
+    color: #5c6470;
+    font-size: 10px;
+    line-height: 1.5;
+  }
+
+  .pulse-ask-composer {
+    position: relative;
+    z-index: 3;
+    flex: 0 0 auto;
+    padding: 16px 24px calc(16px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--pulse-ink);
+    background: hsl(42 44% 97% / 0.98);
+  }
+
+  .pulse-ask-composer > label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .pulse-ask-composer > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 52px;
+    gap: 8px;
+  }
+
+  .pulse-ask-composer input {
+    width: 100%;
+    min-width: 0;
+    min-height: 52px;
+    padding: 0 14px;
+    border: 1px solid var(--pulse-rule);
+    background: #fffdf7;
+    color: var(--pulse-ink);
+    font-family: var(--pulse-font-editorial);
+    font-size: 16px;
+  }
+
+  .pulse-ask-composer input::placeholder {
+    color: #707784;
+  }
+
+  .pulse-ask-composer button {
+    display: grid;
+    width: 52px;
+    height: 52px;
+    place-items: center;
+    border: 1px solid var(--pulse-ink);
+    background: var(--pulse-ink);
+    color: #fff8e8;
+  }
+
+  .pulse-ask-composer button:disabled {
+    cursor: not-allowed;
+    opacity: 0.42;
+  }
+
+  .pulse-ask-composer button svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .pulse-ask-composer > small {
+    display: block;
+    margin-top: 6px;
+    color: #606977;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    text-align: right;
+  }
+
+  /* Sources and methods */
+  .pulse-method-surface {
+    display: flex !important;
+    height: 100dvh;
+    flex-direction: column;
+    gap: 0 !important;
+    overflow: hidden;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: 0 30px 80px -34px hsl(216 65% 4% / 0.72) !important;
+  }
+
+  .pulse-method-surface .pulse-overlay-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .pulse-method-sheet {
+    width: min(620px, 48vw) !important;
+    max-width: 620px !important;
+  }
+
+  .pulse-method-scroll {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+
+  .pulse-method-content {
+    display: grid;
+    gap: 30px;
+    padding: 26px 28px 34px;
+  }
+
+  .pulse-method-lead {
+    padding: 22px;
+    border: 1px solid var(--pulse-ink);
+    background: hsl(42 44% 98% / 0.72);
+  }
+
+  .pulse-method-lead > span {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .pulse-method-lead h3 {
+    margin: 0;
+    font-family: var(--pulse-font-editorial);
+    font-size: 24px;
+    font-weight: 400;
+    letter-spacing: -0.025em;
+    line-height: 1.05;
+  }
+
+  .pulse-method-lead p,
+  .pulse-method-measures p,
+  .pulse-method-details details > div {
+    color: var(--pulse-ink-soft);
+    font-family: var(--pulse-font-editorial);
+  }
+
+  .pulse-method-lead p {
+    margin: 14px 0 0;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .pulse-method-section-heading {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .pulse-method-section-heading > span {
+    color: var(--pulse-amber);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+
+  .pulse-method-section-heading h3 {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .pulse-method-measures {
+    border-top: 1px solid var(--pulse-rule);
+  }
+
+  .pulse-method-measures article {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--pulse-rule-soft);
+  }
+
+  .pulse-method-measures article > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .pulse-method-measures article span {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .pulse-method-measures article strong {
+    font-family: var(--pulse-font-editorial);
+    font-size: 26px;
+    font-weight: 400;
+  }
+
+  .pulse-method-measures p {
+    max-width: 480px;
+    margin: 7px 0 0;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .pulse-method-bands {
+    display: grid;
+    border-top: 1px solid var(--pulse-rule);
+  }
+
+  .pulse-method-bands > div {
+    display: grid;
+    min-height: 46px;
+    grid-template-columns: 64px 96px minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--pulse-rule-soft);
+  }
+
+  .pulse-method-bands span,
+  .pulse-method-bands strong {
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .pulse-method-bands p {
+    margin: 0;
+    color: var(--pulse-ink-soft);
+    font-family: var(--pulse-font-editorial);
+    font-size: 12px;
+  }
+
+  .pulse-method-details {
+    border-top: 1px solid var(--pulse-rule);
+  }
+
+  .pulse-method-details details {
+    border-bottom: 1px solid var(--pulse-rule-soft);
+  }
+
+  .pulse-method-details summary {
+    display: grid;
+    min-height: 54px;
+    grid-template-columns: minmax(0, 1fr) 20px;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 700;
+    list-style: none;
+  }
+
+  .pulse-method-details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .pulse-method-details summary svg {
+    width: 18px;
+    height: 18px;
+    transition: transform 160ms ease;
+  }
+
+  .pulse-method-details details[open] summary svg {
+    transform: rotate(180deg);
+  }
+
+  .pulse-method-details details > div {
+    padding: 0 0 18px;
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
+  .pulse-method-details details > div p {
+    margin: 0 0 10px;
+  }
+
+  .pulse-method-details details > div ul {
+    margin: 8px 0 0;
+    padding-left: 18px;
+  }
+
+  .pulse-method-footer {
+    position: relative;
+    z-index: 2;
+    flex: 0 0 auto;
+    padding: 14px 24px calc(14px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--pulse-ink);
+    background: hsl(42 44% 97% / 0.98);
+  }
+
+  .pulse-method-footer a {
+    display: flex;
+    min-height: 48px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 16px;
+    border: 1px solid var(--pulse-ink);
+    background: var(--pulse-ink);
+    color: #fff8e8;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .pulse-method-footer svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  @media (max-width: 1023.98px) {
+    .pulse-ask-surface,
+    .pulse-method-drawer {
+      top: var(--pulse-visual-offset-top, 0);
+      right: 0 !important;
+      bottom: auto !important;
+      left: 0 !important;
+      width: 100% !important;
+      max-width: none !important;
+      height: 100dvh;
+      max-height: 100dvh;
+      margin-top: 0 !important;
+      transform: none !important;
+      animation: none !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+    }
+
+    .pulse-overlay-header {
+      padding: 16px 16px 14px;
+    }
+
+    .pulse-overlay-header h2 {
+      font-size: 26px;
+    }
+
+    .pulse-overlay-header p {
+      margin-top: 6px;
+      font-size: 12px;
+    }
+
+    .pulse-overlay-heading-mark {
+      width: 38px;
+      height: 38px;
+    }
+
+    .pulse-ask-scroll {
+      min-height: 0;
+      padding: 20px 16px;
+    }
+
+    .pulse-ask-intro > p {
+      font-size: 15px;
+    }
+
+    .pulse-ask-suggestions button {
+      min-height: 60px;
+    }
+
+    .pulse-ask-answer > p {
+      font-size: 17px;
+    }
+
+    .pulse-ask-composer {
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    }
+
+    .pulse-method-content {
+      gap: 26px;
+      padding: 22px 16px 28px;
+    }
+
+    .pulse-method-lead {
+      padding: 18px;
+    }
+
+    .pulse-method-bands > div {
+      grid-template-columns: 58px 88px minmax(0, 1fr);
+      gap: 8px;
+    }
+
+    .pulse-method-footer {
+      padding-right: 16px;
+      padding-left: 16px;
+    }
+  }
+
+  @media (max-width: 374px) {
+    .pulse-overlay-header {
+      gap: 10px;
+      padding-right: 10px;
+      padding-left: 12px;
+    }
+
+    .pulse-overlay-header h2 {
+      font-size: 23px;
+    }
+
+    .pulse-overlay-header p {
+      font-size: 11px;
+    }
+
+    .pulse-overlay-heading-mark {
+      width: 34px;
+      height: 34px;
+    }
+
+    .pulse-ask-composer > div {
+      grid-template-columns: minmax(0, 1fr) 48px;
+    }
+
+    .pulse-ask-composer button {
+      width: 48px;
+    }
+
+    .pulse-method-bands > div {
+      grid-template-columns: 54px 80px minmax(0, 1fr);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pulse-overlay-theme,
+    .pulse-overlay-theme * {
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
   /*
    * Pulse editorial instrument system.
    * This is the approved cream-paper / navy-rail direction recovered from the
@@ -395,7 +1046,9 @@
       #f4efe5;
   }
 
-  .pulse-product-frame {
+  .pulse-product-frame,
+  .pulse-overlay-theme,
+  .pulse-overlay-backdrop {
     --pulse-ink: #07172a;
     --pulse-ink-soft: #26364a;
     --pulse-paper: #fbf7ed;
@@ -404,6 +1057,14 @@
     --pulse-rule-soft: #d5cec1;
     --pulse-amber: #e59500;
     --pulse-amber-soft: #f5c463;
+    --pulse-font-ui: Arial, Helvetica, sans-serif;
+    --pulse-font-editorial: Georgia, 'Times New Roman', serif;
+    --pulse-radius-panel: 6px;
+    --pulse-layer-backdrop: 80;
+    --pulse-layer-overlay: 90;
+  }
+
+  .pulse-product-frame {
     position: relative;
     display: grid;
     grid-template-columns: 76px minmax(0, 1fr) minmax(330px, 370px);
@@ -474,7 +1135,7 @@
   }
 
   .pulse-brand-lockup strong {
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: var(--pulse-font-ui);
     font-size: 19px;
     font-weight: 700;
     letter-spacing: 0.14em;
@@ -483,7 +1144,7 @@
 
   .pulse-product-header > p {
     margin: 0;
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: var(--pulse-font-editorial);
     font-size: 12px;
     line-height: 1.15;
   }
@@ -660,7 +1321,7 @@
   .pulse-overline,
   .pulse-section-kicker,
   .pulse-section-kicker-row {
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: var(--pulse-font-ui);
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.12em;
@@ -675,7 +1336,7 @@
   .pulse-index-intro h1 {
     max-width: 720px;
     margin: 0;
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: var(--pulse-font-editorial);
     font-size: clamp(48px, 5.4vw, 80px);
     font-weight: 400;
     letter-spacing: -0.055em;
@@ -687,7 +1348,7 @@
     max-width: 570px;
     margin: 22px 0 0;
     color: var(--pulse-ink-soft);
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: var(--pulse-font-editorial);
     font-size: 14px;
     line-height: 1.5;
   }
@@ -701,7 +1362,7 @@
   }
 
   .pulse-score-number {
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: var(--pulse-font-editorial);
     font-size: clamp(94px, 11vw, 154px);
     font-weight: 400;
     font-variant-numeric: tabular-nums;
@@ -722,7 +1383,7 @@
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: var(--pulse-font-ui);
     font-size: clamp(20px, 2vw, 30px);
     font-weight: 700;
     letter-spacing: 0.07em;
@@ -778,7 +1439,7 @@
   }
 
   .pulse-score-meta strong {
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: var(--pulse-font-editorial);
     font-size: 35px;
     font-weight: 400;
     line-height: 1;
@@ -915,7 +1576,7 @@
 
   .pulse-role-heading-row h2 {
     margin: 7px 0 0;
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: var(--pulse-font-editorial);
     font-size: clamp(27px, 2.8vw, 42px);
     font-weight: 400;
     letter-spacing: -0.04em;
@@ -967,7 +1628,7 @@
   .pulse-role-metrics strong {
     display: block;
     margin-top: 7px;
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: var(--pulse-font-editorial);
     font-size: 34px;
     font-weight: 400;
     font-variant-numeric: tabular-nums;
@@ -986,7 +1647,7 @@
   .pulse-role-note {
     margin: 15px 0 0;
     color: var(--pulse-ink-soft);
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: var(--pulse-font-editorial);
     font-size: 12px;
     line-height: 1.45;
   }
@@ -1100,7 +1761,7 @@
     border: 0;
     background: transparent;
     color: var(--pulse-ink);
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: var(--pulse-font-editorial);
     font-size: 18px;
     font-style: italic;
   }
@@ -1271,7 +1932,7 @@
   .pulse-secondary-heading h1 {
     max-width: 760px;
     margin: 11px 0 0;
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: var(--pulse-font-editorial);
     font-size: clamp(34px, 4vw, 56px);
     font-weight: 400;
     letter-spacing: -0.045em;
@@ -1282,7 +1943,7 @@
     max-width: 620px;
     margin: 13px 0 0;
     color: var(--pulse-ink-soft);
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: var(--pulse-font-editorial);
     font-size: 13px;
     line-height: 1.5;
   }
@@ -1490,7 +2151,7 @@
     .pulse-mobile-score > strong {
       display: block;
       margin-top: 8px;
-      font-family: Georgia, 'Times New Roman', serif;
+      font-family: var(--pulse-font-editorial);
       font-size: clamp(76px, 24vw, 112px);
       font-weight: 400;
       font-variant-numeric: tabular-nums;
@@ -1600,7 +2261,7 @@
     .pulse-mobile-card-copy > span {
       display: block;
       color: var(--pulse-ink-soft);
-      font-family: Georgia, 'Times New Roman', serif;
+      font-family: var(--pulse-font-editorial);
       font-size: 12px;
       line-height: 1.45;
     }
@@ -1696,7 +2357,7 @@
       padding: 15px 0 0;
       border-top: 1px solid var(--pulse-rule);
       color: var(--pulse-ink-soft);
-      font-family: Georgia, 'Times New Roman', serif;
+      font-family: var(--pulse-font-editorial);
       font-size: 12px;
       line-height: 1.55;
     }
