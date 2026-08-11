@@ -27,7 +27,7 @@ const TIERS: Array<{
     blurb: 'The complete public read for fractional executives, hiring teams, researchers, and agents.',
     features: [
       'Current FWI and all three components',
-      'History and six role-demand pages',
+      '12-month public API history and six role-demand views',
       'Weekly brief and evidence detail',
       'Public REST API and hosted MCP tools',
       'No consumer Pro gate',

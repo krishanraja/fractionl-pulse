@@ -42,6 +42,12 @@
          separates ventures. Key is a publishable client key (safe in page markup). -->
     <script>
       (function () {
+        var loaded = false;
+        function loadPostHog() {
+          if (loaded) return;
+          loaded = true;
+          window.removeEventListener('pointerdown', loadPostHog);
+          window.removeEventListener('keydown', loadPostHog);
         var s = document.createElement('script');
         s.async = true;
         s.src = 'https://us-assets.i.posthog.com/static/array.js';
@@ -55,6 +61,13 @@
           window.posthog.register({ product: 'fractionl_pulse' });
         };
         document.head.appendChild(s);
+        }
+        // Keep third-party analytics out of the critical rendering path. Engaged
+        // visitors initialize it on first interaction; passive readers initialize
+        // after the index has had ample time to paint and become interactive.
+        window.addEventListener('pointerdown', loadPostHog, { once: true, passive: true });
+        window.addEventListener('keydown', loadPostHog, { once: true });
+        window.setTimeout(loadPostHog, 15000);
       })();
     </script>
   </head>

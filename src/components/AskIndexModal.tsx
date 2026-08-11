@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, MessageCircleQuestion, Loader2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { SUPABASE_FUNCTIONS_URL } from '@/lib/supabase';
 import { emitEvent } from '@/lib/attribution';
 
@@ -97,6 +97,7 @@ const AskIndexModal = ({ open, onOpenChange, defaultRole, initialPrompt = '' }: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg p-5 sm:p-6 gap-0 overflow-hidden">
         <DialogTitle className="sr-only">Ask the index</DialogTitle>
+        <DialogDescription className="sr-only">Describe the decision you are making to receive an evidence-bounded interpretation of the current index.</DialogDescription>
         {/* soft brand wash anchoring the magic-moment surface */}
         <div
           className="pointer-events-none absolute -top-16 -right-16 w-48 h-48 rounded-full opacity-[0.07]"
@@ -118,7 +119,9 @@ const AskIndexModal = ({ open, onOpenChange, defaultRole, initialPrompt = '' }: 
           onSubmit={(e) => { e.preventDefault(); run(input); }}
           className="relative mt-4 flex items-center gap-2"
         >
+          <label className="sr-only" htmlFor="ask-index-situation">Your situation and decision</label>
           <input
+            id="ask-index-situation"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Fractional CMO in the US, deciding whether to raise rates"

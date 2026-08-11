@@ -9,6 +9,8 @@ import {
   FileText,
   Info,
   LayoutGrid,
+  LogIn,
+  LogOut,
   Menu,
   MessageSquareText,
   Minus,
@@ -49,6 +51,8 @@ interface PulseInstrumentProps {
   onAsk: (prompt?: string) => void;
   onShowMethodology: () => void;
   onRefresh: () => void;
+  isSignedIn: boolean;
+  onSignOut: () => void;
   secondaryContent?: ReactNode;
 }
 
@@ -62,6 +66,8 @@ const PulseInstrument = ({
   onAsk,
   onShowMethodology,
   onRefresh,
+  isSignedIn,
+  onSignOut,
   secondaryContent,
 }: PulseInstrumentProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -70,14 +76,19 @@ const PulseInstrument = ({
   const { roles, isLoading: rolesLoading } = useRoleBreakdown();
 
   const score = displayScore(data.today.overall);
-  const band = bandFor(score);
+  const band = isLoading
+    ? { label: 'Loading', lower: 'loading', className: 'is-loading' }
+    : bandFor(score);
   const delta = data.today.delta30d;
   const deltaIsFlat = Math.abs(delta) < 0.05;
   const deltaIsPositive = delta > 0;
   const latestConfidence = data.monthly.confidence[data.monthly.confidence.length - 1] ?? 0;
   const coverage = Math.max(0, Math.min(100, Math.round(latestConfidence * 100)));
   const activeRole = role ?? roles[0]?.label ?? 'Fractional CMO';
-  const selectedRole = roles.find((item) => item.label === activeRole) ?? roles[0] ?? null;
+  // Never substitute another role's reading when the selected role is missing.
+  // A fallback here previously labelled the first available role (often CFO) as
+  // the viewer's chosen role, creating a materially misleading market read.
+  const selectedRole = roles.find((item) => item.label === activeRole) ?? null;
   const roleDemand = selectedRole ? displayScore(selectedRole.score) : null;
   const roleVsMarket = selectedRole ? selectedRole.score - data.today.demand.score : null;
 
@@ -102,7 +113,7 @@ const PulseInstrument = ({
 
   const roleSentence = selectedRole && roleVsMarket != null
     ? `${selectedRole.label} demand is ${Math.abs(roleVsMarket) < 0.5 ? 'in line with' : roleVsMarket > 0 ? 'above' : 'below'} the market demand reading.`
-    : 'Choose a role to compare its observed demand with the market.';
+    : `No current role-specific demand reading is available for ${activeRole}.`;
 
   const decisionCue = band.label === 'Contracting' || band.label === 'Cooling'
     ? 'Protect pipeline and validate demand before changing price or capacity.'
@@ -176,26 +187,26 @@ const PulseInstrument = ({
       <div className="pulse-role-metrics">
         <div>
           <span>Role demand</span>
-          <strong>{rolesLoading ? '--' : roleDemand ?? '--'}</strong>
-          <small>{selectedRole?.wowChange == null ? 'Current read' : `${selectedRole.wowChange > 0 ? '+' : ''}${formatDelta(selectedRole.wowChange)} WoW`}</small>
+          <strong>{isLoading || rolesLoading ? '--' : roleDemand ?? '--'}</strong>
+          <small>{isLoading ? 'Retrieving' : selectedRole?.wowChange == null ? 'Current read' : `${selectedRole.wowChange > 0 ? '+' : ''}${formatDelta(selectedRole.wowChange)} WoW`}</small>
         </div>
         <div>
           <span>Market demand</span>
-          <strong>{displayScore(data.today.demand.score)}</strong>
-          <small>{data.today.demand.delta30d == null ? 'New series' : `${data.today.demand.delta30d > 0 ? '+' : ''}${formatDelta(data.today.demand.delta30d)} / 30d`}</small>
+          <strong>{isLoading ? '--' : displayScore(data.today.demand.score)}</strong>
+          <small>{isLoading ? 'Retrieving' : data.today.demand.delta30d == null ? 'New series' : `${data.today.demand.delta30d > 0 ? '+' : ''}${formatDelta(data.today.demand.delta30d)} / 30d`}</small>
         </div>
         <div>
           <span>Talent availability</span>
-          <strong>{data.today.supply.score == null ? '--' : displayScore(data.today.supply.score)}</strong>
-          <small>{data.today.supply.score == null ? 'Not measured' : 'Market-wide'}</small>
+          <strong>{isLoading || data.today.supply.score == null ? '--' : displayScore(data.today.supply.score)}</strong>
+          <small>{isLoading ? 'Retrieving' : data.today.supply.score == null ? 'Not measured' : 'Market-wide'}</small>
         </div>
         <div>
           <span>Market buzz</span>
-          <strong>{displayScore(data.today.culture.score)}</strong>
-          <small>Market-wide</small>
+          <strong>{isLoading ? '--' : displayScore(data.today.culture.score)}</strong>
+          <small>{isLoading ? 'Retrieving' : 'Market-wide'}</small>
         </div>
       </div>
-      <p className="pulse-role-note">{roleSentence}</p>
+      <p className="pulse-role-note">{isLoading ? 'Loading the current role and market comparison.' : roleSentence}</p>
     </section>
   );
 
@@ -207,25 +218,31 @@ const PulseInstrument = ({
         <p className="pulse-index-deck">One public read on the fractional executive market, with the evidence and limits kept in view.</p>
       </section>
 
-      <section className="pulse-score-band" aria-label={`Fractional Working Index ${score}, ${band.label}`}>
+      <section className="pulse-score-band" aria-label={isLoading ? 'Loading the current Fractional Working Index reading' : `Fractional Working Index ${score}, ${band.label}`}>
         <div className="pulse-score-number">{isLoading ? '--' : score}</div>
         <div className="pulse-score-state">
           <div className={`pulse-band-label ${band.className}`}><span />{band.label}</div>
-          <div className={`pulse-delta ${deltaIsFlat ? 'is-flat' : deltaIsPositive ? 'is-up' : 'is-down'}`}>
-            {deltaIsFlat ? <Minus /> : deltaIsPositive ? <ArrowUpRight /> : <ArrowDownRight />}
-            <strong>{deltaIsPositive && !deltaIsFlat ? '+' : ''}{formatDelta(delta)}</strong>
-            <span>/ 30 days</span>
-          </div>
+          {isLoading ? (
+            <div className="pulse-delta is-flat" role="status" aria-live="polite"><RefreshCw /><strong>Retrieving</strong><span>latest evidence</span></div>
+          ) : (
+            <div className={`pulse-delta ${deltaIsFlat ? 'is-flat' : deltaIsPositive ? 'is-up' : 'is-down'}`}>
+              {deltaIsFlat ? <Minus /> : deltaIsPositive ? <ArrowUpRight /> : <ArrowDownRight />}
+              <strong>{deltaIsPositive && !deltaIsFlat ? '+' : ''}{formatDelta(delta)}</strong>
+              <span>/ 30 days</span>
+            </div>
+          )}
         </div>
         <div className="pulse-score-meta">
-          <strong>{coverage}%</strong>
-          <span>evidence coverage</span>
-          <small>As of {new Date(`${data.asOf}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}</small>
+          <strong>{isLoading ? '--' : `${coverage}%`}</strong>
+          <span>{isLoading ? 'checking coverage' : 'evidence coverage'}</span>
+          <small>{isLoading ? 'Checking live sources' : `As of ${new Date(`${data.asOf}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}`}</small>
           <button type="button" onClick={onRefresh} aria-label="Refresh index"><RefreshCw /></button>
         </div>
       </section>
 
-      {renderTrend()}
+      {isLoading
+        ? <div className="pulse-timeline pulse-loading-copy" role="status" aria-live="polite">Retrieving the latest verified reading…</div>
+        : renderTrend()}
       {renderRoleLens()}
 
       <section className="pulse-calibration" aria-labelledby="calibration-heading">
@@ -254,21 +271,21 @@ const PulseInstrument = ({
     {
       id: 'changed' as const,
       title: 'What changed',
-      body: deltaIsFlat ? 'The overall index held its level over 30 days.' : `The overall index moved ${formatDelta(Math.abs(delta))} points ${deltaIsPositive ? 'higher' : 'lower'} over 30 days.`,
-      detail: data.context?.overallContext ?? marketSentence,
+      body: isLoading ? 'Retrieving the latest verified movement.' : deltaIsFlat ? 'The overall index held its level over 30 days.' : `The overall index moved ${formatDelta(Math.abs(delta))} points ${deltaIsPositive ? 'higher' : 'lower'} over 30 days.`,
+      detail: isLoading ? 'This interpretation will appear when the current evidence has loaded.' : data.context?.overallContext ?? marketSentence,
       icon: Activity,
     },
     {
       id: 'means' as const,
       title: 'What it means',
-      body: `${marketSentence} ${roleSentence}`,
+      body: isLoading ? 'Checking the market level against your role.' : `${marketSentence} ${roleSentence}`,
       detail: 'The level and the movement are separate facts. Pulse shows both so a stable level is not mistaken for a forecast.',
       icon: BrainCircuit,
     },
     {
       id: 'do' as const,
       title: 'What to do',
-      body: decisionCue,
+      body: isLoading ? 'A decision cue will appear after the evidence is verified.' : decisionCue,
       detail: 'This is a decision cue, not financial advice. Open Ask Pulse with your exact role, geography and decision for a bounded interpretation.',
       icon: ArrowUpRight,
     },
@@ -276,14 +293,14 @@ const PulseInstrument = ({
 
   const renderMobileIndex = () => (
     <div className="pulse-mobile-index">
-      <section className="pulse-mobile-score" aria-label={`Fractional Working Index ${score}, ${band.label}`}>
+      <section className="pulse-mobile-score" aria-label={isLoading ? 'Loading the current Fractional Working Index reading' : `Fractional Working Index ${score}, ${band.label}`}>
         <span>Fractional Working Index</span>
         <strong>{isLoading ? '--' : score}</strong>
         <div className={`pulse-mobile-band ${band.className}`}>{band.label}<i /></div>
-        <p>{deltaIsPositive && !deltaIsFlat ? '+' : ''}{formatDelta(delta)} / 30 days</p>
-        <div className="pulse-mobile-coverage"><span>{coverage}% evidence coverage</span><span>{data.asOf}</span></div>
+        <p>{isLoading ? 'Retrieving latest evidence' : `${deltaIsPositive && !deltaIsFlat ? '+' : ''}${formatDelta(delta)} / 30 days`}</p>
+        <div className="pulse-mobile-coverage"><span>{isLoading ? 'Checking evidence coverage' : `${coverage}% evidence coverage`}</span><span>{isLoading ? 'Live sources' : data.asOf}</span></div>
       </section>
-      {renderTrend(true)}
+      {isLoading ? <div className="pulse-mobile-trend pulse-loading-copy" role="status" aria-live="polite">Loading current timeline…</div> : renderTrend(true)}
       <section className="pulse-mobile-decisions" aria-label="Index interpretation">
         {taskCards.map((card) => {
           const Icon = card.icon;
@@ -306,7 +323,7 @@ const PulseInstrument = ({
   const renderAskPanel = () => (
     <aside className="pulse-ask-panel" aria-labelledby="ask-panel-heading">
       <div className="pulse-ask-heading">
-        <span>Ask Pulse</span>
+        <span id="ask-panel-heading">Ask Pulse</span>
         <button type="button" onClick={() => setAskPrompt('')} aria-label="Clear Ask Pulse question"><Minus /></button>
       </div>
       <form onSubmit={submitAsk} className="pulse-ask-form">
@@ -320,21 +337,25 @@ const PulseInstrument = ({
       <div className="pulse-ask-stack">
         <section>
           <div className="pulse-ask-card-title"><span><Activity /></span><strong>Measured facts</strong></div>
-          <ul>
-            <li>FWI is {score}, classified {band.lower}.</li>
-            <li>Hiring activity is {displayScore(data.today.demand.score)}.</li>
-            <li>Current evidence coverage is {coverage}%.</li>
-          </ul>
+          {isLoading ? (
+            <p role="status" aria-live="polite">Retrieving the latest measured facts.</p>
+          ) : (
+            <ul>
+              <li>FWI is {score}, classified {band.lower}.</li>
+              <li>Hiring activity is {displayScore(data.today.demand.score)}.</li>
+              <li>Current evidence coverage is {coverage}%.</li>
+            </ul>
+          )}
           <div className="pulse-receipts"><span>21 inputs</span><span>6 roles</span><span>US + UK</span></div>
         </section>
         <section>
           <div className="pulse-ask-card-title"><span><BrainCircuit /></span><strong>Interpretation</strong></div>
-          <p>{marketSentence} {roleSentence}</p>
+          <p>{isLoading ? 'Interpretation will appear after the current evidence is verified.' : `${marketSentence} ${roleSentence}`}</p>
           <div className="pulse-receipts"><span>Index level</span><span>30-day movement</span></div>
         </section>
         <section className="is-decision">
           <div className="pulse-ask-card-title"><span><ArrowUpRight /></span><strong>Decision cue</strong></div>
-          <p>{decisionCue}</p>
+          <p>{isLoading ? 'A decision cue will appear after the current evidence is verified.' : decisionCue}</p>
           <button type="button" onClick={() => onAsk(askPrompt)}>Ask with my situation <ArrowRight /></button>
         </section>
       </div>
@@ -362,7 +383,7 @@ const PulseInstrument = ({
             <strong>Pulse</strong>
           </div>
           <p>Public market instrument for the<br />fractional executive economy</p>
-          <button type="button" className="pulse-mobile-menu-button" onClick={() => setMenuOpen((current) => !current)} aria-expanded={menuOpen} aria-label="Open navigation">
+          <button type="button" className="pulse-mobile-menu-button" onClick={() => setMenuOpen((current) => !current)} aria-expanded={menuOpen} aria-controls="pulse-mobile-menu" aria-label={menuOpen ? 'Close navigation' : 'Open navigation'}>
             {menuOpen ? <X /> : <Menu />}
           </button>
         </header>
@@ -380,15 +401,23 @@ const PulseInstrument = ({
             })}
           </nav>
           <button type="button" onClick={onShowMethodology} aria-label="Methodology"><Info /><span>Method</span></button>
+          {isSignedIn ? (
+            <button type="button" onClick={onSignOut} aria-label="Sign out"><LogOut /><span>Exit</span></button>
+          ) : (
+            <Link className="pulse-rail-auth-link" to="/login" aria-label="Sign in"><LogIn /><span>Sign in</span></Link>
+          )}
         </aside>
 
         {menuOpen && (
-          <nav className="pulse-mobile-menu" aria-label="More navigation">
+          <nav id="pulse-mobile-menu" className="pulse-mobile-menu" aria-label="More navigation">
             <button type="button" onClick={() => selectTab('signals')}><LayoutGrid /> Signals</button>
             <button type="button" onClick={() => selectTab('insights')}><BrainCircuit /> Interpretation</button>
             <button type="button" onClick={() => selectTab('data')}><Database /> Sources</button>
             <button type="button" onClick={() => { onShowMethodology(); setMenuOpen(false); }}><Info /> Methodology</button>
             <Link to="/pricing"><FileText /> Partner access</Link>
+            {isSignedIn
+              ? <button type="button" onClick={() => { onSignOut(); setMenuOpen(false); }}><LogOut /> Sign out</button>
+              : <Link to="/login"><LogIn /> Sign in</Link>}
           </nav>
         )}
 

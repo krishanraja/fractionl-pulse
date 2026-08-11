@@ -583,6 +583,52 @@
     white-space: nowrap;
   }
 
+  .pulse-rail-auth-link {
+    position: relative;
+    display: flex;
+    min-height: 68px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    color: #aab3bf;
+    text-decoration: none;
+  }
+
+  .pulse-rail-auth-link:hover {
+    background: #0d2138;
+    color: #fff9eb;
+  }
+
+  .pulse-rail-auth-link svg {
+    width: 22px;
+    height: 22px;
+    stroke-width: 1.6;
+  }
+
+  .pulse-rail-auth-link span {
+    max-width: 100%;
+    overflow: hidden;
+    padding: 0 4px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    line-height: 1.15;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .pulse-loading-copy {
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    color: var(--pulse-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
   .pulse-product-main {
     grid-column: 2;
     grid-row: 2;

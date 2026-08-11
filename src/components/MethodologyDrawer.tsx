@@ -1,7 +1,7 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
+import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Download, X } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/use-mobile';
 import { SUPABASE_FUNCTIONS_URL } from '@/lib/supabase';
 
@@ -116,9 +116,9 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
       </div>
 
       <div className="bg-gradient-to-r from-primary/10 to-secondary/10 p-4 rounded-lg border border-primary/20">
-        <h4 className="font-medium mb-1 text-foreground">Updated daily</h4>
+        <h4 className="font-medium mb-1 text-foreground">Scheduled daily</h4>
         <p className="text-sm text-muted-foreground">
-          The pipeline runs every morning at 6am UTC via Supabase scheduled jobs, with a weekly Monday baseline. Each reading is stored permanently in Supabase, building genuine historical depth.
+          The pipeline is scheduled every morning at 6am UTC, with a weekly Monday baseline. Source outages can reduce coverage or delay a reading; the Sources view shows the current state. Historical coverage can include backfilled estimates, while the current headline does not invent a missing pillar reading.
         </p>
       </div>
 
@@ -140,6 +140,9 @@ const MethodologyDrawer = ({ open, onOpenChange, weights }: MethodologyDrawerPro
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="max-h-[85vh]">
+          <DrawerClose className="absolute right-3 top-3 z-10 grid h-11 w-11 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Close methodology">
+            <X aria-hidden="true" size={18} />
+          </DrawerClose>
           <DrawerHeader className="text-left">
             <DrawerTitle>How we calculate this</DrawerTitle>
             <DrawerDescription>What goes into the Fractional Working Index</DrawerDescription>

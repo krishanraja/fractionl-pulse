@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ const Login = () => {
   const [signupSuccess, setSignupSuccess] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [passwordUpdated, setPasswordUpdated] = useState(false);
+  const errorRef = useRef<HTMLParagraphElement>(null);
   const navigate = useNavigate();
   const {
     signInWithEmail,
@@ -39,10 +40,13 @@ const Login = () => {
   }, [isPasswordRecovery]);
 
   useEffect(() => {
-    const previousTitle = document.title;
     document.title = 'Sign in or create an account | Pulse by Fractionl';
-    return () => { document.title = previousTitle; };
+    return () => { document.title = 'Fractional Working Index | Pulse by Fractionl'; };
   }, []);
+
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,6 +182,8 @@ const Login = () => {
                     placeholder="you@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    aria-describedby={error ? 'auth-error' : undefined}
                     required
                     className="h-11"
                   />
@@ -199,6 +205,8 @@ const Login = () => {
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                      aria-describedby={error ? 'auth-error' : undefined}
                       required
                       minLength={8}
                       className="h-11"
@@ -226,7 +234,7 @@ const Login = () => {
                 )}
 
                 {error && (
-                  <p className="text-sm text-red-500">{error}</p>
+                  <p ref={errorRef} id="auth-error" role="alert" aria-live="assertive" tabIndex={-1} className="text-sm text-red-500 outline-none">{error}</p>
                 )}
 
                 <Button type="submit" className="w-full h-11" disabled={isLoading}>
