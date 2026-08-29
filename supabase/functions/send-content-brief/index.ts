@@ -20,11 +20,15 @@ const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers
 // Escape any LLM/scraped text before interpolating into the email HTML (stored-XSS guard).
 const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-function renderHtml(bj: any, weekStart: string): string {
-  const topics = (bj.rising_topics || []).slice(0, 5).map((t: any, i: number) =>
+interface BriefTopic { label?: string; is_breakout?: boolean; summary?: string; radar_score?: number }
+interface BriefAngle { angle?: string; format?: string; rationale?: string }
+interface BriefJson { rising_topics?: BriefTopic[]; breakout_questions?: string[]; priority_angles?: BriefAngle[] }
+
+function renderHtml(bj: BriefJson, weekStart: string): string {
+  const topics = (bj.rising_topics || []).slice(0, 5).map((t, i) =>
     `<tr><td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;"><strong>${i + 1}. ${esc(t.label)}</strong>${t.is_breakout ? ' 🚀' : ''}<div style="color:#64748b;font-size:13px;margin-top:2px;">${esc(t.summary)}</div></td><td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:right;color:#6366f1;font-weight:600;">${esc(t.radar_score)}</td></tr>`).join('');
   const questions = (bj.breakout_questions || []).slice(0, 5).map((q: string) => `<li style="margin:4px 0;">${esc(q)}</li>`).join('');
-  const angles = (bj.priority_angles || []).slice(0, 4).map((a: any) => `<li style="margin:6px 0;"><strong>${esc(a.angle)}</strong> <span style="color:#94a3b8;">(${esc(a.format)})</span><br/><span style="color:#64748b;font-size:13px;">${esc(a.rationale)}</span></li>`).join('');
+  const angles = (bj.priority_angles || []).slice(0, 4).map((a) => `<li style="margin:6px 0;"><strong>${esc(a.angle)}</strong> <span style="color:#94a3b8;">(${esc(a.format)})</span><br/><span style="color:#64748b;font-size:13px;">${esc(a.rationale)}</span></li>`).join('');
   return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;color:#0f172a;">
     <div style="background:#4f46e5;color:white;padding:18px 22px;border-radius:10px 10px 0 0;"><h2 style="margin:0;font-size:17px;">Fractional Content Radar</h2><div style="font-size:12px;opacity:.85;">Week of ${weekStart}</div></div>
     <div style="border:1px solid #e2e8f0;border-top:none;padding:20px 22px;border-radius:0 0 10px 10px;">
@@ -46,7 +50,7 @@ serve(async (req) => {
   const { data: brief } = await supabase.from('content_briefs').select('week_start, brief_json').order('week_start', { ascending: false }).limit(1).maybeSingle();
   if (!brief) return new Response(JSON.stringify({ ok: false, error: 'no_brief' }), { status: 404, headers: { ...cors, 'Content-Type': 'application/json' } });
 
-  const html = renderHtml(brief.brief_json, brief.week_start);
+  const html = renderHtml((brief.brief_json || {}) as BriefJson, brief.week_start);
   if (preview) return new Response(html, { headers: { ...cors, 'Content-Type': 'text/html; charset=utf-8' } });
 
   // Dormant unless explicitly armed.

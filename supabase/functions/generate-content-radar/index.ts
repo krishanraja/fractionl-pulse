@@ -18,6 +18,21 @@ const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') || '';
 const MODEL = Deno.env.get('CONTENT_RADAR_MODEL') || 'gpt-4o-mini';
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+interface PreviousTopic { label?: string; doc_count?: number; total_engagement?: number }
+interface RadarAngle { angle?: string; format?: string; rationale?: string }
+interface LlmTopic {
+  label?: string;
+  slug?: string;
+  taxonomy?: string;
+  summary?: string;
+  role?: string;
+  doc_indices?: unknown[];
+  angles?: RadarAngle[];
+}
+interface LlmQuestion { question?: string; topic_slug?: string; is_new?: boolean }
+interface ParsedRadar { topics?: LlmTopic[]; questions?: LlmQuestion[]; saturated?: string[] }
+interface ExampleDoc { text: string; url?: string; source: string }
+
 // Sources whose docs feed the radar, used for the confidence denominator.
 const EXPECTED_SOURCES = ['serpapi_related', 'serpapi_paa', 'google_autocomplete', 'newsapi', 'mediastack', 'guardian', 'brave_news', 'brave_web', 'reddit', 'hn', 'podchaser', 'ats_boards', 'youtube', 'marketplace'];
 
@@ -58,7 +73,7 @@ serve(async (req) => {
     const { data: seeds } = await supabase.from('content_topics').select('label, slug, taxonomy').eq('is_seed', true);
     const prevWeek = isoMonday(new Date(new Date(weekStart + 'T00:00:00Z').getTime() - 7 * 86400000).toISOString().slice(0, 10));
     const { data: prevTopics } = await supabase.from('content_topics').select('slug, label, doc_count, total_engagement').eq('week_start', prevWeek).eq('is_seed', false);
-    const prevBySlug: Record<string, any> = {};
+    const prevBySlug: Record<string, PreviousTopic> = {};
     for (const p of (prevTopics || [])) prevBySlug[p.slug] = p;
 
     // Build a compact LLM input. Prioritize rising/breakout + high-engagement docs, cap ~450.
@@ -98,10 +113,10 @@ Be specific and grounded in the signals. No fluff.`;
     const aiData = await aiRes.json();
     const rawContent = aiData.choices?.[0]?.message?.content || '';
     const truncated = aiData.choices?.[0]?.finish_reason === 'length';
-    let parsed: any = {};
-    try { parsed = JSON.parse(rawContent); } catch (e) { console.error('[ContentRadar] JSON parse failed', truncated ? '(response truncated at max_tokens)' : '', (e as Error).message); parsed = {}; }
-    const llmTopics: any[] = Array.isArray(parsed.topics) ? parsed.topics : [];
-    const llmQuestions: any[] = Array.isArray(parsed.questions) ? parsed.questions : [];
+    let parsed: ParsedRadar = {};
+    try { parsed = JSON.parse(rawContent) as ParsedRadar; } catch (e) { console.error('[ContentRadar] JSON parse failed', truncated ? '(response truncated at max_tokens)' : '', (e as Error).message); parsed = {}; }
+    const llmTopics: LlmTopic[] = Array.isArray(parsed.topics) ? parsed.topics : [];
+    const llmQuestions: LlmQuestion[] = Array.isArray(parsed.questions) ? parsed.questions : [];
     const saturated: string[] = Array.isArray(parsed.saturated) ? parsed.saturated.slice(0, 6) : [];
 
     // Never write an empty week.
@@ -110,10 +125,10 @@ Be specific and grounded in the signals. No fluff.`;
     }
 
     // Score each topic from its member docs.
-    type Scored = { label: string; slug: string; taxonomy: string; summary: string; role: string; angles: any[]; docCount: number; engagement: number; sources: string[]; isBreakout: boolean; examples: any[]; rawScore: number; velocity: number; novelty: number; };
+    type Scored = { label: string; slug: string; taxonomy: string; summary: string; role: string; angles: RadarAngle[]; docCount: number; engagement: number; sources: string[]; isBreakout: boolean; examples: ExampleDoc[]; rawScore: number; velocity: number; novelty: number; radarScore: number; };
     const scored: Scored[] = [];
     for (const tp of llmTopics) {
-      const idxs: number[] = [...new Set<number>((Array.isArray(tp.doc_indices) ? tp.doc_indices : []).filter((n: any) => Number.isInteger(n) && n >= 0 && n < ranked.length))];
+      const idxs: number[] = [...new Set<number>((Array.isArray(tp.doc_indices) ? tp.doc_indices : []).filter((value): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 0 && value < ranked.length))];
       const members = idxs.map(i => ranked[i]);
       const docCount = Math.max(members.length, 1);
       const engagement = members.reduce((s, m) => s + (m.engagement || 0), 0);
@@ -127,7 +142,7 @@ Be specific and grounded in the signals. No fluff.`;
       // No prior-week row for this slug means there is no real week-over-week delta yet
       // (velocity only becomes meaningful from week 2); report 0 rather than the raw score.
       const velocity = prev ? thisScore - prevScore : 0;
-      scored.push({ label: tp.label || slug, slug, taxonomy: tp.taxonomy || 'other', summary: tp.summary || '', role: tp.role || 'general', angles: Array.isArray(tp.angles) ? tp.angles.slice(0, 3) : [], docCount, engagement, sources, isBreakout, examples, rawScore: thisScore, velocity, novelty: 0 });
+      scored.push({ label: tp.label || slug, slug, taxonomy: tp.taxonomy || 'other', summary: tp.summary || '', role: tp.role || 'general', angles: Array.isArray(tp.angles) ? tp.angles.slice(0, 3) : [], docCount, engagement, sources, isBreakout, examples, rawScore: thisScore, velocity, novelty: 0, radarScore: 0 });
     }
 
     // Novelty: how long this slug has existed (non-seed history).
@@ -148,9 +163,9 @@ Be specific and grounded in the signals. No fluff.`;
       const nEng = Math.log10(1 + s.engagement) / maxE;
       let score = Math.round(100 * (0.55 * nVel + 0.30 * s.novelty + 0.15 * nEng));
       if (s.isBreakout) score = Math.max(score, 75);
-      (s as any).radar_score = Math.max(0, Math.min(100, score));
+      s.radarScore = Math.max(0, Math.min(100, score));
     }
-    scored.sort((a, b) => (b as any).radar_score - (a as any).radar_score);
+    scored.sort((a, b) => b.radarScore - a.radarScore);
 
     // Dedup by slug (the unique key) so a repeated slug from the LLM cannot crash the upsert
     // (ON CONFLICT cannot affect the same row twice). Keep the highest-scored instance.
@@ -163,7 +178,7 @@ Be specific and grounded in the signals. No fluff.`;
     const topicRows = topics.map(s => ({
       week_start: weekStart, label: s.label, slug: s.slug, taxonomy: s.taxonomy, summary: s.summary, role: s.role,
       doc_count: s.docCount, total_engagement: s.engagement, velocity: Math.round(s.velocity * 100) / 100, novelty: Math.round(s.novelty * 100) / 100,
-      radar_score: (s as any).radar_score, is_breakout: s.isBreakout, is_seed: false, angles: s.angles, sources: s.sources, example_docs: s.examples,
+      radar_score: s.radarScore, is_breakout: s.isBreakout, is_seed: false, angles: s.angles, sources: s.sources, example_docs: s.examples,
     }));
     const qRows = llmQuestions.filter(q => q && q.question).slice(0, 40).map(q => ({
       week_start: weekStart, question: String(q.question).slice(0, 280), topic_slug: q.topic_slug || null, is_new: q.is_new !== false, source_count: 1,
@@ -182,9 +197,9 @@ Be specific and grounded in the signals. No fluff.`;
     const topN = topics.slice(0, 5);
     const briefJson = {
       week_start: weekStart,
-      rising_topics: topN.map(s => ({ label: s.label, slug: s.slug, radar_score: (s as any).radar_score, velocity: Math.round(s.velocity * 100) / 100, is_breakout: s.isBreakout, summary: s.summary, role: s.role, why: s.examples.map(e => e.text).slice(0, 3), sources: s.sources })),
+      rising_topics: topN.map(s => ({ label: s.label, slug: s.slug, radar_score: s.radarScore, velocity: Math.round(s.velocity * 100) / 100, is_breakout: s.isBreakout, summary: s.summary, role: s.role, why: s.examples.map(e => e.text).slice(0, 3), sources: s.sources })),
       breakout_questions: qRows.filter(q => q.is_new).slice(0, 6).map(q => q.question),
-      priority_angles: topN.flatMap(s => (s.angles || []).map((a: any) => ({ topic: s.label, ...a }))).slice(0, 5),
+      priority_angles: topN.flatMap(s => (s.angles || []).map((angle) => ({ topic: s.label, ...angle }))).slice(0, 5),
       saturated,
       stats: { docs: docs.length, topics: scored.length, questions: qRows.length, confidence },
     };
@@ -194,13 +209,13 @@ Be specific and grounded in the signals. No fluff.`;
       `_${docs.length} signals across ${activeSources.size} sources. Confidence ${Math.round(confidence * 100)}%._`,
       ``,
       `## Rising topics`,
-      ...topN.map((s, i) => `${i + 1}. **${s.label}**: radar ${(s as any).radar_score}/100${s.isBreakout ? ' 🚀 breakout' : ''} (velocity ${s.velocity > 0 ? '+' : ''}${Math.round(s.velocity * 10) / 10})\n   ${s.summary || ''}${s.examples[0] ? `\n   _why: ${s.examples.slice(0, 2).map(e => e.text).join(' · ')}_` : ''}`),
+      ...topN.map((s, i) => `${i + 1}. **${s.label}**: radar ${s.radarScore}/100${s.isBreakout ? ' 🚀 breakout' : ''} (velocity ${s.velocity > 0 ? '+' : ''}${Math.round(s.velocity * 10) / 10})\n   ${s.summary || ''}${s.examples[0] ? `\n   _why: ${s.examples.slice(0, 2).map(e => e.text).join(' · ')}_` : ''}`),
       ``,
       `## Breakout questions`,
       ...(briefJson.breakout_questions.length ? briefJson.breakout_questions.map(q => `- ${q}`) : ['- (none newly emerging this week)']),
       ``,
       `## Priority angles`,
-      ...(briefJson.priority_angles.length ? briefJson.priority_angles.map((a: any) => `- **${a.angle}** _(${a.format})_: ${a.rationale}  \n  topic: ${a.topic}`) : ['- (no angles generated)']),
+      ...(briefJson.priority_angles.length ? briefJson.priority_angles.map((angle) => `- **${angle.angle}** _(${angle.format})_: ${angle.rationale}  \n  topic: ${angle.topic}`) : ['- (no angles generated)']),
       ``,
       `## Skip (saturated)`,
       ...(saturated.length ? saturated.map(s => `- ${s}`) : ['- (nothing flagged)']),

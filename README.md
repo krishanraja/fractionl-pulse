@@ -1,324 +1,241 @@
 # Pulse by Fractionl
 
-**The Fractional Working Index (FWI)** — the weekly 0-100 composite index for the fractional executive economy. A live dashboard with a weekly index, built for human analysts and AI agents alike.
+**Pulse is the independent market instrument for fractional leadership.** It publishes the Fractional Working Index (FWI), a free 0 to 100 composite showing whether demand is expanding, which C-suite roles are moving, and how strong the evidence is.
 
-[![Status](https://img.shields.io/badge/status-live-brightgreen)](https://pulse.fractionl.ai)
-[![Sources](https://img.shields.io/badge/data%20sources-21-blue)](https://pulse.fractionl.ai)
-[![Pipeline](https://img.shields.io/badge/pipeline-daily-orange)](https://pulse.fractionl.ai)
-[![API](https://img.shields.io/badge/API-public%20%2F%20no%20auth-purple)](https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current)
+[Live product](https://pulse.fractionl.ai) · [Current FWI JSON](https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current) · [Corporate strategy](docs/CORPORATE_STRATEGY.md) · [Technical specification](docs/TECHNICAL_SPEC.md)
 
-> Live: **https://pulse.fractionl.ai**
-> Public API: **https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current**
+## Product scope
 
----
+Pulse covers fractional CFO, CMO, CTO, COO, CRO, and interim CEO roles. Current role-demand collectors are US-scoped; English-language cultural inputs can include UK material but do not create a UK market benchmark. Twenty-one tracked inputs contribute to three pillars:
 
-## TL;DR
-
-Pulse publishes a single weekly 0–100 score (the FWI) measuring the health of the fractional executive market across **21 independent data sources**, blended into three pillars: **demand**, **supply**, and **culture**. The score is open to humans on the web dashboard and to AI agents through a public REST API and an MCP tool definition.
-
-The output answers one question: **"How healthy is the fractional executive market right now, and where is it heading?"**
-
----
-
-## Why Pulse Exists
-
-The fractional executive economy is the fastest-growing segment of the talent market, yet operators inside it (fractional execs, agencies, marketplaces, VCs, HR tech) are flying blind. They rely on:
-
-- LinkedIn anecdotes
-- Stale quarterly staffing reports
-- Single-source job board counts
-- Gut feel
-
-Pulse is the first product that turns this market into a **measurable, trackable index**. Composite, normalized, weekly, agent-readable.
-
-**North Star:** a solo fractional executive opens Pulse and, in one glance, knows whether this month's slow inbound is the market or them, and whether to raise rates or hold, with enough confidence to act. See [docs/NORTH_STAR.md](docs/NORTH_STAR.md).
-
----
-
-## Who It's For (ICP at a glance)
-
-| Persona | Income / size | Why it matters to them |
-|---------|---------------|--------------|
-| **Fractional executives** ($200K+ income) | Solo operator | Read whether this month's slow inbound is the market or them; time market entry, set rates, decide when to take new clients. The dashboard is free, so one well-timed rate move is the entire ROI. |
-| **Boutique staffing agencies** ($1M–20M rev) | 5–50 person | Competitive intel, market timing, advisory ammo against larger firms. |
-| **Career coaches & accelerators** | Varies | Credibility tool — replace gut feel with cited data when advising clients on fractional transitions. |
-| **HR tech / talent marketplaces** | SaaS | Embed the FWI as a market intelligence layer. White-label API enriches their product without building a research function. |
-| **VC / PE firms** ($50M+ AUM) | Investor | Validate workforce thesis. The Form D Lead mirrors their own deal flow patterns. |
-| **Enterprise HR / talent ops** | 500+ employees | Quantify hire-fractional-vs-full-time decisions. De-risk workforce planning. |
-| **Business media & analysts** | Outlet / firm | Cited weekly index, license raw feed, embed widget. |
-
-Full ICP, outcomes, objection handling, and outbound hooks are in [`docs/SALES_PLAYBOOK.md`](docs/SALES_PLAYBOOK.md).
-
----
-
-## Outcomes Pulse Drives
-
-- **Pricing power** — fractional execs raise rates 10–25% with confidence during "Surging" weeks
-- **Inbound timing** — agencies launch campaigns when culture momentum is rising, not after
-- **Talent placement velocity** — marketplaces match faster when role-level demand is visible
-- **Investment confirmation** — VCs validate portfolio workforce strategy with an external composite
-- **Editorial leverage** — media gets a single citable weekly number with a defensible methodology
-- **Agent automation** — AI agents query one endpoint to answer hiring-timing questions instead of stitching together five APIs
-
----
-
-## What's Live Today
-
-- **21 data sources**, ingested daily, normalized to 0-100, anomaly-guarded
-- **Three pillars**: Demand (50%), Supply (20%), Culture (30%)
-- **Free full dashboard** at `pulse.fractionl.ai`: Overall FWI, all three sub-indices, 12-month history and trend, all 21 source signals, AI insight cards, Content Radar, a personalized role-aware readiness read, and the weekly brief. There is no human paywall (the $99/mo human "Pro" tier and the waitlist-as-primary model were retired in the 2026-07 pivot; see [docs/NORTH_STAR.md](docs/NORTH_STAR.md))
-- **Personalized, role-aware read**: the fractional role is captured at signup, so the readiness gauge and the "Ask the index" verdict read for the user's own role vs the market ("your lane is +X% vs market")
-- **Public REST API**: `/current`, `/history?months=N` are genuinely no-auth in production (the bare curl returns HTTP 200); `/trigger` is service-role only
-- **Metered agent API**: a signed-in user self-serves a FREE API key at `pulse.fractionl.ai/pricing` for a metered 1,000 requests/day tier via the `x-api-key` header; keyed responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining`. Higher keyed limits and enterprise volume are arranged with sales at `data@fractionl.ai`
-- **Two MCP tools** (`get_fractional_working_index`, `get_fwi_weekly_brief`) exposed by a live hosted MCP server (no auth, attach by URL at `https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp`); agents can also call the live REST API directly
-- **AI insight cards** generated by GPT-4o-mini, cached 12h
-- **Weekly market intelligence brief** as Markdown export (`/export-brief`) for press, newsletters, agents
-- **About 12 weeks of backfilled history** (and accumulating weekly) for trendlines
-- **Daily Vercel cron** (06:00 UTC) + redundant weekly Monday cron, with retry logic and Resend email alerts on failure
-- **Per-source health monitoring** surfaced in the dashboard
-- **Auth** powered by Supabase Auth (email magic link; fractional role captured at signup)
-
----
-
-## Pricing & Access
-
-The human dashboard is **free in full**. Monetization is the metered agent API plus enterprise and data licensing. See [docs/NORTH_STAR.md](docs/NORTH_STAR.md) for why.
-
-| Tier | Price | What you get |
-|------|-------|--------------|
-| **Dashboard (human)** | **Free** | The entire dashboard: Overall FWI, all three sub-indices, 12-month history and trend, all 21 source signals, AI insight cards, Content Radar, a personalized role-aware readiness read, and the weekly brief. No paywall. |
-| **Agents & API (metered)** | Free public read; free keyed tier 1,000 req/day; higher tiers on request | The public REST and hosted MCP read endpoints need no auth. A signed-in user self-serves a free API key at `pulse.fractionl.ai/pricing` and sends it as the `x-api-key` header for a metered 1,000 req/day tier. Keyed responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining`. |
-| **Enterprise & Data** | Talk to us (`data@fractionl.ai`) | High-volume or unlimited API limits, raw signal and score exports, data licensing and citations, white-label and vertical indices, SSO and SLA. |
-
-> The $99/mo human "Pro" tier and the waitlist-as-primary model were retired in the 2026-07 pivot. A human paid tier could be reintroduced later; the historical pricing detail is retained in [docs/MONETIZATION_STRATEGY.md](docs/MONETIZATION_STRATEGY.md).
-
-### Get an API key
-
-1. Sign in at [`pulse.fractionl.ai`](https://pulse.fractionl.ai).
-2. Go to **`/pricing`** and choose **Get an API key** (self-serve, free tier, 1,000 req/day). The plaintext key is shown once; only its SHA-256 hash is stored.
-3. Send it on any read request as the `x-api-key` header:
-
-```bash
-curl -H "x-api-key: pk_live_..." \
-  https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current
-```
-
-Keyed responses include `X-RateLimit-Limit` and `X-RateLimit-Remaining`; exceeding the daily limit returns HTTP 429. For higher limits or enterprise volume, contact `data@fractionl.ai`.
-
----
-
-## Agent Integration (start here)
-
-No auth required for the read endpoints. As of 2026-05-30 the public agent API is genuinely no-auth in production: the bare curl below returns HTTP 200 with no header (`supabase/config.toml` sets `verify_jwt=false` for `fwi-api` and `export-brief`). Build against these in 2 minutes:
-
-```bash
-# Get the current FWI score
-curl https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current
-
-# Get 3 months of weekly history
-curl "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/history?months=3"
-
-# Get the weekly market intelligence brief as Markdown
-curl https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief
-```
-
-Response includes shortcut headers `X-FWI-Score` and `X-FWI-Label` (plus `Cache-Control`) for cheap polling without parsing the body. Fetch the current reading live rather than hardcoding it (recent live reading: about FWI 42.4, label Cooling, as of 2026-05-25).
-
-Machine-readable discovery surfaces for agents: **`/product-truth.json`**, **`/llms.txt`**, and **`/.well-known/ai-plugin.json`**.
-
-Optional metered tier: sign in and self-serve a free API key at `pulse.fractionl.ai/pricing`, then send it as the `x-api-key` header for a metered 1,000 req/day tier (keyed responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining`; exceeding the limit returns HTTP 429). The anonymous no-auth read above stays free and unmetered. See [Pricing & Access](#pricing--access).
-
-- Full API reference: [`docs/AGENT_INTEGRATION.md`](docs/AGENT_INTEGRATION.md)
-- MCP tools (`get_fractional_working_index`, `get_fwi_weekly_brief`): [`docs/MCP_TOOL.md`](docs/MCP_TOOL.md)
-- Sales/marketing anchors for AI sales agents: [`docs/SALES_PLAYBOOK.md`](docs/SALES_PLAYBOOK.md)
-- Outbound and demo guidance for agent-driven GTM: [`docs/AGENT_BRIEFING.md`](docs/AGENT_BRIEFING.md)
-
----
-
-## The Index Methodology
-
-```
+```text
 FWI = (Demand × 0.50) + (Supply × 0.20) + (Culture × 0.30)
 ```
 
-If a pillar has no live data in a given week, its weight is **redistributed proportionally** to the remaining pillars and the response surfaces this in `meta.dataCompleteness` and `components.supply.status`. No silent gap-filling.
+Pulse recalculates after each successful scheduled ingest. DataForSEO job tasks are prepared at 05:00 UTC, Vercel calls the main ingest at 06:00 UTC daily, and Monday has redundant ingest coverage. Weekly describes the briefing cycle and the seven-day role windows, not the score calculation frequency. Pulse is a private composite published by Fractionl, not an official or government index. It is not real-time, peer-reviewed, academically validated, backtested, or a promise of future market performance.
 
-### Signal Architecture (21 sources)
+## Who it serves
 
-| # | Signal | Source | Pillar | What it measures |
-|---|--------|--------|--------|------------------|
-| 1 | Fractional job postings | Adzuna | Demand | Active hiring for 6 fractional C-suite roles |
-| 2 | Google Jobs cross-check | SerpAPI | Demand | Independent job count validation |
-| 3 | VC funding pipeline (the Form D Lead) | SEC EDGAR Form D | Demand | Form D filing velocity as a 1-3 month leading indicator: companies file within 15 days of a raise, then enter the fractional buyer pool 1-3 months later |
-| 4 | Demand search interest | SerpAPI Trends | Culture | Google Trends for fractional CFO/CMO/CTO/executive |
-| 5 | Demand search (fallback) | Apify Google Trends | Culture | Backup search interest via Apify actor |
-| 6 | News coverage | NewsAPI | Culture | Article volume over 28 days |
-| 7 | News cross-check | Mediastack | Culture | Independent news API for coverage validation |
-| 8 | News breadth | Brave News | Culture | Third news source for triangulation |
-| 9 | Web discourse volume | Brave Web Search | Culture | Total web mentions across sites |
-| 10 | Prestige media (UK) | The Guardian | Culture | Elite media coverage, 90-day window |
-| 11 | Prestige media (US) | NY Times | Culture | Elite media coverage, 90-day window |
-| 12 | Podcast mentions | Podchaser | Culture | Audio content discussing fractional work |
-| 13 | Community discourse | Reddit | Culture | Posts + engagement in relevant subreddits |
-| 14 | Tech discourse | Hacker News | Culture | Stories + points on HN (Algolia API) |
-| 15 | Professional profiles | People Data Labs | Supply | Fractional executive profile counts by role |
-| 16 | LinkedIn proxy | SerpAPI | Supply | `site:linkedin.com/in` result counts |
-| 17 | Marketplace listings | GoFractional | Supply | Active fractional exec listings |
-| 18 | Supply intent (Apify) | Apify Google Trends | Supply | Searches like "become fractional executive" |
-| 19 | Supply intent (SerpAPI) | SerpAPI Trends | Supply | Independent supply-intent trend validation |
-| 20 | Macro context | FRED (St. Louis Fed) | Context | JOLTS openings, unemployment rate, initial claims |
-| 21 | Self-employment | Census ACS | Context | US self-employment household percentage |
+### Free public audience
 
-**The Form D Lead** is Pulse's method of using SEC Form D filing velocity as a 1 to 3 month leading indicator of fractional executive demand (companies file Form D within 15 days of a raise, then enter the fractional buyer pool 1 to 3 months later). It is the differentiator no competitor has.
+- Fractional executives reading market and role movement
+- Companies considering a fractional leader
+- Researchers and journalists citing the public instrument
+- Developers and AI agents using the public REST API or MCP tools
 
-**Context signals (FRED, Census)** are stored and exposed but excluded from the composite score — they enrich narrative without contaminating the index.
+Fractional executives are an important audience, but they are not the primary payer. The public index, role pages, brief, REST API, and MCP tools remain free.
 
-### Data Integrity
+### Primary paying ICP
 
-- **Anomaly guard** — rejects any signal more than 3 standard deviations from its 8-week rolling mean
-- **Weighted confidence** — every weekly score carries a 0–1 completeness score reflecting how many of the 21 sources reported (each source has a domain-weighted contribution, not a flat 1/21)
-- **Week-over-week deltas** — movers are computed against actual prior-week scores, not synthetic baselines
-- **Idempotent writes** — `ON CONFLICT` upserts on `(date, source, signal_type, category)`
-- **Per-source health** — `data_source_health` row updated every run with status, error count, last success
-- **Email alerts** — `send-pipeline-alert` edge function fires Resend emails on failed daily ingests
+The first commercial hypothesis is a specialist fractional-executive marketplace, staffing or placement firm, or collective in the United States or United Kingdom that:
 
-### FWI Scale
+- Places several C-suite functions
+- Completes at least 50 engagements per year
+- Is typically around 5 to 50 staff or £1 million to £30 million in revenue, used as a targeting heuristic rather than a hard gate
+- Stores structured engagement data in an ATS, CRM, or marketplace
+- Lacks an independent market-intelligence function
+- Can contribute privacy-safe anonymised engagement records
 
-| Range | Label | What it means |
-|-------|-------|---------------|
-| 75–100 | **Surging** 🚀 | Exceptional demand. Fractional executives have pricing power. |
-| 60–74 | **Growing** 📈 | Strong market. Opportunities abundant for qualified operators. |
-| 45–59 | **Stable** ➡️ | Balanced conditions. Normal hiring cadence. |
-| 30–44 | **Cooling** 📉 | Softening demand. Selectivity increasing. |
-| 0–29 | **Contracting** ⚠️ | Market under pressure. Supply exceeds demand. |
+The economic buyer is usually the founder, CEO, managing director, or COO. They are not buying a larger quota for the public score. The proposed paid value is a private comparison of their book against a verified, multi-partner cohort.
 
----
+### Explicitly not the ICP
+
+Pulse is not an adtech product and is not for publishers as a paid product. Advertising buyers, media outlets, journalists, individual executives, single-hire companies, generic staffing firms, and AI-agent builders may use the public instrument. They are not the primary economic buyer.
+
+## Problem and positioning
+
+> The fractional leadership market still runs on anecdotes.
+
+Specialist firms see their own pipeline but struggle to separate company-specific performance from market movement. Pricing, supply allocation, expansion, and client advice are often based on a small internal sample, public job searches, peer conversations, and generic staffing reports.
+
+Public promise:
+
+> Read the fractional leadership market like an instrument.
+
+Partner promise:
+
+> Benchmark your book against the market before your pipeline tells you too late.
+
+Go Fractional already publishes free role, demand, and compensation benchmarks. Pulse must not claim to be the first or only fractional index. The paid thesis becomes differentiated only when Pulse combines the transparent public instrument with privacy-safe first-party engagement data from several independent partners.
+
+## Offers and pricing
+
+Paid prices are strategic hypotheses until customers pay. Conditional plans are not generally available.
+
+| Offer | Price | Status |
+|---|---:|---|
+| Public instrument | £0 | Live, including score, history, role pages, brief, REST API, MCP tools, methodology, and source health |
+| Founding Benchmark Partner | £1,500 for 90 days | Application-only validation offer, maximum ten organisations, subject to data and privacy review |
+| Benchmark Membership | £6,000 per year | Conditional on ten active partners, 500 verified trailing-12-month engagements, and safe cohorts |
+| Enterprise and portfolio | From £15,000 per year | Conditional on 1,500 verified engagements and sufficient cohort coverage |
+
+Every displayed partner cohort must meet the approved minimum record count and contain data from at least three independent organisations. Exact privacy and suppression rules must be approved before partner-data ingestion launches.
+
+See [docs/CORPORATE_STRATEGY.md](docs/CORPORATE_STRATEGY.md) for the evidence matrix, assumptions, ICP, go-to-market plan, and validation gates.
+
+## What is live
+
+- Current FWI, demand, supply, and culture components
+- Twelve months of mixed-frequency history, with daily observations accumulating since June 2026
+- Six role-demand pages and cross-sectional role movement
+- Weekly market brief, Ask the Index, and machine-readable discovery surfaces
+- Public REST endpoints and four hosted MCP tools
+- Data completeness and per-source health
+- Supabase Auth for saved account context
+- Daily scheduled ingestion, Monday backstops, and pipeline alerts
+
+Historical coverage is not uniform. Supply and culture do not have live coverage across the entire displayed period. Role pages measure demand, not role-specific supply.
+
+## Agent and developer access
+
+Public reads require no authentication:
+
+```bash
+curl https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current
+curl "https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/history?months=3"
+curl https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief
+```
+
+Base URL: `https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1`
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /fwi-api/current` | Latest composite, components, prior-period change, movers, source details, and completeness |
+| `GET /fwi-api/history?months=N` | Historical score observations, with `N` clamped to 1 through 12 |
+| `GET /fwi-roles` | Demand readings for the six covered roles |
+| `GET /export-brief` | Weekly brief as Markdown or JSON |
+| `POST /fwi-api/trigger` | Service-role-only ingestion trigger, not public |
+
+Optional API keys support operational rate controls. They are not a paid generic-data tier.
+
+Hosted MCP server:
+
+```text
+https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp
+```
+
+Tools:
+
+- `get_fractional_working_index`
+- `get_fwi_weekly_brief`
+- `get_content_radar`
+- `get_content_brief`
+
+Discovery surfaces:
+
+- `/product-truth.json`
+- `/llms.txt`
+- `/.well-known/ai-plugin.json`
+- `/sitemap.xml`
+- `/feed.xml`
+
+## Methodology and integrity
+
+The weighting is Demand 50%, Supply 20%, and Culture 30%. If a pillar has no live data for a reading, its weight is redistributed proportionally and the response exposes the effective weights and completeness.
+
+The tracked inputs include job postings, search interest, company-financing context, professional profiles, GoFractional's published operator-network size, public discourse, news, podcasts, self-employment, and macro context. Context signals enrich interpretation but are excluded from the composite where documented.
+
+Integrity controls include:
+
+- Per-source provenance and health status
+- Anomaly checks against rolling history
+- Weighted completeness in each score response
+- Prior-period comparisons based on observed records
+- Idempotent signal writes
+- Pipeline execution logs and failure alerts
+- A read-only weekly pipeline audit
+
+The SEC Form D input is treated as a financing-context signal that may precede some fractional hiring. Its predictive relationship has not been validated, so Pulse must not attach a forecast-accuracy claim to it.
 
 ## Architecture
 
-**Frontend:** React 18 · TypeScript · Vite · Tailwind CSS · shadcn/ui · Framer Motion · Recharts · React Query · Supabase Realtime
-**Backend:** Supabase (Postgres + Edge Functions on Deno)
-**Scheduling:** Vercel Cron (daily 06:00 UTC + redundant weekly Monday 06:00 UTC) with pg_cron safety net
-**Deployment:** Vercel (`pulse.fractionl.ai`)
-**Email alerts:** Resend (via `send-pipeline-alert` edge function)
-**AI insights:** OpenAI GPT-4o-mini
+| Layer | Stack |
+|---|---|
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, Framer Motion, Recharts, React Query |
+| Backend | Supabase Postgres and Edge Functions |
+| Auth | Supabase Auth |
+| AI summaries | OpenAI model invoked from server-side functions, with caching and rate controls |
+| Scheduling | Supabase `pg_cron` prepares DataForSEO Jobs at 05:00 UTC; Vercel schedules the main ingest at 06:00 UTC daily and a Monday backstop; Supabase retains a Monday ingest backstop |
+| Deployment | Vercel at `pulse.fractionl.ai` |
 
-### Edge Functions
+Core Edge Functions:
 
-| Function | Purpose | Trigger |
-|----------|---------|---------|
-| `ingest-signals` | Collects 21 sources, normalizes to 0–100, anomaly guards, upserts `signals` | Vercel cron + manual |
-| `calculate-fwi` | Composites signals into FWI + movers with WoW deltas | Called by `ingest-signals` |
-| `generate-pulse-insights` | GPT-4o-mini AI insight cards, 12h cache | Called by daily cron + on-demand from frontend |
-| `fwi-api` | Public REST endpoint: `/current`, `/history`, `/trigger` | Always-on |
-| `export-brief` | Markdown weekly market brief for press/agents | Always-on |
-| `backfill-historical` | One-time 12-week backfill of historical-capable sources | Manual |
-| `send-pipeline-alert` | Sends Resend email on critical/warning pipeline failures | Called by Vercel cron |
+| Function | Responsibility |
+|---|---|
+| `prepare-dataforseo-jobs` | Submit six idempotent async DataForSEO Google Jobs tasks at 05:00 UTC, record task IDs, and leave retrieval to the 06:00 ingest |
+| `ingest-signals` | Collect and normalise tracked inputs |
+| `calculate-fwi` | Produce the composite and movers |
+| `fwi-api` | Serve current, historical, and protected trigger routes |
+| `fwi-roles` | Serve role-demand readings |
+| `export-brief` | Produce the weekly market brief |
+| `generate-pulse-insights` | Produce cached summaries grounded in the index pipeline |
+| `fwi-verdict` | Answer a scoped index question with origin, rate, and prompt controls |
+| `mcp` | Expose the hosted MCP server |
+| `send-pipeline-alert` | Send operational alerts |
 
-### Database Tables
+## Local development
 
-| Table | Purpose |
-|-------|---------|
-| `signals` | Raw ingested data: one row per `(date, source, signal_type, category)` |
-| `fwi_scores` | Weekly composite scores with weights, completeness, metadata |
-| `movers` | Top-moving roles & signals per weekly run |
-| `cached_insights` | AI insight cards, cached 12 hours |
-| `pipeline_runs` | Execution log for every ingest and calculate run |
-| `data_source_health` | Per-source health monitoring (21 sources) |
-| `waitlist` | Legacy Pulse Pro early-access signups, retained (anon insert, service-role read); not the current model |
-| `api_keys` | Metered agent-API key store: `user_id`-owned rows minted by `manage-api-key`, metered per key per day by `fwi-api`. Only the SHA-256 `key_hash` is stored, never the plaintext key |
-
-RLS is locked down — public read on read-only tables, service-role-only writes, anon insert on `waitlist`. See `supabase/migrations/005_tighten_signals_rls.sql`.
-
-### Data Flow
-
-```
-DEMAND                          SUPPLY                        CULTURE
-Adzuna (6 roles) ─────┐        PDL Profiles ─────┐           Google Trends ────────┐
-SerpAPI Google Jobs ──┤        SerpAPI LinkedIn ─┤           NewsAPI ──────────────┤
-SEC EDGAR Form D ─────┘        GoFractional ─────┤           Mediastack ───────────┤
-                                Supply Trends ────┤           Brave News + Web ────┤
-                                SerpAPI Supply ───┘           Guardian + NYT ──────┤
-                                                              Podchaser ───────────┤
-CONTEXT                                                       Reddit + HN ─────────┘
-FRED (3 series) ─────┐                    │
-Census ACS ──────────┘                    ▼
-                              ingest-signals (Vercel cron, daily 06:00 UTC)
-                                          │
-                          ┌───────────────┴── anomaly guard (3σ / 8w) ──> rejected log
-                          ▼
-                     signals table (idempotent upsert)
-                          │
-                     calculate-fwi
-                          │
-              ┌───────────┼─────────────┬──────────────┐
-              ▼           ▼              ▼              ▼
-        fwi_scores    movers      data_source_health   pipeline_runs
-              │           │
-              ▼           ▼
-     ┌──────────────┬─────────────┬─────────────┐
-     ▼              ▼             ▼             ▼
-   fwi-api    generate-      export-brief    React Dashboard
-  (agents)    insights       (Markdown)      (Realtime + RQ)
-```
-
----
-
-## Development Setup
+Requirements: current Node.js LTS and npm.
 
 ```bash
 git clone https://github.com/krishanraja/fractionl-pulse
 cd fractionl-pulse
 npm install
+Copy-Item .env.example .env
 npm run dev
 ```
 
-### Edge Function Secrets (Supabase Dashboard)
+The browser bundle requires:
 
-| Key | Source | Required |
-|-----|--------|----------|
-| `ADZUNA_APP_ID` / `ADZUNA_APP_KEY` | Adzuna | Yes |
-| `APIFY_API_KEY` | Apify (Google Trends + Reddit + GoFractional) | Yes |
-| `NEWS_API_KEY` | NewsAPI | Yes |
-| `OPENAI_API_KEY` | OpenAI | Yes |
-| `SERP_API_KEY` | SerpAPI | Yes |
-| `BRAVE_API_KEY` | Brave Search | Yes |
-| `FRED_API_KEY` | FRED | Yes |
-| `GUARDIAN_API_KEY` | The Guardian | Yes |
-| `NYT_API_KEY` | NY Times Article Search | Yes |
-| `MEDIASTACK_API_KEY` | Mediastack | Yes |
-| `PODCHASER_API_KEY` | Podchaser GraphQL | Yes |
-| `PDL_API_KEY` | People Data Labs | Recommended (drives live supply) |
-| `RESEND_API_KEY` | Resend (used by `send-pipeline-alert`) | Yes |
-| `SKIP_SOURCES` | Comma-separated source names to skip | Optional |
+```text
+VITE_SUPABASE_URL
+VITE_SUPABASE_ANON_KEY
+```
 
-### Vercel Environment Variables
+Server routes and scheduled jobs use:
 
-| Key | Purpose |
-|-----|---------|
-| `SUPABASE_SERVICE_ROLE_KEY` | Authenticates cron trigger to Supabase |
-| `CRON_SECRET` | Verifies Vercel Cron requests |
+```text
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+CRON_SECRET
+```
 
----
+See [.env.example](.env.example) for the complete integration list. Never commit private keys or service-role credentials.
 
-## Documentation Map
+## Verification
 
-| Doc | What it's for |
-|-----|---------------|
-| [`docs/NORTH_STAR.md`](docs/NORTH_STAR.md) | The one product outcome, the moat metric, and the monetization decision (free dashboard + metered agent API) |
-| [`docs/TECHNICAL_SPEC.md`](docs/TECHNICAL_SPEC.md) | System architecture, schema, edge functions, normalization formulas |
-| [`docs/AGENT_INTEGRATION.md`](docs/AGENT_INTEGRATION.md) | Public API reference, response schema, caching guidance |
-| [`docs/MCP_TOOL.md`](docs/MCP_TOOL.md) | MCP tool definition + Claude/OpenAI implementation examples |
-| [`docs/AGENT_BRIEFING.md`](docs/AGENT_BRIEFING.md) | What AI agents need to say (and not say) about Pulse |
-| [`docs/SALES_PLAYBOOK.md`](docs/SALES_PLAYBOOK.md) | ICP, outcomes, objection handling, outbound hooks for sales/marketing agents |
-| [`docs/MONETIZATION_STRATEGY.md`](docs/MONETIZATION_STRATEGY.md) | Pricing tiers, data licensing, partnership model, financial projections |
-| [`docs/DATA_SOURCES_ROADMAP.md`](docs/DATA_SOURCES_ROADMAP.md) | Live source inventory + roadmap for new sources, webhooks, marketplace integrations |
-| `/product-truth.json`, `/llms.txt`, `/.well-known/ai-plugin.json` | Machine-readable discovery surfaces for agents (served from the live site) |
+```bash
+npx tsc --noEmit
+npm run build
+npm run lint
+npm run docs:audit
+npm run audit
+npm run audit:json
+npm run smoke:release -- --skip-site
+```
 
----
+The audit is read-only. It checks schedule adherence, source health, completeness, and provenance against the committed baseline. A degraded audit is an incident to investigate, not a result to hide. `smoke:release` exercises the public APIs, MCP compatibility, security boundaries, Ask the Index stream, discovery files, and live site routes; set `PULSE_URL` to verify a preview before production.
+
+## Documentation map
+
+| Document | Purpose |
+|---|---|
+| [Corporate strategy](docs/CORPORATE_STRATEGY.md) | Canonical ICP, buyer pains, positioning, pricing, evidence, and validation gates |
+| [North star](docs/NORTH_STAR.md) | User outcome, buyer outcome, moat metric, and near-term gate |
+| [Monetization strategy](docs/MONETIZATION_STRATEGY.md) | Packaging, price tests, and commercial rules |
+| [Sales playbook](docs/SALES_PLAYBOOK.md) | Qualification, discovery, pilot, objections, and outreach |
+| [Agent briefing](docs/AGENT_BRIEFING.md) | Current claims, offers, and prohibited language for AI agents |
+| [Autonomous GTM playbook](docs/AUTONOMOUS_GTM_PLAYBOOK.md) | Research, scoring, messaging, qualification, and proposal rules for autonomous marketing and sales agents |
+| [Documentation governance](docs/DOCUMENTATION_GOVERNANCE.md) | Truth hierarchy, status labels, ownership, and reconciliation rules |
+| [Design system](docs/DESIGN_SYSTEM.md) | Information architecture, branding, device-specific layouts, interaction rules, and release acceptance widths |
+| [Technical specification](docs/TECHNICAL_SPEC.md) | Architecture, schema, functions, and calculations |
+| [Agent integration](docs/AGENT_INTEGRATION.md) | REST response and integration reference |
+| [MCP tool guide](docs/MCP_TOOL.md) | MCP tools and implementation examples |
+| [Data-sources roadmap](docs/DATA_SOURCES_ROADMAP.md) | Input inventory and future data work |
+| [Weekly pipeline audit](docs/WEEKLY_PIPELINE_AUDIT.md) | Operational audit runbook |
 
 ## Contact
 
-- **Live product:** [pulse.fractionl.ai](https://pulse.fractionl.ai)
-- **Parent product:** [fractionl.ai](https://fractionl.ai)
-- **Data licensing / API access / press:** **data@fractionl.ai**
+- Product: [pulse.fractionl.ai](https://pulse.fractionl.ai)
+- Fractionl: [fractionl.ai](https://fractionl.ai)
+- Benchmark Partner applications: [data@fractionl.ai](mailto:data@fractionl.ai?subject=Pulse%20Benchmark%20Partner)

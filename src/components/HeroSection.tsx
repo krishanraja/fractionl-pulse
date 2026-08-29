@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { BookOpen, RefreshCw, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
-import { calcComposite } from '@/lib/types';
+import { calcComposite, type FWIData } from '@/lib/types';
 import { displayScore, formatDelta } from '@/lib/format';
 
 interface HeroSectionProps {
-  data: any;
+  data: FWIData;
   onShowMethodology: () => void;
   onRefresh?: () => void;
   fwiLabel?: { label: string; emoji: string; color: string };
@@ -34,17 +34,15 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
   const isPositive = delta >= 0;
   const isFlat = Math.abs(delta) < 0.05;
 
-  // Forward lean: demand is the leading pillar, so its recent trajectory is a
-  // directional read on where the index is heading. Powered by SEC startup-funding
-  // (Form D) filings, a 1 to 3 month leading indicator. Directional, not a forecast,
-  // and never with an accuracy claim (truth-discipline). Plain language, no codename.
+  // Forward lean: demand is the largest pillar, so its recent trajectory provides
+  // a directional read. It is a current observation, not a forecast.
   const demandDelta = data.today.demand?.delta30d ?? 0;
   const lean =
     demandDelta > 1.5
-      ? { txt: 'Demand is tilting up. Recent startup-funding filings point to firmer fractional demand over the next 1 to 3 months.', cls: 'stat-up' }
+      ? { txt: 'Demand is tilting up across the observed hiring signals. Treat this as a current directional read, not a forecast.', cls: 'stat-up' }
       : demandDelta < -1.5
-      ? { txt: 'Demand is softening. Recent startup-funding filings point to cooler fractional demand over the next 1 to 3 months.', cls: 'stat-down' }
-      : { txt: 'Demand is steady. Recent startup-funding filings show no strong directional pull right now.', cls: 'text-muted-foreground' };
+      ? { txt: 'Demand is softening across the observed hiring signals. Treat this as a current directional read, not a forecast.', cls: 'stat-down' }
+      : { txt: 'Demand is steady across the observed hiring signals, with no strong directional move right now.', cls: 'text-muted-foreground' };
 
   // One synthesized read so level and momentum resolve into a single conclusion
   // instead of a "Stable" pill sitting next to a red drop reading as a contradiction.
@@ -91,7 +89,9 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
     setTimeout(() => setIsRefreshing(false), 1200);
   };
 
-  const band = bandFor(animatedScore);
+  // The published number and band are always final. Only the arc animates. This
+  // prevents the instrument from briefly showing false low scores and labels.
+  const band = bandFor(score);
 
   // Gauge geometry: a 270-degree open dial, the convention for an instrument.
   const R = 52;
@@ -129,7 +129,7 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
             <span className="hero-title-muted">Working Index</span>
           </h1>
           <p className="text-sm text-muted-foreground mt-2.5 max-w-md leading-relaxed">
-            Market intelligence for fractional executives. A live dashboard on a weekly index, read from 21 data sources.
+            A public market instrument for fractional executives, refreshed daily from 21 tracked source inputs and interpreted on a weekly cadence.
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
@@ -138,7 +138,7 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
             size="icon"
             onClick={handleRefresh}
             aria-label="Refresh index"
-            className={`text-muted-foreground hover:text-primary h-8 w-8 ${isRefreshing ? 'animate-spin' : ''}`}
+            className={`h-11 w-11 text-muted-foreground hover:text-primary lg:h-8 lg:w-8 ${isRefreshing ? 'animate-spin' : ''}`}
           >
             <RefreshCw size={16} />
           </Button>
@@ -160,7 +160,7 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
           {/* The gauge instrument */}
           <div className="flex items-center gap-5 sm:gap-6">
             <div className="relative w-32 h-32 sm:w-36 sm:h-36 shrink-0">
-              <svg className="w-full h-full" viewBox="0 0 120 120" role="img" aria-label={`FWI score ${animatedScore} out of 100`}>
+              <svg className="w-full h-full" viewBox="0 0 120 120" role="img" aria-label={`FWI score ${score} out of 100`}>
                 {/* track */}
                 <circle
                   cx="60" cy="60" r={R}
@@ -198,9 +198,10 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
                 })}
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center pt-1">
-                <span className="score-large" style={{ color: band.color }}>
-                  {animatedScore}
+                <span className="score-large" style={{ color: band.color }} aria-hidden="true">
+                  {score}
                 </span>
+                <span className="sr-only">{score}</span>
                 <span className="text-[10px] font-medium text-muted-foreground/70 tracking-wider tabular-nums mt-1">
                   / 100
                 </span>
@@ -242,10 +243,11 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
             <div className="space-y-0.5">
               <div className="section-label">As of</div>
               <div className="text-sm font-semibold text-foreground tabular-nums">
-                {new Date(data.asOf).toLocaleDateString('en-US', {
+                {new Date(`${data.asOf}T00:00:00Z`).toLocaleDateString('en-US', {
                   month: 'long',
                   day: 'numeric',
-                  year: 'numeric'
+                  year: 'numeric',
+                  timeZone: 'UTC',
                 })}
               </div>
             </div>
@@ -254,7 +256,7 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
               size="sm"
               variant="outline"
               onClick={onShowMethodology}
-              className="w-fit shrink-0"
+              className="h-11 w-fit shrink-0 lg:h-9"
             >
               <BookOpen size={14} className="mr-1.5" />
               How this works
@@ -271,11 +273,11 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
-              Talent availability <span className="font-semibold text-foreground/80 tabular-nums">{Math.round((data.weights.supply ?? 0.2) * 100)}%</span>
+              Executive availability <span className="font-semibold text-foreground/80 tabular-nums">{Math.round((data.weights.supply ?? 0.2) * 100)}%</span>
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0" />
-              Market buzz <span className="font-semibold text-foreground/80 tabular-nums">{Math.round((data.weights.culture ?? data.weights.momentum ?? 0.3) * 100)}%</span>
+              Market interest <span className="font-semibold text-foreground/80 tabular-nums">{Math.round((data.weights.culture ?? data.weights.momentum ?? 0.3) * 100)}%</span>
             </span>
           </div>
         </div>

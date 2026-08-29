@@ -1,14 +1,14 @@
 # Fleet Wiring (Pulse to Mindmaker OS)
 
-This is the handoff contract for a separate Mindmaker OS session to verify that Fractionl Pulse is wired into the fleet correctly. It is written to be precise and truth-disciplined. Pulse is the free, citable, agent-readable Fractional Working Index (FWI) and the lead funnel for the paid sibling product Fractionl Circle at **https://circle.fractionl.ai** (the thesis-validation engine for fractional executives, free to start with a Pro tier at $39/month). Both share the Fractionl AI Stripe account, so they must be separable downstream by `app` plus `stripe_account`.
+This is the handoff contract for a separate Mindmaker OS session to verify that Fractionl Pulse is wired into the fleet correctly. It is written to be precise and truth-disciplined. Pulse is the free, citable, agent-readable Fractional Working Index (FWI). Its commercial hypothesis is a partner benchmark for specialist fractional-talent firms, not a consumer plan, paid generic API, adtech offer, or publisher product. Pulse and the separate Fractionl Circle product must remain distinguishable downstream by `app` plus `stripe_account`.
 
 > **Domain correction (2026-08-05):** earlier revisions of this doc and of `/llms.txt` and `/product-truth.json` pointed at `fractionl.com` for Circle. That is wrong: `fractionl.com` is an unrelated business. Circle is at `circle.fractionl.ai`, and the Fractionl brand site is `fractionl.ai`. All machine-readable surfaces have been corrected.
 
-- Repo: `C:\Users\krish\MindmakerOS-Apps\fractionl-pulse`
+- Repo: `https://github.com/krishanraja/fractionl-pulse`
 - Live site: https://pulse.fractionl.ai
 - Pulse Supabase project ref: `dtlcprcpvdomrehbejhw`
 - Mindmaker OS warehouse Supabase project ref: `gojpffsrxybbpbdzzrvs`
-- Last updated: 2026-07-06
+- Last updated: 2026-08-11
 
 ---
 
@@ -16,20 +16,20 @@ This is the handoff contract for a separate Mindmaker OS session to verify that 
 
 ### LIVE now
 
-- **Free dashboard + metered agent API (2026-07 pivot).** The human dashboard is now free in full: there is no human paywall (the $99/mo human Pro tier and the waitlist-as-primary model were retired). Monetization is the metered agent API plus enterprise and data licensing. `fwi-api` accepts an optional `x-api-key` that is metered per key per day against `api_keys`; a signed-in user self-serves a free key (1,000 req/day) via the `manage-api-key` function from `pulse.fractionl.ai/pricing` (plaintext shown once, SHA-256 hash stored; keyed responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining`). Higher and enterprise limits are arranged with sales (`data@fractionl.ai`). See `docs/NORTH_STAR.md`.
+- **Free public instrument and operational API keys.** The dashboard, REST API, and MCP tools are free. `fwi-api` accepts an optional `x-api-key` for per-key rate accounting; a signed-in user can self-serve a free key (1,000 requests/day) via `manage-api-key` (plaintext shown once, SHA-256 hash stored). This is an operational control, not the paid product. The Founding Benchmark Partner pilot is the current commercial validation offer. See `docs/CORPORATE_STRATEGY.md`.
 - **No-auth public agent API (fixed 2026-05-30).** We added `supabase/config.toml` with `verify_jwt = false` for `fwi-api` and `export-brief`, then redeployed `fwi-api`. The exact documented bare curl now returns HTTP 200. Previously the gateway returned 401 `UNAUTHORIZED_NO_AUTH_HEADER`. The agent-native, query-in-two-minutes, no-auth claim is now true.
-  - `GET /fwi-api/current` (no auth): latest weekly composite, components, weights, delta30d, top movers, full source breakdown, and meta (dataCompleteness, nextUpdate). Returns `Cache-Control`, `X-FWI-Score`, and `X-FWI-Label` headers.
-  - `GET /fwi-api/history?months=N` (no auth, N clamped 1 to 12): weekly data points.
+  - `GET /fwi-api/current` (no auth): latest score observation, components, weights, delta30d, top movers, source breakdown, and meta fields. `meta.nextUpdate` is a legacy next-Sunday marker. Returns `Cache-Control`, `X-FWI-Score`, and `X-FWI-Label` headers.
+  - `GET /fwi-api/history?months=N` (no auth, N clamped 1 to 12): observed score rows across the requested period.
 - **No-auth brief export (`export-brief`).** `GET /export-brief?format=markdown` (default, downloadable .md) or `?format=json`. Press and cite ready weekly brief, also covered by `verify_jwt = false`.
 - **Machine-readable discovery surfaces** (live, HTTP 200): `/product-truth.json`, `/llms.txt`, `/.well-known/ai-plugin.json`.
-- **Hosted MCP server (live, verified).** `POST https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp`, Streamable HTTP JSON-RPC 2.0, no auth. Tools: `get_fractional_working_index`, `get_fwi_weekly_brief`. `initialize`, `tools/list`, and `tools/call` verified.
-- **Build-time prerender + Dataset JSON-LD (live).** `dist/index.html` now ships the live FWI in the title and OG, a canonical tag, schema.org Dataset + Organization JSON-LD, and a `<noscript>` content block. Re-runs each deploy, and the Supabase pg_cron job `pulse-daily-redeploy` (migration 009) pings the Vercel deploy hook daily at 06:40 UTC after ingest, so the baked number refreshes daily, not only on code deploys. Closed the blank-first-paint gap.
+- **Hosted MCP server (live).** `POST https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp`, stateless Streamable HTTP JSON-RPC 2.0, no auth. Tools: `get_fractional_working_index`, `get_fwi_weekly_brief`, `get_content_radar`, and `get_content_brief`. The server supports MCP `2026-07-28` and the legacy `2024-11-05` initialize flow.
+- **Build-time prerender + Dataset JSON-LD (live).** `dist/index.html` ships the FWI available at build time in the title and social metadata, plus a canonical tag, schema.org Dataset and Organization JSON-LD, and a `<noscript>` content block. It refreshes on deployment. Migration 009 defines a `pulse-daily-redeploy` job, but production `pg_cron` readback on 11 August 2026 did not show that job, so documentation must not claim a daily redeploy is active.
 - **RLS write hole closed (migration 006 applied + verified).** anon writes to `fwi_scores`/`movers`/`cached_insights`/`data_source_health`/`pipeline_runs` now denied (401); reads preserved; `pipeline_runs`/`api_keys` revoked from public roles.
 - **Attribution capture (client) + emit-event proxy (deployed).** First-touch UTM + anonymous_id captured on first paint; `landed`/`signed_up`/`activated` wired; the `emit-event` edge proxy is deployed and no-ops until the OS sets the ingest secret.
 
 ### PENDING (not yet built or not yet wired end to end)
 
-- **Human Pro checkout (retired as the current model, 2026-07).** The human dashboard is now free, so there is no human paywall to sell and no Stripe human-Pro checkout on the current path. The Stripe wiring detailed in Section 5 is retained only for a possible future human tier. Enterprise and higher-volume API deals are handled by sales today (`data@fractionl.ai`), not self-serve checkout.
+- **Partner benchmark ingestion and billing.** Data-processing terms, the partner data dictionary, suppression rules, cohort-quality checks, pilot invoicing, and annual-plan billing are not yet wired end to end. Do not reactivate the consumer Stripe checkout for this offer.
 - **Attribution end to end.** The Pulse emit side is built and deployed; it stays a no-op until the OS stands up `ingest-attribution` and the `ATTRIBUTION_INGEST_SECRET` + `ATTRIBUTION_INGEST_URL` (Pulse project) and `VITE_ATTRIBUTION_EMIT_URL` (Pulse Vercel env) are set. See sections below.
 
 ---
@@ -40,15 +40,17 @@ This is the handoff contract for a separate Mindmaker OS session to verify that 
 
 - **Where it lives:** served at `https://pulse.fractionl.ai/product-truth.json` (static asset under the Pulse `public/` directory, deployed with the site). Companions: `https://pulse.fractionl.ai/llms.txt` and `https://pulse.fractionl.ai/.well-known/ai-plugin.json`.
 - **Schema (top-level keys):**
-  - `product`: name, one-line description, publisher (Fractionl, a private composite), live URL.
-  - `what_it_is`: the FWI as a weekly 0 to 100 composite market-health score for the fractional executive market (6 C-suite roles only: fractional CFO, CMO, CTO, COO, CRO, interim CEO), blended from 21 sources across three pillars (Demand 50%, Supply 20%, Culture 30%; supply weight redistributes when supply has no data).
-  - `api`: base URL, the no-auth read endpoints, the example bare curl, the no-auth status flag, and the optional metered `x-api-key` header (free keyed tier 1,000 req/day; keyed responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining`).
-  - `offers`: `free_dashboard` ($0, the full dashboard, no human paywall), `agent_api` (free public read plus a self-serve free key at 1,000 req/day, higher tiers on request), `enterprise_and_data` (high-volume or unlimited API, raw exports, licensing, white-label, SSO and SLA), plus the white-label partnership, data feed, and citation programs.
-  - `current_offer`: `dashboard_free_api_metered`, `human_paywall: false`, `get_api_key_url` = `https://pulse.fractionl.ai/pricing`. The human dashboard is free; the paid product is the metered agent API plus enterprise and data licensing. The $99/mo human Pro tier was retired in the 2026-07 pivot.
-  - `method`: the SEC Form D leading indicator (the Form D Lead; in user-facing copy describe it in plain language as "startup-funding filings").
-  - `discovery` and MCP: the no-auth REST read (working), Markdown brief export (working), two MCP tools, and a live hosted MCP server.
-  - `do_not_say`: the do-not-say list (do NOT pitch a $99 human Pro tier or any human paywall; no years of history; no peer-review or backtesting claims; no specific predictive-accuracy percentage; no "real-time market intelligence"; no role beyond the 6 C-suite roles; not official or institutional; supply went live after the People Data Labs integration).
-  - `current_reading`: instruction to fetch live from `/fwi-api/current` rather than trust a snapshot (the live reading near publication is about FWI 42.4, label Cooling, as of 2026-05-25, but this must be fetched live).
+  - `product`: product, index, publisher, URLs, and contact.
+  - `strategy`: free audience, primary and secondary paying ICPs, exclusions, buyer pains, partner fields, commercial thesis, and moat metric.
+  - `coverage`: roles, geography, weights, tracked inputs, cadence, history, and private-publisher status.
+  - `offers`: free public instrument; application-only £1,500 pilot; conditional £6,000 annual membership; conditional enterprise plan from £15,000.
+  - `validation`: 25 qualified conversations, ten data-sharing letters of intent, five paid pilots, and a path to 500 verified records by 31 October 2026.
+  - `api`: no-auth public reads plus optional operational `x-api-key` controls. The API is not the paid product.
+  - `live_product` and `not_live`: current routes, account and key behaviour, dormant legacy infrastructure, and unshipped benchmark capabilities.
+  - `commercial_operations`: what an autonomous agent may prepare and which external actions require separate authority.
+  - `competitive_truth`: Go Fractional already publishes free role, demand, and compensation benchmarks. Pulse must not claim first, only, or no competitor.
+  - `discovery`: four MCP tools and the live hosted MCP server.
+  - `do_not_say`: no adtech or publisher ICP, no consumer Pro or generic paid API, no unvalidated plan availability, and the existing methodology and coverage limits.
 - **Rule for the OS fleet:** OS agents (Maya, Leo, outbound and content agents) must **fetch `/product-truth.json` at use time** rather than relying on a hardcoded snapshot. The same rule applies to the live FWI reading: fetch `/fwi-api/current`, do not hardcode the number. This keeps fleet copy and pricing in sync with Pulse without a redeploy of the OS.
 
 ---
@@ -59,9 +61,9 @@ Pulse emits lifecycle events to the Mindmaker OS warehouse via a single ingest e
 
 - **Warehouse:** Mindmaker OS Supabase `gojpffsrxybbpbdzzrvs`.
 - **Transport:** Pulse POSTs JSON to the OS ingest-attribution edge function, authenticated with an `x-attribution-secret` header.
-- **Events:** `landed`, `signed_up`, `activated`, `purchased`, `refunded`, `churned`.
+- **Event vocabulary:** `landed`, `signed_up`, `activated`, `purchased`, `refunded`, `churned`. The active Pulse client emits the first three. The commercial checkout is dormant, so the last three are contract vocabulary, not an active Pulse purchase flow.
 - **Constant on every event:** `app = "pulse"` and `stripe_account = "fractionl_ai"`.
-- **Identity stitching:** a first-party anonymous_id is generated at first paint, persisted client-side, carried through signup (attached to `user_id` once known), and stamped into Stripe metadata at checkout so the purchase event can be joined back to the landing event.
+- **Identity stitching:** a first-party `anonymous_id` is generated at first paint, persisted client-side, and carried through signup. The legacy contract can carry the identifier into Stripe metadata, but Pulse does not currently operate a consumer checkout.
 - **Activation definition (real value, not a vanity ping):** the user saw the score, exported a brief, or made an authenticated API call.
 
 ### Event field list
@@ -110,15 +112,18 @@ Pulse emits lifecycle events to the Mindmaker OS warehouse via a single ingest e
 
 ---
 
-## 5. Stripe wiring open items
+## 5. Commercial wiring open items
 
-> **HISTORICAL / deferred (2026-07):** the human Pro tier this Stripe wiring was built for was retired; the human dashboard is now free. The items below apply only if a human paid tier is ever reintroduced, and are NOT on the current path. Enterprise and higher-volume API billing is handled by sales (`data@fractionl.ai`) today.
+Do not reactivate the retired consumer Pro checkout. The current commercial path requires a new partner-specific design:
 
-- **`PULSE_STRIPE_WEBHOOK_SECRET` is not yet set.** It must be created and stored as a Pulse secret before checkout goes live.
-- **Pulse product plus price must be created** on the Fractionl AI account: Pro at $99/mo and $79/yr (the annual rate is billed annually).
-- **Checkout session plus webhook must stamp attribution metadata** onto the Stripe Customer and Subscription: `app`, `stripe_account`, `anonymous_id`, the `utm_*` set, and `fwi_score_at_purchase`. This is what lets the `purchased` event join back to the original `landed` event.
-- **The webhook must be idempotent on `event.id`** (Stripe re-delivers; a repeated event id must not double-count).
-- Stripe account: Fractionl AI (shared with Circle). Billing contact: data@fractionl.ai.
+- Signed pilot and data-sharing agreements before invoicing
+- A partner account and entitlement model separate from public-user accounts
+- Manual invoicing for the £1,500 validation pilot until the offer converts reliably
+- Partner, pilot, and product metadata on every payment and lifecycle event
+- Idempotent payment-event ingestion keyed by provider event id
+- No annual membership checkout before its dataset release gate is met
+
+The Fractionl AI Stripe account may be reused only after the partner product, tax treatment, invoice flow, and entitlement boundaries are approved. Billing contact: data@fractionl.ai.
 
 ---
 
@@ -147,7 +152,7 @@ Pulse emits lifecycle events to the Mindmaker OS warehouse via a single ingest e
    curl https://pulse.fractionl.ai/llms.txt
    curl https://pulse.fractionl.ai/.well-known/ai-plugin.json
    ```
-   Confirm `/product-truth.json` parses as JSON and carries the `offers`, `current_offer`, `method`, and `do_not_say` keys.
+   Confirm `/product-truth.json` parses as JSON and carries the `product`, `strategy`, `coverage`, `offers`, `validation`, `api`, `discovery`, `competitive_truth`, and `do_not_say` keys.
 
 5. **Trigger endpoint is NOT public (expect non-200 without service-role bearer):**
    ```bash

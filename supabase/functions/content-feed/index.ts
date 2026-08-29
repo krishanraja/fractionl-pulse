@@ -10,6 +10,10 @@ const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const SITE = 'https://pulse.fractionl.ai';
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
+interface BriefTopic { label: string; radar_score: number }
+interface BriefAngle { angle: string }
+interface BriefJson { rising_topics?: BriefTopic[]; priority_angles?: BriefAngle[] }
+
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS' };
 function esc(s: string): string { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
@@ -23,11 +27,11 @@ serve(async (req) => {
   if (!rows || rows.length === 0) return new Response('no data', { status: 404, headers: cors });
 
   const items = rows.map((r) => {
-    const bj = (r.brief_json || {}) as any;
+    const bj = (r.brief_json || {}) as BriefJson;
     const top = (bj.rising_topics || [])[0];
     const title = top ? `Content Radar: "${top.label}" leads, week of ${r.week_start}` : `Content Radar, week of ${r.week_start}`;
-    const topicList = (bj.rising_topics || []).slice(0, 5).map((t: any) => `${t.label} (${t.radar_score}/100)`).join('; ');
-    const angles = (bj.priority_angles || []).slice(0, 3).map((a: any) => a.angle).join(' | ');
+    const topicList = (bj.rising_topics || []).slice(0, 5).map((topic) => `${topic.label} (${topic.radar_score}/100)`).join('; ');
+    const angles = (bj.priority_angles || []).slice(0, 3).map((angle) => angle.angle).join(' | ');
     const desc = `Rising topics for fractional execs, week of ${r.week_start}: ${topicList || 'n/a'}. Priority angles: ${angles || 'n/a'}.`;
     return { week_start: r.week_start, title, desc };
   });

@@ -10,8 +10,8 @@ export function checkAlerts(data: FWIData, threshold: number): AlertItem[] {
   const checks = [
     { label: 'Overall FWI', score: data.today.overall, delta: data.today.delta30d },
     { label: 'Hiring activity', score: data.today.demand.score, delta: data.today.demand.delta30d },
-    { label: 'Talent availability', score: data.today.supply.score, delta: data.today.supply.delta30d },
-    { label: 'Market buzz', score: data.today.culture.score, delta: data.today.culture.delta30d },
+    { label: 'Executive availability', score: data.today.supply.score, delta: data.today.supply.delta30d },
+    { label: 'Market interest', score: data.today.culture.score, delta: data.today.culture.delta30d },
   ];
 
   return checks

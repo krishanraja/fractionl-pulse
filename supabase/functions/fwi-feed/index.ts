@@ -19,6 +19,9 @@ function label(s: number): string {
 function esc(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
+function component(value: number | null): string {
+  return typeof value === 'number' && Number.isFinite(value) ? String(Math.round(value)) : 'unavailable';
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -40,12 +43,12 @@ serve(async (req) => {
       const score = Math.round(r.overall_score * 10) / 10;
       const lab = label(score);
       const title = `Fractional Working Index: ${score} (${lab}), week of ${r.date}`;
-      const desc = `The fractional executive market reads ${score} of 100 (${lab}) for the week of ${r.date}. Demand ${Math.round(r.demand_score)}, Supply ${Math.round(r.supply_score)}, Culture ${Math.round(r.momentum_score)}. A weekly composite of 21 sources by Fractionl.`;
+      const desc = `The fractional executive market reads ${score} of 100 (${lab}) for the week of ${r.date}. Demand ${component(r.demand_score)}, Supply ${component(r.supply_score)}, Culture ${component(r.momentum_score)}. A private composite published by Fractionl using 21 tracked inputs with mixed availability; search-derived inputs are supplied by DataForSEO.`;
       return { date: r.date, score, lab, title, desc };
     });
 
   if (format === 'json') {
-    return new Response(JSON.stringify({ feed: 'Fractional Working Index', publisher: 'Fractionl', items }, null, 2), {
+    return new Response(JSON.stringify({ feed: 'Fractional Working Index', publisher: 'Fractionl', searchProvider: 'DataForSEO', items }, null, 2), {
       headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=3600' },
     });
   }
@@ -63,7 +66,7 @@ serve(async (req) => {
   <channel>
     <title>Fractional Working Index (FWI) by Fractionl</title>
     <link>${SITE}</link>
-    <description>The weekly market-health index for the fractional executive economy. A 0-100 composite of 21 sources across demand, supply, and culture.</description>
+    <description>The weekly market-health index for the fractional executive economy. A private 0-100 composite published by Fractionl using 21 tracked inputs across demand, supply, culture, and context.</description>
     <language>en-us</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
 ${rssItems}

@@ -34,4 +34,6 @@ const Toggle = React.forwardRef<
 
 Toggle.displayName = TogglePrimitive.Root.displayName;
 
+// This component intentionally exports its reusable style contract.
+// eslint-disable-next-line react-refresh/only-export-components
 export { Toggle, toggleVariants };

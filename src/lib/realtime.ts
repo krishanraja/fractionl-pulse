@@ -1,7 +1,14 @@
 import { supabase } from './supabase';
-import type { RealtimeChannel } from '@supabase/supabase-js';
+import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
-type ChangeCallback = (payload: { table: string; eventType: string; new: any; old: any }) => void;
+type DatabaseRecord = Record<string, unknown>;
+type ChangePayload = RealtimePostgresChangesPayload<DatabaseRecord>;
+type ChangeCallback = (payload: {
+  table: string;
+  eventType: ChangePayload['eventType'];
+  new: DatabaseRecord;
+  old: DatabaseRecord;
+}) => void;
 
 const MONITORED_TABLES = ['fwi_scores', 'signals', 'cached_insights', 'data_source_health'] as const;
 
@@ -36,7 +43,7 @@ function ensureChannel() {
     .subscribe();
 }
 
-function broadcast(table: string, payload: any) {
+function broadcast(table: string, payload: ChangePayload) {
   for (const cb of listeners) {
     try {
       cb({ table, eventType: payload.eventType, new: payload.new, old: payload.old });

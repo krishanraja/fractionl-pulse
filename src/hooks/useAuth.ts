@@ -7,8 +7,11 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
+  isPasswordRecovery: boolean;
   signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUpWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUpWithEmail: (email: string, password: string, role: string) => Promise<{ error: string | null }>;
+  resetPassword: (email: string) => Promise<{ error: string | null }>;
+  updatePassword: (password: string) => Promise<{ error: string | null }>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   joinWaitlist: (email: string) => Promise<{ error: string | null }>;
@@ -20,6 +23,7 @@ export function AuthProvider(props: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -28,9 +32,10 @@ export function AuthProvider(props: { children: React.ReactNode }) {
       setIsLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+      setIsPasswordRecovery(event === 'PASSWORD_RECOVERY');
     });
 
     return () => subscription.unsubscribe();
@@ -41,8 +46,25 @@ export function AuthProvider(props: { children: React.ReactNode }) {
     return { error: error?.message ?? null };
   };
 
-  const signUpWithEmail = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
+  const signUpWithEmail = async (email: string, password: string, role: string) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { business_type: role } },
+    });
+    return { error: error?.message ?? null };
+  };
+
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/login`,
+    });
+    return { error: error?.message ?? null };
+  };
+
+  const updatePassword = async (password: string) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (!error) setIsPasswordRecovery(false);
     return { error: error?.message ?? null };
   };
 
@@ -74,8 +96,8 @@ export function AuthProvider(props: { children: React.ReactNode }) {
   };
 
   const value: AuthContextType = {
-    user, session, isLoading,
-    signInWithEmail, signUpWithEmail, signInWithGoogle, signOut, joinWaitlist,
+    user, session, isLoading, isPasswordRecovery,
+    signInWithEmail, signUpWithEmail, resetPassword, updatePassword, signInWithGoogle, signOut, joinWaitlist,
   };
 
   return createElement(AuthContext.Provider, { value }, props.children);

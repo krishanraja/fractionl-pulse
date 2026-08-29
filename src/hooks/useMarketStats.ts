@@ -41,11 +41,10 @@ function getDefaultStats(): MarketStat[] {
       citation: 'Harvard Business Review, 2023',
     },
     {
-      label: 'Demand driver',
-      value: 'Series A-C',
-      note: 'Primary demand comes from venture-backed startups scaling fast',
-      source: 'industry-estimate',
-      citation: 'Based on SEC Form D filing analysis',
+      label: 'Publishing cadence',
+      value: 'Daily / weekly',
+      note: 'Daily source ingest, interpreted as a weekly market read',
+      source: 'computed',
     },
     {
       label: 'Hottest roles',

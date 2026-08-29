@@ -15,6 +15,28 @@ const EMIT_URL = `${SUPABASE_URL}/functions/v1/emit-event`;
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 const enc = new TextEncoder();
 
+interface StripeResource {
+  id?: string;
+  metadata?: Record<string, string>;
+  client_reference_id?: string;
+  subscription?: string;
+  customer?: string;
+  amount_total?: number;
+  amount_paid?: number;
+  amount_refunded?: number;
+  currency?: string;
+  invoice?: string;
+  status?: string;
+  current_period_end?: number;
+  items?: { data?: Array<{ price?: { id?: string } }> };
+}
+
+interface StripeEvent {
+  id: string;
+  type: string;
+  data?: { object?: StripeResource };
+}
+
 async function verifySignature(rawBody: string, sigHeader: string | null): Promise<boolean> {
   if (!sigHeader || !WEBHOOK_SECRET) return false;
   const parts = sigHeader.split(',');
@@ -27,9 +49,9 @@ async function verifySignature(rawBody: string, sigHeader: string | null): Promi
   return sigs.includes(expected);
 }
 
-async function stripeGet(path: string): Promise<any> {
+async function stripeGet(path: string): Promise<StripeResource | null> {
   const res = await fetch(`https://api.stripe.com/v1/${path}`, { headers: { Authorization: `Bearer ${STRIPE_KEY}` } });
-  return res.ok ? res.json() : null;
+  return res.ok ? await res.json() as StripeResource : null;
 }
 
 async function emit(event: string, dedupeKey: string, extra: Record<string, unknown>) {
@@ -45,7 +67,7 @@ async function emit(event: string, dedupeKey: string, extra: Record<string, unkn
   } catch { /* emit-event no-ops until OS wires it */ }
 }
 
-function isPulse(obj: any): boolean {
+function isPulse(obj: StripeResource): boolean {
   return obj?.metadata?.app === 'pulse';
 }
 
@@ -55,8 +77,8 @@ serve(async (req) => {
   const ok = await verifySignature(rawBody, req.headers.get('stripe-signature'));
   if (!ok) return new Response('invalid signature', { status: 400 });
 
-  let evt: any;
-  try { evt = JSON.parse(rawBody); } catch { return new Response('bad json', { status: 400 }); }
+  let evt: StripeEvent;
+  try { evt = JSON.parse(rawBody) as StripeEvent; } catch { return new Response('bad json', { status: 400 }); }
 
   // Idempotency: claim the event id; if already present, skip.
   const claim = await supabase.from('processed_stripe_events').insert({ event_id: evt.id });
@@ -66,7 +88,7 @@ serve(async (req) => {
   }
 
   const type = evt.type as string;
-  const obj = evt.data?.object || {};
+  const obj: StripeResource = evt.data?.object || {};
 
   try {
     if (type === 'checkout.session.completed') {

@@ -21,7 +21,7 @@ const KEY = process.env.SUPABASE_SERVICE_KEY || ANON_KEY;
 
 const WEEKS = Number(process.env.AUDIT_LIMIT || 60);
 
-async function rest(path: string): Promise<any[]> {
+async function rest(path: string): Promise<unknown[]> {
   const resp = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     headers: { apikey: KEY, Authorization: `Bearer ${KEY}` },
   });
@@ -91,7 +91,7 @@ async function main() {
   );
 }
 
-main().catch((e) => {
-  console.error(e.message);
+main().catch((error: unknown) => {
+  console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
 });

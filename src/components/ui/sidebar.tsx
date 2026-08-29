@@ -633,5 +633,7 @@ export {
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
+  // The sidebar primitives and their shared hook are one public component contract.
+  // eslint-disable-next-line react-refresh/only-export-components
   useSidebar,
 };

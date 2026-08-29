@@ -38,10 +38,15 @@ export function useUserRole() {
         .select('business_type')
         .eq('user_id', user.id)
         .maybeSingle();
-      const stored = data?.business_type;
+      const stored = data?.business_type || user.user_metadata?.business_type;
       if (stored && !cancelled) {
         setRoleState(stored);
         try { localStorage.setItem(STORAGE_KEY, stored); } catch { /* ignore */ }
+        if (!data?.business_type) {
+          await supabase
+            .from('user_profiles')
+            .upsert({ user_id: user.id, email: user.email, business_type: stored }, { onConflict: 'user_id' });
+        }
       }
     })();
     return () => { cancelled = true; };

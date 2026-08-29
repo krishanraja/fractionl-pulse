@@ -1,33 +1,52 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { ArrowRight, Mail, Check } from 'lucide-react';
+import { ArrowRight, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole, FRACTIONAL_ROLES } from '@/hooks/useUserRole';
 import fractionlLogo from '@/assets/fractionl-logo.png';
 import fractionlIcon from '@/assets/fractionl-icon.png';
 
-type Mode = 'login' | 'signup' | 'waitlist';
+type Mode = 'login' | 'signup' | 'reset' | 'recovery';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setSelectedRole] = useState('');
-  // The dashboard is free, so the front door is a real account sign-up (which
-  // unlocks the personal, role-aware read and, later, an API key). The waitlist
-  // remains reachable via the mode switcher as a legacy secondary path.
   const [mode, setMode] = useState<Mode>('signup');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [waitlistSuccess, setWaitlistSuccess] = useState(false);
   const [signupSuccess, setSignupSuccess] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [passwordUpdated, setPasswordUpdated] = useState(false);
+  const errorRef = useRef<HTMLParagraphElement>(null);
   const navigate = useNavigate();
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle, joinWaitlist } = useAuth();
+  const {
+    signInWithEmail,
+    signUpWithEmail,
+    signInWithGoogle,
+    resetPassword,
+    updatePassword,
+    isPasswordRecovery,
+  } = useAuth();
   const { setRole } = useUserRole();
+
+  useEffect(() => {
+    if (isPasswordRecovery) setMode('recovery');
+  }, [isPasswordRecovery]);
+
+  useEffect(() => {
+    document.title = 'Sign in or create an account | Pulse by Fractionl';
+    return () => { document.title = 'Fractional Working Index | Pulse by Fractionl'; };
+  }, []);
+
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,17 +54,21 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      if (mode === 'waitlist') {
-        const { error } = await joinWaitlist(email);
+      if (mode === 'reset') {
+        const { error } = await resetPassword(email);
         if (error) setError(error);
-        else setWaitlistSuccess(true);
+        else setResetSent(true);
+      } else if (mode === 'recovery') {
+        const { error } = await updatePassword(password);
+        if (error) setError(error);
+        else setPasswordUpdated(true);
       } else if (mode === 'login') {
         const { error } = await signInWithEmail(email, password);
         if (error) setError(error);
         else navigate('/');
       } else {
         if (!role) { setError('Please pick your fractional role so the index can read for you.'); return; }
-        const { error } = await signUpWithEmail(email, password);
+        const { error } = await signUpWithEmail(email, password, role);
         if (error) setError(error);
         else {
           // Persist the role (localStorage now, server once confirmed) and show the
@@ -82,12 +105,17 @@ const Login = () => {
               className="h-10 mx-auto object-contain"
             />
             <div>
-              {mode === 'waitlist' ? (
+              {mode === 'reset' ? (
                 <>
-                  <h1 className="text-xl font-semibold text-foreground">Get early access</h1>
+                  <h1 className="text-xl font-semibold text-foreground">Reset your password</h1>
                   <p className="text-muted-foreground text-sm mt-1">
-                    Join the waitlist for Pulse Pro: weekly insights, alerts, and full historical data.
+                    We will send a secure recovery link to your account email.
                   </p>
+                </>
+              ) : mode === 'recovery' ? (
+                <>
+                  <h1 className="text-xl font-semibold text-foreground">Choose a new password</h1>
+                  <p className="text-muted-foreground text-sm mt-1">Use at least eight characters and keep it unique to Pulse.</p>
                 </>
               ) : mode === 'login' ? (
                 <>
@@ -107,8 +135,8 @@ const Login = () => {
             </div>
           </motion.div>
 
-          {/* Success states: waitlist join, or account-created confirm-email */}
-          {(waitlistSuccess || signupSuccess) ? (
+          {/* Success states: account confirmation, recovery email, or password update. */}
+          {(signupSuccess || resetSent || passwordUpdated) ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -119,13 +147,15 @@ const Login = () => {
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-foreground">
-                  {signupSuccess ? 'Check your email' : "You're on the list"}
+                  {signupSuccess || resetSent ? 'Check your email' : 'Password updated'}
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
                   {signupSuccess ? (
                     <>We sent a confirmation link to <span className="text-foreground font-medium">{email}</span>. Confirm it, then sign in to your dashboard.</>
+                  ) : resetSent ? (
+                    <>We sent a recovery link to <span className="text-foreground font-medium">{email}</span>.</>
                   ) : (
-                    <>We'll email you at <span className="text-foreground font-medium">{email}</span> when Pulse Pro launches.</>
+                    <>Your new password is active. Return to the public index or sign in on another device.</>
                   )}
                 </p>
               </div>
@@ -144,7 +174,7 @@ const Login = () => {
                 onSubmit={handleSubmit}
                 className="space-y-4"
               >
-                <div className="space-y-2">
+                {mode !== 'recovery' && <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
@@ -152,17 +182,19 @@ const Login = () => {
                     placeholder="you@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    aria-describedby={error ? 'auth-error' : undefined}
                     required
                     className="h-11"
                   />
-                </div>
+                </div>}
 
-                {mode !== 'waitlist' && (
+                {mode !== 'reset' && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="password">Password</Label>
+                      <Label htmlFor="password">{mode === 'recovery' ? 'New password' : 'Password'}</Label>
                       {mode === 'login' && (
-                        <button type="button" className="text-xs text-primary hover:underline">
+                        <button type="button" onClick={() => setMode('reset')} className="inline-flex min-h-11 items-center text-xs text-primary hover:underline lg:min-h-0">
                           Forgot password?
                         </button>
                       )}
@@ -173,8 +205,10 @@ const Login = () => {
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                      aria-describedby={error ? 'auth-error' : undefined}
                       required
-                      minLength={6}
+                      minLength={8}
                       className="h-11"
                     />
                   </div>
@@ -200,23 +234,20 @@ const Login = () => {
                 )}
 
                 {error && (
-                  <p className="text-sm text-red-500">{error}</p>
+                  <p ref={errorRef} id="auth-error" role="alert" aria-live="assertive" tabIndex={-1} className="text-sm text-red-500 outline-none">{error}</p>
                 )}
 
                 <Button type="submit" className="w-full h-11" disabled={isLoading}>
                   {isLoading
-                    ? mode === 'waitlist' ? 'Joining...' : mode === 'login' ? 'Signing in...' : 'Creating account...'
-                    : mode === 'waitlist' ? 'Join the waitlist' : mode === 'login' ? 'Sign in' : 'Create account'
+                    ? mode === 'login' ? 'Signing in...' : mode === 'signup' ? 'Creating account...' : mode === 'reset' ? 'Sending link...' : 'Updating password...'
+                    : mode === 'login' ? 'Sign in' : mode === 'signup' ? 'Create account' : mode === 'reset' ? 'Send recovery link' : 'Update password'
                   }
-                  {mode === 'waitlist'
-                    ? <Mail size={16} className="ml-2" />
-                    : <ArrowRight size={16} className="ml-2" />
-                  }
+                  <ArrowRight size={16} className="ml-2" />
                 </Button>
               </motion.form>
 
               {/* Divider */}
-              {mode !== 'waitlist' && (
+              {(mode === 'login' || mode === 'signup') && (
                 <>
                   <div className="relative">
                     <Separator />
@@ -250,33 +281,26 @@ const Login = () => {
                 transition={{ delay: 0.5 }}
                 className="text-center text-sm text-muted-foreground space-y-1"
               >
-                {mode === 'waitlist' ? (
+                {mode === 'reset' ? (
                   <p>
-                    Already have an account?{' '}
-                    <button type="button" onClick={() => setMode('login')} className="text-primary hover:underline font-medium">
-                      Sign in
+                    Remembered your password?{' '}
+                    <button type="button" onClick={() => setMode('login')} className="inline-flex min-h-11 items-center font-medium text-primary hover:underline lg:min-h-0">
+                      Back to sign in
                     </button>
                   </p>
                 ) : mode === 'login' ? (
-                  <>
-                    <p>
-                      Don't have an account?{' '}
-                      <button type="button" onClick={() => setMode('signup')} className="text-primary hover:underline font-medium">
-                        Create account
-                      </button>
-                    </p>
-                    <p>
-                      Or{' '}
-                      <button type="button" onClick={() => setMode('waitlist')} className="text-primary hover:underline font-medium">
-                        join the waitlist
-                      </button>
-                      {' '}for Pro access.
-                    </p>
-                  </>
+                  <p>
+                    Don't have an account?{' '}
+                    <button type="button" onClick={() => setMode('signup')} className="inline-flex min-h-11 items-center font-medium text-primary hover:underline lg:min-h-0">
+                      Create account
+                    </button>
+                  </p>
+                ) : mode === 'recovery' ? (
+                  <p className="text-xs">Recovery links are single-use and expire automatically.</p>
                 ) : (
                   <p>
                     Already have an account?{' '}
-                    <button type="button" onClick={() => setMode('login')} className="text-primary hover:underline font-medium">
+                    <button type="button" onClick={() => setMode('login')} className="inline-flex min-h-11 items-center font-medium text-primary hover:underline lg:min-h-0">
                       Sign in
                     </button>
                   </p>

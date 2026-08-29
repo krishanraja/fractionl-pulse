@@ -1,4 +1,5 @@
-import { TrendingUp, TrendingDown, Briefcase, Users, Megaphone } from 'lucide-react';
+import { Briefcase, Megaphone, TrendingDown, TrendingUp, Users } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { Mover } from '@/lib/types';
 
 interface SignalsTableProps {
@@ -22,89 +23,67 @@ const sanitizeSkillName = (skill: string) => {
 const sanitizeNote = (note: string) =>
   note.replace(/\s*\(Brave\)/gi, '').replace(/\s*\(NewsAPI\)/gi, '');
 
-const TYPE_CONFIG: Record<string, { label: string; dotClass: string; icon: any }> = {
-  demand: { label: 'Hiring activity', dotClass: 'bg-primary', icon: Briefcase },
-  supply: { label: 'Talent availability', dotClass: 'bg-accent', icon: Users },
-  culture: { label: 'Market buzz', dotClass: 'bg-secondary', icon: Megaphone },
+const TYPE_CONFIG: Record<string, { label: string; tone: string; icon: LucideIcon }> = {
+  demand: { label: 'Hiring activity', tone: 'is-demand', icon: Briefcase },
+  supply: { label: 'Executive availability', tone: 'is-supply', icon: Users },
+  culture: { label: 'Market interest', tone: 'is-interest', icon: Megaphone },
 };
 
 const SignalsTable = ({ movers }: SignalsTableProps) => {
   if (movers.length === 0) {
-    return (
-      <div className="text-center py-8 text-sm text-muted-foreground">
-        No significant movers this week. Data will appear after the next pipeline run.
-      </div>
-    );
+    return <div className="pulse-register-empty"><p>No significant changes this week. New readings will appear after the next pipeline run.</p></div>;
   }
 
   return (
-    <div className="overflow-x-auto">
-      {/* Mobile Cards */}
-      <div className="block md:hidden space-y-2.5">
+    <div className="pulse-signal-register">
+      <div className="pulse-signal-cards">
         {movers.map((mover, index) => {
           const config = TYPE_CONFIG[mover.type] || TYPE_CONFIG.demand;
           const Icon = config.icon;
+          const direction = mover.change_pct >= 0 ? 'is-up' : 'is-down';
           return (
-            <div key={index} className="border border-border rounded-lg p-3.5 space-y-2 hover:border-primary/20 transition-colors">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2">
-                  <div className={`w-1.5 h-6 rounded-full ${config.dotClass}`} />
-                  <div>
-                    <span className="font-medium text-foreground text-sm">{sanitizeSkillName(mover.skill)}</span>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <Icon size={10} className="text-muted-foreground" />
-                      <span className="text-[10px] text-muted-foreground">{config.label}</span>
-                    </div>
-                  </div>
+            <article key={index} className={`pulse-signal-card ${config.tone}`}>
+              <header>
+                <span className="pulse-signal-icon" aria-hidden="true"><Icon /></span>
+                <div>
+                  <strong>{sanitizeSkillName(mover.skill)}</strong>
+                  <span>{config.label}</span>
                 </div>
-                <div className={`flex items-center gap-1 font-semibold text-sm ${
-                  mover.change_pct >= 0 ? 'stat-up' : 'stat-down'
-                }`}>
-                  {mover.change_pct >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                <span className={`pulse-signal-change ${direction}`}>
+                  {mover.change_pct >= 0 ? <TrendingUp aria-hidden="true" /> : <TrendingDown aria-hidden="true" />}
                   {mover.change_pct >= 0 ? '+' : ''}{mover.change_pct}%
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">{sanitizeNote(mover.note)}</p>
-            </div>
+                </span>
+              </header>
+              <p>{sanitizeNote(mover.note)}</p>
+            </article>
           );
         })}
       </div>
 
-      {/* Desktop Table */}
-      <table className="hidden md:table w-full">
+      <table className="pulse-signal-table">
         <thead>
-          <tr className="border-b border-border">
-            <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">Signal</th>
-            <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">Category</th>
-            <th className="text-right py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">vs. avg</th>
-            <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">Interpretation</th>
+          <tr>
+            <th>Signal</th>
+            <th>What it measures</th>
+            <th>Vs. current average</th>
+            <th>What changed</th>
           </tr>
         </thead>
         <tbody>
           {movers.map((mover, index) => {
             const config = TYPE_CONFIG[mover.type] || TYPE_CONFIG.demand;
+            const direction = mover.change_pct >= 0 ? 'is-up' : 'is-down';
             return (
-              <tr key={index} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                <td className="py-3 px-4">
-                  <span className="font-medium text-foreground text-sm">{sanitizeSkillName(mover.skill)}</span>
-                </td>
-                <td className="py-3 px-4">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${config.dotClass}`} />
-                    <span className="text-xs text-muted-foreground">{config.label}</span>
-                  </div>
-                </td>
-                <td className="py-3 px-4 text-right">
-                  <div className={`inline-flex items-center gap-1 font-semibold text-sm tabular-nums ${
-                    mover.change_pct >= 0 ? 'stat-up' : 'stat-down'
-                  }`}>
-                    {mover.change_pct >= 0 ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
+              <tr key={index}>
+                <td><strong>{sanitizeSkillName(mover.skill)}</strong></td>
+                <td><span className={`pulse-signal-category ${config.tone}`}>{config.label}</span></td>
+                <td>
+                  <span className={`pulse-signal-change ${direction}`}>
+                    {mover.change_pct >= 0 ? <TrendingUp aria-hidden="true" /> : <TrendingDown aria-hidden="true" />}
                     {mover.change_pct >= 0 ? '+' : ''}{mover.change_pct}%
-                  </div>
+                  </span>
                 </td>
-                <td className="py-3 px-4 text-muted-foreground text-sm max-w-xs">
-                  {sanitizeNote(mover.note)}
-                </td>
+                <td>{sanitizeNote(mover.note)}</td>
               </tr>
             );
           })}

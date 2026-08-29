@@ -2,7 +2,7 @@
 
 The Fractional Working Index is built for AI agents as a first-class data source. This document covers how to integrate the FWI into any MCP-compatible agent, Claude tool-use loop, OpenAI function call, or general LLM workflow.
 
-Two MCP tools are defined here: `get_fractional_working_index` and `get_fwi_weekly_brief`. A hosted MCP server is LIVE (Streamable HTTP, JSON-RPC 2.0, no auth): attach it by URL at `https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp`. Agents can also use the reference tool definitions below or call the live no-auth REST API directly. Both tools simply wrap the public endpoints below.
+Four MCP tools are live: `get_fractional_working_index`, `get_fwi_weekly_brief`, `get_content_radar`, and `get_content_brief`. The hosted server uses stateless Streamable HTTP and JSON-RPC 2.0 with no authentication. Attach it at `https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp`. Agents can also call the public REST endpoints directly.
 
 For autonomous discovery, Pulse also serves `/llms.txt` and `/.well-known/ai-plugin.json` from the site root, and `/product-truth.json` as the runtime source of truth for the current offer and pricing (read it rather than hardcoding prices).
 
@@ -15,7 +15,7 @@ For autonomous discovery, Pulse also serves `/llms.txt` and `/.well-known/ai-plu
 ```json
 {
   "name": "get_fractional_working_index",
-  "description": "Get the current Fractional Working Index (FWI) score for the fractional executive market. Returns a composite 0-100 score with sub-indices for demand, supply, and culture, plus the top-moving roles. Use this when answering questions about fractional executive market conditions, hiring timing, talent availability, or whether someone should raise their fractional rates. Includes 12 months of history if requested.",
+  "description": "Get the current Fractional Working Index (FWI) score for the fractional executive market. Returns a composite 0-100 score with sub-indices for demand, supply, and culture, plus role comparisons and evidence limits. Use it as market context, not as personal rate advice or a local-market forecast. Includes up to 12 months of mixed-frequency history if requested.",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -53,11 +53,15 @@ For autonomous discovery, Pulse also serves `/llms.txt` and `/.well-known/ai-plu
 }
 ```
 
+### Content Radar tools
+
+`get_content_radar` returns the latest structured topic and question radar. `get_content_brief` returns the current content brief as Markdown or JSON. These surfaces report observed content-signal movement; they do not represent search volume, market demand, or a promise that a topic will perform.
+
 ---
 
 ## Endpoints
 
-All three read endpoints are genuinely no-auth in production. As of 2026-05-30 the bare curl commands below return HTTP 200 with no `Authorization` header, no API key, and no signup. An agent can call them cold, in under two minutes, with zero credentials.
+All read endpoints are no-auth in production. The bare curl commands below return data without an `Authorization` header, API key, or signup.
 
 ```bash
 # Current score (no auth required, returns 200 with no Authorization header)
@@ -91,7 +95,7 @@ The only authenticated endpoint is `POST /fwi-api/trigger`, which forces an imme
     "scale": "0-100: <30 Contracting · 30-44 Cooling · 45-59 Stable · 60-74 Growing · 75+ Surging",
     "dataSource": "live",
     "dataCompleteness": 0.92,
-    "dataCompletenessNote": "Measures what fraction of data sources returned data this week. Does not measure prediction accuracy.",
+    "dataCompletenessNote": "Weighted tracked-input coverage for this reading. Inputs are not all statistically independent, and the value does not measure prediction accuracy.",
     "nextUpdate": "2026-04-27T00:00:00Z"
   },
   "score": {
@@ -99,13 +103,14 @@ The only authenticated endpoint is `POST /fwi-api/trigger`, which forces an imme
     "label": "Growing",
     "emoji": "📈",
     "delta30d": 2.1,
+    "delta30dComparedWith": "2026-03-22",
     "components": {
       "demand": {
         "score": 71.0,
         "weight": 0.5,
         "sources": [
           "Adzuna fractional job postings",
-          "SerpAPI Google Jobs cross-check",
+          "DataForSEO Google Jobs cross-check",
           "SEC Form D VC filings (90-day)"
         ]
       },
@@ -113,10 +118,10 @@ The only authenticated endpoint is `POST /fwi-api/trigger`, which forces an imme
         "score": 54.2,
         "weight": 0.2,
         "sources": [
-          "People Data Labs profile counts",
-          "SerpAPI LinkedIn supply proxy",
-          "GoFractional marketplace listings",
-          "Supply-side search intent (Google Trends + SerpAPI)"
+          "DataForSEO LinkedIn supply proxy",
+          "Brave LinkedIn talent proxy",
+          "GoFractional published operator count",
+          "Supply-side search intent (DataForSEO)"
         ],
         "status": "live",
         "note": null
@@ -127,10 +132,11 @@ The only authenticated endpoint is `POST /fwi-api/trigger`, which forces an imme
         "sources": [
           "Google Trends search interest",
           "NewsAPI + Mediastack + Brave News media coverage",
-          "Guardian + NYT prestige media",
+          "Guardian prestige media",
           "Podchaser podcast mentions",
           "Reddit + HN community discourse",
-          "Brave Web discourse monitoring"
+          "Brave Web discourse monitoring",
+          "Wikipedia article interest"
         ]
       }
     }
@@ -142,10 +148,10 @@ The only authenticated endpoint is `POST /fwi-api/trigger`, which forces an imme
     { "role": "Search Interest", "signalType": "momentum", "changePct": 14, "insight": "Search interest trending up vs 48 last week" }
   ],
   "signals": {
-    "demand":  { "description": "...", "roles": ["Fractional CFO", "..."], "sources": ["Adzuna", "..."], "leadingIndicator": "SEC Form D filings predict fractional demand 1-3 months ahead" },
-    "supply":  { "description": "...", "sources": ["People Data Labs", "..."] },
+    "demand":  { "description": "...", "roles": ["Fractional CFO", "..."], "sources": ["Adzuna", "..."], "leadingIndicator": "SEC Form D filings provide financing context; the relationship to future demand is not validated" },
+    "supply":  { "description": "...", "sources": ["DataForSEO LinkedIn proxy", "Brave Talent", "..."] },
     "culture": { "description": "...", "sources": ["Google Trends", "..."] },
-    "context": { "description": "Macro economic context signals (not used in composite score)", "sources": ["FRED JOLTS", "FRED Unemployment", "FRED Initial Claims", "Census ACS self-employment"] }
+    "context": { "description": "Macro and research context signals (not used in composite score)", "sources": ["BLS", "FRED", "Census ACS", "OpenAlex"] }
   }
 }
 ```
@@ -213,62 +219,9 @@ response = client.messages.create(
 }
 ```
 
-### MCP Server (reference implementation)
+### Hosted server protocol
 
-A hosted MCP server is LIVE at `https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/mcp` (Streamable HTTP, JSON-RPC 2.0, no auth): any MCP host attaches it by URL. It exposes the two tools above (`get_fractional_working_index`, `get_fwi_weekly_brief`) by wrapping the public endpoints. The TypeScript below is an equivalent reference server you can also self-host.
-
-```typescript
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-
-const server = new Server({ name: "fwi-pulse", version: "1.0.0" }, { capabilities: { tools: {} } });
-
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [
-    {
-      name: "get_fractional_working_index",
-      description: "Get the current Fractional Working Index score for the fractional executive market.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          months: { type: "number", minimum: 1, maximum: 12, default: 1 },
-        },
-      },
-    },
-    {
-      name: "get_fwi_weekly_brief",
-      description: "Get the weekly FWI intelligence brief as Markdown or JSON.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          format: { type: "string", enum: ["markdown", "json"], default: "markdown" },
-        },
-      },
-    },
-  ],
-}));
-
-server.setRequestHandler(CallToolRequestSchema, async (req) => {
-  const { name, arguments: args } = req.params;
-
-  if (name === "get_fractional_working_index") {
-    const months = (args?.months as number) ?? 1;
-    const url = months > 1
-      ? `https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/history?months=${months}`
-      : `https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current`;
-    const data = await fetch(url).then(r => r.json());
-    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-  }
-
-  if (name === "get_fwi_weekly_brief") {
-    const format = (args?.format as string) ?? "markdown";
-    const url = `https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief${format === "json" ? "?format=json" : ""}`;
-    const text = await fetch(url).then(r => r.text());
-    return { content: [{ type: "text", text }] };
-  }
-
-  throw new Error(`Unknown tool: ${name}`);
-});
-```
+The server supports the current stateless MCP protocol (`2026-07-28`) and the legacy `2024-11-05` initialize flow for older hosts. Current Streamable HTTP requests send `MCP-Protocol-Version`, `Mcp-Method`, and, for a named tool call, `Mcp-Name`. The server rejects unsupported versions and header/body mismatches. Tool execution failures return `isError: true` inside the JSON-RPC result.
 
 ---
 
@@ -277,21 +230,21 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
 **1. AI Talent Scout**
 > "Is now a good time for a Series B company to hire a fractional CMO?"
 
-Agent calls `get_fractional_working_index`, reads `score.label`, finds Fractional CMO in `topMovers`, returns a timing recommendation grounded in the score band and the role-level delta.
+Agent calls `get_fractional_working_index`, reads the US-primary score and current Fractional CMO comparison, then returns measured market context and the evidence boundary. It does not turn that context into personal rate advice.
 
 **2. VC Portfolio Tool**
-> "Which fractional executive roles are seeing the most demand growth this quarter?"
+> "Which fractional executive roles are strongest relative to the current role average?"
 
-Agent calls `get_fractional_working_index({ months: 3 })`, compares mover trends across the period, returns top three trending roles.
+Agent calls `get_fractional_working_index()`, labels role movers as cross-sectional comparisons, and returns the strongest current roles. The history endpoint does not include historical role movers.
 
 **3. Staffing Platform Widget**
 Embed an FWI score badge on every product page. Refresh server-side every hour using `Cache-Control: max-age=3600`. Display `X-FWI-Label` as the band.
 
 **4. Weekly AI Market Brief**
-Newsletter agent calls `get_fwi_weekly_brief` every Monday morning, prepends an editorial intro, and ships. Citation block is already included.
+Newsletter agent calls `get_fwi_weekly_brief` every Monday morning and prepares an editorial draft. Publishing requires separate authority. The citation block is already included.
 
 **5. Sales Outbound Personalization**
-Outbound agent calls `get_fractional_working_index`, branches the email opener on the score band ("with the FWI sitting at 64 — Growing — for the third week running…"), and references `topMovers[0].role` to make the message land.
+Outbound agent calls `get_fractional_working_index`, verifies that the observation supports the proposed context, and prepares an account-specific draft. It must not claim a multi-week streak from a single snapshot. Sending and sequence enrolment require separate authority.
 
 **6. Agent Self-Briefing on Conversation Start**
 Customer-facing chat agent calls `get_fractional_working_index` on every new session and stores the snapshot in working memory. All subsequent answers reference today's actual market state.
@@ -300,7 +253,7 @@ Customer-facing chat agent calls `get_fractional_working_index` on every new ses
 
 ## Caching Guidance
 
-The composite settles weekly even though ingestion runs daily. Response headers:
+The composite is recalculated after each successful scheduled ingest. Weekly describes the brief and seven-day role context. Response headers:
 
 ```
 Cache-Control: public, max-age=3600, stale-while-revalidate=86400
@@ -308,7 +261,7 @@ X-FWI-Score: 62.4
 X-FWI-Label: Growing
 ```
 
-Cache aggressively. The score changes at most once per week. For lightweight polling, read `X-FWI-Score` / `X-FWI-Label` headers without parsing the body.
+Cache in line with the response headers. The score is recalculated after successful scheduled ingestion, while the brief and role windows use weekly context. For lightweight polling, read `X-FWI-Score` / `X-FWI-Label` headers without parsing the body.
 
 ---
 
@@ -318,22 +271,24 @@ Cache aggressively. The score changes at most once per week. For lightweight pol
 |------|-------|------|
 | Anonymous public read | unmetered (generous, cache-friendly) | none |
 | Free key | 1,000 req/day | `x-api-key` (self-serve at `/pricing`) |
-| Higher / Pro | 10,000 req/day | `x-api-key` (arranged with sales) |
-| Enterprise | unlimited | `x-api-key` (arranged with sales) |
+| Legacy `pro` schema label | 10,000 req/day | Technical compatibility only; not a current commercial offer |
+| Legacy `enterprise` schema label | unlimited | Technical compatibility only; not a current commercial offer |
 
-The anonymous public read (including the hosted MCP server) stays free and unmetered. Metering applies only to REST calls that send an `x-api-key`: keyed responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining`, over-limit returns HTTP 429, and an unknown or revoked key returns HTTP 401.
+The anonymous public read, including the hosted MCP server, stays free. Rate accounting applies only to REST calls that send an `x-api-key`: keyed responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining`, over-limit returns HTTP 429, and an unknown or revoked key returns HTTP 401.
 
-A signed-in user self-serves a free API key (1,000 req/day) at `pulse.fractionl.ai/pricing`. Contact `data@fractionl.ai` for higher or enterprise limits, data licensing, and white-label embeds.
+A signed-in user self-serves a free API key (1,000 requests/day) at `pulse.fractionl.ai/pricing`. The key is an operational control, not a paid generic-data tier. Qualified fractional-talent firms can contact `data@fractionl.ai` about the Founding Benchmark Partner validation offer.
 
 ---
 
 ## What Agents Should Never Claim
 
-- "Years of historical data": the index has about 12 weeks backfilled plus weekly accumulation, not years.
+- "Years of historical data": the index has 12+ months of history (from August 2025; full three-pillar composite from April 2026), not years.
 - "Peer-reviewed", "academically validated", or "backtested": none of these are true.
-- "Real-time market intelligence": this phrase is forbidden. It is daily ingest with a weekly composite settle. Say "weekly index" or "live dashboard" instead.
+- "Real-time market intelligence": this phrase is forbidden. Say "recalculated after successful scheduled ingestion" or "current public instrument" instead.
 - Coverage of non-C-suite fractional roles: only the 6 C-suite roles are tracked (fractional CFO, CMO, CTO, COO, CRO, interim CEO).
 - An official, institutional, or government index: the publisher is Fractionl, a private composite.
-- Predictive accuracy figures (for example "85% accurate"): the Form D Lead is a reasonable leading-indicator method, not a statistically validated forecast. Never attach an accuracy percentage to it.
+- Any claim that Form D filings predict fractional hiring. Pulse tracks them as financing context, and the relationship to future demand has not been validated.
 
 See [`AGENT_BRIEFING.md`](./AGENT_BRIEFING.md) for the full truth-discipline list and outbound playbook.
+
+See [`AUTONOMOUS_GTM_PLAYBOOK.md`](./AUTONOMOUS_GTM_PLAYBOOK.md) for research, qualification, drafting, and external-action boundaries.

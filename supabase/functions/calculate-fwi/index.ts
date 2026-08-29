@@ -10,15 +10,33 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+interface SignalDetail {
+  source: string;
+  category: string;
+  type: string;
+  score: number;
+  raw_value: number | null;
+  metadata: Record<string, unknown> | null;
+}
+
+interface MoverRow {
+  date: string;
+  skill: string;
+  signal_type: string;
+  change_pct: number;
+  note: string;
+  rank: number;
+}
+
 // Canonical methodology weights. The blend uses effectiveWeights (below), which equals
 // these on a normal day and only differs on the rare zero-supply day (redistributed away
 // from supply). The EFFECTIVE set is what gets persisted to fwi_scores.weights so that any
 // client recompute reconciles with the published overall_score; the canonical set is kept
 // in metadata.display_weights for reference.
 const WEIGHTS = {
-  demand: 0.50,    // Adzuna + SerpAPI fractional jobs + SEC Form D leading indicator
-  supply: 0.20,    // SerpAPI + Brave LinkedIn talent proxies, GoFractional, supply-intent trends
-  culture: 0.30    // SerpAPI Trends + NewsAPI/Mediastack/Brave/Guardian + Reddit/HN + Wikipedia
+  demand: 0.50,    // Adzuna + DataForSEO fractional jobs + SEC Form D financing context
+  supply: 0.20,    // DataForSEO + Brave LinkedIn talent proxies, GoFractional, supply-intent trends
+  culture: 0.30    // DataForSEO Trends + NewsAPI/Mediastack/Brave/Guardian + Reddit/HN + Wikipedia
 };
 
 const ROLE_NAMES: Record<string, string> = {
@@ -83,7 +101,7 @@ serve(async (req) => {
       .limit(1);
     const priorWeek = priorScores?.[0] || null;
 
-    let priorSignalMap: Record<string, number> = {};
+    const priorSignalMap: Record<string, number> = {};
     if (priorWeek) {
       const { data: priorSigs } = await supabase
         .from('signals')
@@ -102,8 +120,8 @@ serve(async (req) => {
       momentum: [] 
     };
 
-    const detailedSignals: Record<string, any> = {};
-    const contextSignals: Record<string, any> = {};
+    const detailedSignals: Record<string, SignalDetail> = {};
+    const contextSignals: Record<string, Record<string, unknown>> = {};
 
     for (const signal of signals) {
       const type = signal.signal_type;
@@ -234,7 +252,7 @@ serve(async (req) => {
     if (fwiError) throw fwiError;
 
     // Generate movers based on individual role performance vs market average
-    const moversList: any[] = [];
+    const moversList: MoverRow[] = [];
     
     // Find fractional role signals (from Adzuna)
     const roleSignals = Object.entries(detailedSignals).filter(([key, sig]) => 
@@ -293,7 +311,7 @@ serve(async (req) => {
         vc_pipeline: `${signal.raw_value} tech filings (90d) - ${signal.score > 55 ? 'strong' : signal.score > 45 ? 'moderate' : 'weak'} funding`,
         search_interest: `Search interest trending ${direction}${priorScore != null ? ` vs ${priorScore.toFixed(0)} last week` : ''}`,
         media_coverage: `${signal.raw_value} articles - ${signal.score > 35 ? 'strong' : 'low'} media coverage`,
-        prestige_media: `${signal.raw_value} prestige articles (Guardian/NYT) - ${signal.score > 40 ? 'notable' : 'minimal'} elite coverage`,
+        prestige_media: `${signal.raw_value} prestige articles from The Guardian - ${signal.score > 40 ? 'notable' : 'minimal'} elite coverage`,
         audio_culture: `${signal.raw_value} podcasts discussing fractional work`,
         community_discourse: `${signal.raw_value} community posts - ${signal.score > 40 ? 'active' : 'moderate'} discussion`,
         marketplace: `${signal.raw_value} marketplace listings on GoFractional`,
@@ -348,7 +366,7 @@ serve(async (req) => {
       sources_active: uniqueSources,
       movers_count: topMovers.length,
       weights: WEIGHTS,
-      methodology: 'Multi-source signal stack: Adzuna + SerpAPI Jobs + SEC Form D + Google Trends + NewsAPI + Guardian + NYT + Mediastack + Podchaser + Reddit + HN + Brave + PDL + SerpAPI LinkedIn + GoFractional + Census',
+      methodology: '21 tracked inputs: Adzuna, DataForSEO Jobs and Trends, SEC Form D, NewsAPI, Guardian, Mediastack, Podchaser, Reddit, Hacker News, Brave Search, GoFractional, Wikipedia, BLS, Census ACS, FRED, and OpenAlex. Context inputs are excluded from the composite.',
       component_breakdown: {
         demand: {
           sources: signals.filter(s => s.signal_type === 'demand').map(s => `${s.source}/${s.category}`),

@@ -56,6 +56,9 @@ verify_jwt = false
 [functions.ingest-signals]
 verify_jwt = true
 
+[functions.prepare-dataforseo-jobs]
+verify_jwt = true
+
 [functions.calculate-fwi]
 verify_jwt = true
 

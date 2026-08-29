@@ -19,7 +19,7 @@
 // graceful: if the API is unreachable at build time we fall back to static
 // (number-free) JSON-LD so the build never fails.
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { buildRolePages, buildSitemap } from './prerender-roles.mjs';
@@ -60,8 +60,8 @@ const title = haveLive
   : 'Pulse by Fractionl | The Fractional Working Index';
 
 const description = haveLive
-  ? `The fractional executive market is at ${score.toFixed(1)} of 100 (${label})${deltaPhrase ? `, ${deltaPhrase}` : ''}. A weekly composite of 21 data sources across demand, supply, and culture, with the Form D Lead as a 1 to 3 month forward demand signal.`
-  : 'A weekly 0-100 composite index of the fractional executive market, blended from 21 data sources across demand, supply, and culture.';
+  ? `The fractional executive market is at ${score.toFixed(1)} of 100 (${label})${deltaPhrase ? `, ${deltaPhrase}` : ''}. A private composite using 21 tracked inputs across demand, supply, culture, and context. SEC Form D filings provide financing context, not a validated forecast.`
+  : 'A private 0-100 composite index of the fractional executive market, using 21 tracked inputs across demand, supply, culture, and context.';
 
 // ---- schema.org JSON-LD ----
 const datasetLd = {
@@ -73,11 +73,10 @@ const datasetLd = {
   url: SITE,
   sameAs: SITE,
   isAccessibleForFree: true,
-  creator: { '@type': 'Organization', name: 'Fractionl', url: 'https://fractionl.com' },
-  publisher: { '@type': 'Organization', name: 'Fractionl', url: 'https://fractionl.com' },
+  creator: { '@type': 'Organization', name: 'Fractionl', url: 'https://fractionl.ai' },
+  publisher: { '@type': 'Organization', name: 'Fractionl', url: 'https://fractionl.ai' },
   license: 'https://pulse.fractionl.ai',
-  measurementTechnique: 'Weekly composite of 21 independent sources across demand (50%), supply (20%), and culture (30%). The Form D Lead uses SEC Form D filing velocity as a 1 to 3 month leading indicator of fractional executive demand.',
-  temporalCoverage: '2026-03/..',
+  measurementTechnique: 'Private composite using 21 tracked inputs with mixed availability across demand (50%), supply (20%), culture (30%), and excluded context. Inputs are not all statistically independent. SEC Form D filing velocity is financing context; its relationship to future fractional demand has not been validated.',
   variableMeasured: ['Overall FWI', 'Demand', 'Supply', 'Culture'],
   ...(asOf ? { dateModified: asOf } : {}),
   distribution: [
@@ -91,7 +90,7 @@ const orgLd = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
   name: 'Fractionl',
-  url: 'https://fractionl.com',
+  url: 'https://fractionl.ai',
   brand: { '@type': 'Brand', name: 'Pulse by Fractionl' },
   description: 'Fractionl publishes the Fractional Working Index, the weekly market-health index for the fractional executive economy.',
 };
@@ -108,9 +107,9 @@ const noscriptBlock = `
         ${haveLive
           ? `<p><strong>${escape(score.toFixed(1))} / 100 (${escape(label)})</strong>${deltaPhrase ? `, ${escape(deltaPhrase)}` : ''}${asOf ? `, as of ${escape(asOf)}` : ''}.</p>`
           : `<p>A weekly 0-100 composite index of the fractional executive market.</p>`}
-        <p>The FWI is a weekly composite score (0-100) for the fractional executive market (fractional CFO, CMO, CTO, COO, CRO, and interim CEO), blended from 21 independent data sources across three pillars: demand, supply, and culture. ${escape(methodology)}.</p>
-        <p>The Form D Lead, Pulse's named method, uses SEC Form D filing velocity as a 1 to 3 month leading indicator of fractional executive demand.</p>
-        <p>Free, no-auth API: <a href="${API}">${API}</a>. Weekly brief: <a href="https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief">export-brief</a>. Published by <a href="https://fractionl.com">Fractionl</a>.</p>
+        <p>The FWI is a private composite score (0-100) for the fractional executive market (fractional CFO, CMO, CTO, COO, CRO, and interim CEO), using 21 tracked inputs with mixed availability across demand, supply, culture, and context. The inputs are not all statistically independent. ${escape(methodology)}.</p>
+        <p>SEC Form D filing velocity is included as startup-financing context. Pulse has not validated a predictive relationship between those filings and future fractional hiring.</p>
+        <p>Free, no-auth API: <a href="${API}">${API}</a>. Weekly brief: <a href="https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief">export-brief</a>. Published by <a href="https://fractionl.ai">Fractionl</a>.</p>
       </main>
     </noscript>
 `;
@@ -139,6 +138,59 @@ html = html.replace('</head>', `${jsonLdBlock}  </head>`);
 html = html.replace('</body>', `${noscriptBlock}  </body>`);
 
 writeFileSync(HTML_PATH, html);
+
+function writeAppRouteShell({ path, title: routeTitle, description: routeDescription, indexable, noscript }) {
+  const canonical = `${SITE}${path}`;
+  let routeHtml = html
+    .replace(/<title>[\s\S]*?<\/title>/, `<title>${escape(routeTitle)}</title>`)
+    .replace(/(<meta name="description" content=")[^"]*(")/, `$1${escape(routeDescription)}$2`)
+    .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${escape(routeTitle)}$2`)
+    .replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${escape(routeDescription)}$2`)
+    .replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${canonical}$2`)
+    .replace(/(<meta property="og:image" content=")[^"]*(")/, `$1${SITE}/og-image.svg$2`)
+    .replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${escape(routeTitle)}$2`)
+    .replace(/(<meta name="twitter:description" content=")[^"]*(")/, `$1${escape(routeDescription)}$2`)
+    .replace(/(<meta name="twitter:image" content=")[^"]*(")/, `$1${SITE}/og-image.svg$2`)
+    .replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${canonical}" />`)
+    .replace(/\s*<script type="application\/ld\+json">[\s\S]*?<\/script>/g, '')
+    .replace(/\s*<noscript>\s*<main>[\s\S]*?<\/main>\s*<\/noscript>\s*(?=<\/body>)/, '');
+
+  const robots = indexable ? 'index, follow, max-snippet:-1, max-image-preview:large' : 'noindex, nofollow';
+  const routeLd = indexable
+    ? `\n    <script type="application/ld+json">${JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        name: routeTitle,
+        description: routeDescription,
+        url: canonical,
+        isPartOf: { '@type': 'WebSite', name: 'Pulse by Fractionl', url: SITE },
+      })}</script>`
+    : '';
+
+  routeHtml = routeHtml
+    .replace('</head>', `    <meta name="robots" content="${robots}" />${routeLd}\n  </head>`)
+    .replace('</body>', `    <noscript><main>${noscript}</main></noscript>\n  </body>`);
+
+  const routeDir = join(__dirname, '..', 'dist', path.replace(/^\//, ''));
+  mkdirSync(routeDir, { recursive: true });
+  writeFileSync(join(routeDir, 'index.html'), routeHtml);
+}
+
+writeAppRouteShell({
+  path: '/pricing',
+  title: 'Pulse pricing | Public index and benchmark partnerships',
+  description: 'Pulse keeps the Fractional Working Index free. Qualified fractional-talent firms can apply for a privacy-safe benchmark pilot, with enterprise cohorts released only after coverage thresholds are met.',
+  indexable: true,
+  noscript: '<h1>Pulse pricing</h1><p>The Fractional Working Index and its public API remain free. Qualified fractional-talent firms can apply for a £1,500 founding benchmark pilot. Enterprise cohorts begin at £15,000 per year only after coverage and privacy thresholds are met.</p>',
+});
+
+writeAppRouteShell({
+  path: '/login',
+  title: 'Sign in or create an account | Pulse by Fractionl',
+  description: 'Create a Pulse account to save your fractional role and manage an optional API key. The market index remains public without an account.',
+  indexable: false,
+  noscript: '<h1>Pulse account</h1><p>JavaScript is required to sign in, create an account, or manage an API key. The Fractional Working Index remains public without an account.</p>',
+});
 
 console.log(
   haveLive

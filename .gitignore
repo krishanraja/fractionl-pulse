@@ -34,6 +34,11 @@ supabase/.temp/
 # Screenshots from testing
 *.png
 *.jpeg
+!e2e/**/*.png
+
+# Playwright runtime artifacts
+test-results/
+playwright-report/
 
 # Playwright MCP
 .playwright-mcp/
@@ -43,3 +48,7 @@ _upgrade/
 
 # Local audit artifacts (screenshots, report) — not part of the app
 audit/
+.vercel/
+
+# Local AI design-session notes are not product documentation.
+.claude/docs/

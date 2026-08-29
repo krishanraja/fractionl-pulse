@@ -4,16 +4,17 @@ import SparklineChart from './SparklineChart';
 import RoleBreakdown from './RoleBreakdown';
 import { useSignalContext } from '@/hooks/useSignalContext';
 import { displayScore, formatDelta } from '@/lib/format';
+import type { FWIData } from '@/lib/types';
 
 interface SubIndexCardsProps {
-  data: any;
+  data: FWIData;
   compact?: boolean;
 }
 
 const SOURCE_COUNTS: Record<string, { count: number; examples: string }> = {
-  demand: { count: 3, examples: 'Adzuna, SerpAPI Jobs, SEC EDGAR' },
-  supply: { count: 4, examples: 'LinkedIn proxy (SerpAPI), Brave talent, GoFractional, Supply Intent' },
-  culture: { count: 10, examples: 'SerpAPI Trends, NewsAPI, Guardian, Podchaser, Reddit, HN, Wikipedia...' },
+  demand: { count: 3, examples: 'Adzuna, DataForSEO Jobs, SEC EDGAR' },
+  supply: { count: 4, examples: 'LinkedIn proxy (DataForSEO), Brave talent, GoFractional, Supply Intent' },
+  culture: { count: 10, examples: 'DataForSEO Trends, NewsAPI, Guardian, Podchaser, Reddit, HN, Wikipedia...' },
 };
 
 const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
@@ -27,7 +28,7 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
     ...data.monthly.demand,
     ...data.monthly.supply,
     ...data.monthly.culture,
-  ].filter((v: number) => Number.isFinite(v));
+  ].filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
   const sparkMin = allSparkValues.length
     ? Math.max(0, Math.floor(Math.min(...allSparkValues)) - 5)
     : 0;
@@ -43,7 +44,7 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
       weight: data.weights.demand,
       score: data.today.demand.score,
       delta: data.today.demand.delta30d,
-      description: 'Active fractional job postings + VC funding pipeline as a leading indicator of upcoming hires.',
+      description: 'Active fractional job postings plus startup-financing context. The financing relationship is not a validated forecast.',
       rawContext: signalContext.demand,
       context: data.context?.demandContext,
       sparklineData: data.monthly.demand,
@@ -54,7 +55,7 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
     },
     {
       key: 'supply',
-      title: 'Talent Availability',
+      title: 'Executive Availability',
       icon: Users,
       weight: data.weights.supply,
       score: data.today.supply.score,
@@ -70,7 +71,7 @@ const SubIndexCards = ({ data, compact = false }: SubIndexCardsProps) => {
     },
     {
       key: 'culture',
-      title: 'Market Buzz',
+      title: 'Market Interest',
       icon: Megaphone,
       weight: data.weights.culture,
       score: data.today.culture.score,

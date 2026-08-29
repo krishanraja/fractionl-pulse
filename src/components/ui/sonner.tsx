@@ -24,4 +24,6 @@ const Toaster = ({ ...props }: ToasterProps) => {
   );
 };
 
+// The wrapper re-exports Sonner's imperative helper as part of its public contract.
+// eslint-disable-next-line react-refresh/only-export-components
 export { Toaster, toast };

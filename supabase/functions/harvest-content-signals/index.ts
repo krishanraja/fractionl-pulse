@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { dataForSeoPost, parsePeopleAlsoAsk, parseRelatedQueries } from '../_shared/dataforseo.ts';
 
 // Content Radar harvester. Where ingest-signals COUNTS sources into a 0-100 number,
 // this keeps the TEXT (rising queries, questions, headlines, post/episode/video titles,
@@ -14,7 +15,8 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const SERP_API_KEY = Deno.env.get('SERP_API_KEY') || '';
+const DATAFORSEO_LOGIN = Deno.env.get('DATAFORSEO_LOGIN') || '';
+const DATAFORSEO_PASSWORD = Deno.env.get('DATAFORSEO_PASSWORD') || '';
 const BRAVE_API_KEY = Deno.env.get('BRAVE_API_KEY') || '';
 const NEWS_API_KEY = Deno.env.get('NEWS_API_KEY') || '';
 const MEDIASTACK_API_KEY = Deno.env.get('MEDIASTACK_API_KEY') || '';
@@ -71,7 +73,7 @@ interface ContentDoc {
   rising_label?: string;
   rising_value?: number;
   engagement?: number;
-  raw?: Record<string, any>;
+  raw?: Record<string, unknown>;
 }
 
 function safeNumber(v: unknown, fallback: number): number {
@@ -98,7 +100,6 @@ const isQuestion = (s: string) => s.trim().endsWith('?') || /^(how|what|why|when
 
 // ---- Per-host throttle (copied from the hardened ingest-signals) ----
 const HOST_MIN_INTERVAL_MS: Record<string, number> = {
-  'serpapi.com': 1500,
   'api.search.brave.com': 1200,
 };
 const hostNextSlot: Record<string, number> = {};
@@ -159,50 +160,52 @@ function withTimeout<T>(p: Promise<T>, ms: number, fallback: T, label: string): 
 // COLLECTORS (each returns ContentDoc[], catches internally)
 // ============================================================
 
-async function harvestSerpRelated(): Promise<ContentDoc[]> {
-  if (!SERP_API_KEY || shouldSkip('serpapi_related')) return [];
+async function harvestDataForSeoRelated(): Promise<ContentDoc[]> {
+  if (!DATAFORSEO_LOGIN || !DATAFORSEO_PASSWORD || shouldSkip('serpapi_related')) return [];
   const docs: ContentDoc[] = [];
   for (const { phrase, role } of ROLES) {
     try {
-      const url = `https://serpapi.com/search.json?engine=google_trends&q=${encodeURIComponent(phrase)}&data_type=RELATED_QUERIES&geo=US&api_key=${SERP_API_KEY}`;
-      const res = await fetchWithRetry(url, {}, 2, 15000);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const rq = data.related_queries || {};
-      for (const bucket of ['rising', 'top']) {
-        for (const item of (rq[bucket] || [])) {
-          const q = item.query || '';
-          if (!q) continue;
-          docs.push({
-            source: 'serpapi_related', doc_type: 'search_term', text: q, role,
-            rising_label: bucket === 'rising' ? String(item.value || '') : undefined,
-            rising_value: safeNumber(item.extracted_value, 0) || undefined,
-            raw: { seed: phrase, bucket },
-          });
-        }
+      const tasks = await dataForSeoPost<Record<string, unknown>>(
+        '/keywords_data/google_trends/explore/live',
+        [{
+          keywords: [phrase], location_code: 2840, language_code: 'en',
+          time_range: 'past_90_days', type: 'web', item_types: ['google_trends_queries_list'],
+        }],
+        { login: DATAFORSEO_LOGIN, password: DATAFORSEO_PASSWORD },
+      );
+      for (const item of parseRelatedQueries(tasks[0])) {
+        docs.push({
+          source: 'serpapi_related', doc_type: 'search_term', text: item.query, role,
+          rising_value: item.value || undefined,
+          raw: { provider: 'dataforseo', reported_cost: Number(tasks[0].cost) || 0, seed: phrase },
+        });
       }
-      console.log(`[SerpRelated] ${phrase}: ${docs.length} cumulative`);
-    } catch (e) { console.error(`[SerpRelated] ${phrase}:`, (e as Error).message); }
+      console.log(`[DataForSEO Related] ${phrase}: ${docs.length} cumulative`);
+    } catch (e) { console.error(`[DataForSEO Related] ${phrase}:`, (e as Error).message); }
   }
+  diag('serpapi_related', `provider=dataforseo credentials=${DATAFORSEO_LOGIN && DATAFORSEO_PASSWORD ? 'set' : 'none'} docs=${docs.length}`);
   return docs;
 }
 
-async function harvestSerpPAA(): Promise<ContentDoc[]> {
-  if (!SERP_API_KEY || shouldSkip('serpapi_paa')) return [];
+async function harvestDataForSeoPAA(): Promise<ContentDoc[]> {
+  if (!DATAFORSEO_LOGIN || !DATAFORSEO_PASSWORD || shouldSkip('serpapi_paa')) return [];
   const docs: ContentDoc[] = [];
   for (const { phrase, role } of ROLES) {
     try {
-      const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(phrase)}&gl=us&hl=en&api_key=${SERP_API_KEY}`;
-      const res = await fetchWithRetry(url, {}, 2, 15000);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      for (const item of (data.related_questions || [])) {
-        const q = item.question || '';
-        if (!q) continue;
-        docs.push({ source: 'serpapi_paa', doc_type: 'question', text: q, role, url: item.link, raw: { seed: phrase } });
+      const tasks = await dataForSeoPost<Record<string, unknown>>(
+        '/serp/google/organic/live/advanced',
+        [{ keyword: phrase, location_code: 2840, language_code: 'en', depth: 10 }],
+        { login: DATAFORSEO_LOGIN, password: DATAFORSEO_PASSWORD },
+      );
+      for (const item of parsePeopleAlsoAsk(tasks[0])) {
+        docs.push({
+          source: 'serpapi_paa', doc_type: 'question', text: item.question,
+          role, url: item.url, raw: { provider: 'dataforseo', reported_cost: Number(tasks[0].cost) || 0, seed: phrase },
+        });
       }
-    } catch (e) { console.error(`[SerpPAA] ${phrase}:`, (e as Error).message); }
+    } catch (e) { console.error(`[DataForSEO PAA] ${phrase}:`, (e as Error).message); }
   }
+  diag('serpapi_paa', `provider=dataforseo credentials=${DATAFORSEO_LOGIN && DATAFORSEO_PASSWORD ? 'set' : 'none'} docs=${docs.length}`);
   return docs;
 }
 
@@ -485,8 +488,8 @@ serve(async (req) => {
     const T = 60000;
     const t = <X>(p: Promise<X>, fb: X, label: string) => withTimeout(p, T, fb, label);
     const groups = await Promise.all([
-      t(harvestSerpRelated(), [] as ContentDoc[], 'serpapi_related'),
-      t(harvestSerpPAA(), [] as ContentDoc[], 'serpapi_paa'),
+      t(harvestDataForSeoRelated(), [] as ContentDoc[], 'serpapi_related'),
+      t(harvestDataForSeoPAA(), [] as ContentDoc[], 'serpapi_paa'),
       t(harvestAutocomplete(), [] as ContentDoc[], 'google_autocomplete'),
       t(harvestNews(), [] as ContentDoc[], 'news'),
       t(harvestBraveWeb(), [] as ContentDoc[], 'brave_web'),
@@ -529,7 +532,11 @@ serve(async (req) => {
     const now = new Date().toISOString();
     const sourceNames = ['serpapi_related', 'serpapi_paa', 'google_autocomplete', 'newsapi', 'mediastack', 'guardian', 'brave_news', 'brave_web', 'reddit', 'hn', 'podchaser', 'ats_boards', 'youtube', 'marketplace'];
     const produced = new Set(allDocs.map(d => d.source));
-    const healthy = sourceNames.filter(s => produced.has(s)).map(s => ({ source: s, last_checked: now, last_success: now, status: 'healthy', error_count: 0, metadata: { last_error: null }, updated_at: now }));
+    const healthy = sourceNames.filter(s => produced.has(s)).map(s => ({
+      source: s, last_checked: now, last_success: now, status: 'healthy', error_count: 0,
+      metadata: { last_error: null, ...(s === 'serpapi_related' || s === 'serpapi_paa' ? { provider: 'dataforseo' } : {}) },
+      updated_at: now,
+    }));
     if (healthy.length) await supabase.from('data_source_health').upsert(healthy, { onConflict: 'source' });
 
     const bySource: Record<string, number> = {};
@@ -546,7 +553,7 @@ serve(async (req) => {
     // 'success' above, so a slow radar call here can never strand the harvest run; the timeout
     // bounds total wall-clock under the pg_cron caller timeout. The weekly pg_cron also has a
     // safety path: generate-content-radar is idempotent and can be re-invoked for the week.
-    let radar: any = { skipped: true };
+    let radar: unknown = { skipped: true };
     try {
       const auth = req.headers.get('Authorization') || `Bearer ${SUPABASE_SERVICE_KEY}`;
       const r = await fetch(`${SUPABASE_URL}/functions/v1/generate-content-radar?week_start=${weekStart}`, { headers: { Authorization: auth }, signal: AbortSignal.timeout(70000) });
