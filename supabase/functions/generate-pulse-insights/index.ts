@@ -5,7 +5,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const ALLOWED_ORIGINS = [
   'https://fractionl.ai',
   'https://pulse.fractionl.ai',
-  'https://pulse.fractionl.ai',
 ];
 
 function getCorsHeaders(req: Request) {
@@ -22,6 +21,24 @@ const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') || '';
 const BRAVE_API_KEY = Deno.env.get('BRAVE_API_KEY') || '';
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+interface SignalMetadata {
+  top_articles?: Array<{ title?: string }>;
+  subreddits?: string[];
+  median_hourly_rate?: number;
+  series_name?: string;
+  date?: string;
+  self_employment_pct?: number;
+}
+
+interface SignalRow {
+  source?: string;
+  signal_type?: string;
+  category?: string;
+  normalized_value?: number;
+  raw_value?: number;
+  metadata?: SignalMetadata | null;
+}
 
 async function fetchBraveContext(): Promise<string> {
   if (!BRAVE_API_KEY) return '';
@@ -92,6 +109,10 @@ async function fetchBraveContext(): Promise<string> {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+    return new Response('Forbidden origin', { status: 403, headers: { Vary: 'Origin' } });
+  }
   const corsHeaders = getCorsHeaders(req);
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -110,13 +131,14 @@ serve(async (req) => {
       });
     }
 
-    // Fetch latest FWI context
-    const today = new Date().toISOString().slice(0, 10);
-    const [{ data: latestScore }, { data: moversData }, { data: signals }] = await Promise.all([
-      supabase.from('fwi_scores').select('*').order('date', { ascending: false }).limit(3),
-      supabase.from('movers').select('*').eq('date', today).order('rank', { ascending: true }).limit(5),
-      supabase.from('signals').select('source, signal_type, category, normalized_value, raw_value, metadata').eq('date', today).limit(80),
-    ]);
+    // Fetch the latest settled observation first, then anchor every related
+    // query to that date. Using the wall-clock date silently returned no movers
+    // whenever ingestion had not yet completed for the current UTC day.
+    const { data: latestScore } = await supabase
+      .from('fwi_scores')
+      .select('*')
+      .order('date', { ascending: false })
+      .limit(1);
 
     if (!latestScore || latestScore.length === 0) {
       return new Response(JSON.stringify({ error: 'No FWI data available yet' }), {
@@ -126,9 +148,23 @@ serve(async (req) => {
     }
 
     const current = latestScore[0];
-    const previous = latestScore[1];
-    const trend = previous
-      ? current.overall_score - previous.overall_score > 0 ? 'improving' : 'declining'
+    const currentDate = current.date;
+    const cutoff = new Date(`${currentDate}T00:00:00Z`);
+    cutoff.setUTCDate(cutoff.getUTCDate() - 30);
+    const cutoffDate = cutoff.toISOString().slice(0, 10);
+    const [{ data: previousRows }, { data: moversData }, { data: signals }] = await Promise.all([
+      supabase.from('fwi_scores').select('*').lte('date', cutoffDate).order('date', { ascending: false }).limit(1),
+      supabase.from('movers').select('*').eq('date', currentDate).order('rank', { ascending: true }).limit(5),
+      supabase.from('signals').select('source, signal_type, category, normalized_value, raw_value, metadata').eq('date', currentDate).limit(80),
+    ]);
+    const previous = previousRows?.[0];
+    const signalRows = (signals || []) as SignalRow[];
+    const delta30d = previous
+      ? Math.round((current.overall_score - previous.overall_score) * 10) / 10
+      : null;
+    const trend = delta30d == null
+      ? 'not available'
+      : delta30d > 0 ? 'higher over 30 days' : delta30d < 0 ? 'lower over 30 days'
       : 'stable';
 
     const braveContext = await fetchBraveContext();
@@ -139,9 +175,9 @@ serve(async (req) => {
 
     // Build per-source signal breakdown for the LLM
     const signalLines: string[] = [];
-    if (signals && signals.length > 0) {
-      const byType: Record<string, any[]> = {};
-      for (const s of signals) {
+    if (signalRows.length > 0) {
+      const byType: Record<string, SignalRow[]> = {};
+      for (const s of signalRows) {
         const t = s.signal_type || 'other';
         if (!byType[t]) byType[t] = [];
         byType[t].push(s);
@@ -151,7 +187,7 @@ serve(async (req) => {
         for (const s of sigs) {
           const meta = s.metadata || {};
           const extras: string[] = [];
-          if (meta.top_articles?.length) extras.push(`Headlines: ${meta.top_articles.slice(0, 2).map((a: any) => a.title).join('; ')}`);
+          if (meta.top_articles?.length) extras.push(`Headlines: ${meta.top_articles.slice(0, 2).map((article) => article.title).join('; ')}`);
           if (meta.subreddits?.length) extras.push(`Subreddits: ${meta.subreddits.slice(0, 3).join(', ')}`);
           if (meta.median_hourly_rate) extras.push(`Median rate: $${meta.median_hourly_rate}/hr`);
           if (meta.series_name) extras.push(`${meta.series_name}: ${s.raw_value} (${meta.date})`);
@@ -168,10 +204,10 @@ Current FWI data:
 - Demand Score: ${current.demand_score}/100
 - Supply Score: ${current.supply_score}/100
 - Momentum Score: ${current.momentum_score}/100
-- Trend vs previous reading: ${trend}
+- 30-day direction: ${trend}${delta30d == null ? '' : ` (${delta30d > 0 ? '+' : ''}${delta30d} points vs ${previous.date})`}
 
-Top movers:
-${(moversData || []).map(m => `- ${m.skill || m.role}: ${m.change_pct > 0 ? '+' : ''}${m.change_pct}% (${m.note})`).join('\n')}
+Cross-sectional movers vs the current market average (these are NOT week-over-week changes):
+${(moversData || []).map(m => `- ${m.skill || m.role}: ${m.change_pct > 0 ? '+' : ''}${m.change_pct}% vs market average (${m.note})`).join('\n')}
 
 Detailed signal breakdown:${signalLines.join('\n')}${braveSection}
 
@@ -181,7 +217,15 @@ Generate 4 insights for fractional executives:
 3. A trend to watch, referencing at least two signal sources
 4. One tactical recommendation for a fractional executive making decisions this week
 
-Return as JSON array: [{"type": "summary|opportunity|trend|recommendation", "title": "short title", "body": "2-3 sentences", "confidence": 0.7-0.95}]
+Return as a JSON object with an insights array:
+{"insights": [{"type": "summary|opportunity|trend|recommendation", "title": "short title", "body": "2-3 sentences", "confidence": 0.7-0.95, "relatedSignals": ["2-4 exact source names, metric labels, or the index date used"]}]}
+
+Truth rules:
+- Never turn a mover "vs market average" into an increase, decline, surge, drop, or time trend.
+- Never call a 30-44 component stable; it is Cooling. 45-59 is Stable, 60-74 Growing, 75+ Surging.
+- Do not use an uncited percentage or market claim. If a fact is not in the supplied context, omit it.
+- Distinguish measured fact, interpretation, and recommendation. Do not claim causation from media/community attention to pricing or demand.
+- The index is US primary and cannot establish local conditions elsewhere.
 
 Be specific. Reference actual numbers and source names. No fluff. Write for experienced fractional CMOs/CFOs/CTOs.`;
 
@@ -223,8 +267,8 @@ Be specific. Reference actual numbers and source names. No fluff. Write for expe
       insights_json: insights,
       model_used: 'gpt-4o-mini',
       valid_until: validUntil,
-      context: { fwi_score: current.overall_score, date: today, brave_context_used: braveContext.length > 0,
-        signal_count: signals?.length || 0, signal_sources: [...new Set((signals || []).map((s: any) => s.source))] },
+      context: { fwi_score: current.overall_score, date: currentDate, brave_context_used: braveContext.length > 0,
+        signal_count: signalRows.length, signal_sources: [...new Set(signalRows.map((signal) => signal.source).filter(Boolean))] },
     });
     if (cacheError) console.error('cached_insights insert failed:', cacheError.message);
 

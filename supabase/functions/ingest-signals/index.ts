@@ -1,5 +1,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  dataForSeoGet,
+  dataForSeoPost,
+  parseGoogleJobs,
+  parseOrganicCount,
+  parseTrendsSeries,
+} from '../_shared/dataforseo.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,7 +22,8 @@ const NEWS_API_KEY = Deno.env.get('NEWS_API_KEY') || '';
 const PDL_API_KEY = Deno.env.get('PDL_API_KEY') || '';
 const BRAVE_API_KEY = Deno.env.get('BRAVE_API_KEY') || '';
 const FRED_API_KEY = Deno.env.get('FRED_API_KEY') || '';
-const SERP_API_KEY = Deno.env.get('SERP_API_KEY') || '';
+const DATAFORSEO_LOGIN = Deno.env.get('DATAFORSEO_LOGIN') || '';
+const DATAFORSEO_PASSWORD = Deno.env.get('DATAFORSEO_PASSWORD') || '';
 const MEDIASTACK_API_KEY = Deno.env.get('MEDIASTACK_API_KEY') || '';
 const PODCHASER_API_KEY = Deno.env.get('PODCHASER_API_KEY') || '';
 const PODCHASER_CLIENT_ID = Deno.env.get('PODCHASER_CLIENT_ID') || '';
@@ -30,10 +38,11 @@ const SKIP_SOURCES = (Deno.env.get('SKIP_SOURCES') || '').split(',').map(s => s.
 
 const SOURCE_COST_ESTIMATE: Record<string, number> = {
   adzuna: 0, sec_edgar: 0, newsapi: 0, hn: 0, census_acs: 0, fred: 0, guardian: 0,
-  serpapi_jobs: 0.005, serpapi_trends: 0.005, serpapi_linkedin: 0.02, serpapi_supply_trends: 0.005,
-  brave_news: 0.003, brave_web: 0.003,
+  // Legacy source IDs are retained for API compatibility; current provider is DataForSEO.
+  serpapi_jobs: 0.0036, serpapi_trends: 0.011, serpapi_linkedin: 0.04, serpapi_supply_trends: 0.011,
+  brave_news: 0.005, brave_web: 0.02, brave_talent: 0.02,
   mediastack: 0, nyt: 0, podchaser: 0,
-  people_data_labs: 0.06, reddit: 0, gofractional: 0.01,
+  people_data_labs: 0.06, reddit: 0.015, gofractional: 0.011,
   google_trends: 0.01, supply_trends: 0.01,
   bls: 0, wikipedia_pageviews: 0, openalex: 0,
 };
@@ -133,10 +142,18 @@ interface SignalResult {
   category: string;
   raw_value: number;
   normalized_value: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   success: boolean;
   error?: string;
 }
+
+function providerMetadata(source: string): Record<string, string> {
+  return source.startsWith('serpapi_') ? { provider: 'dataforseo' } : {};
+}
+
+interface ApifyTrendPoint { hasData?: boolean[]; value?: number[] }
+interface ApifyTrendItem { interestOverTime_timelineData?: ApifyTrendPoint[] }
+interface FwiResult { overall_score?: number; error?: string }
 
 function safeNumber(value: unknown, fallback: number): number {
   const num = Number(value);
@@ -145,11 +162,10 @@ function safeNumber(value: unknown, fallback: number): number {
 }
 
 // Per-host rate limiter. Several collectors hit the same rate-limited vendor
-// (SerpAPI, Brave) concurrently via Promise.all; without spacing they trigger
+// concurrently via Promise.all; without spacing they trigger
 // 429 storms (this is exactly what floored the supply index May 8-18 2026).
 // throttleHost serializes requests to these hosts with a minimum interval.
 const HOST_MIN_INTERVAL_MS: Record<string, number> = {
-  'serpapi.com': 1500,
   'api.search.brave.com': 1200,
 };
 const hostNextSlot: Record<string, number> = {};
@@ -350,37 +366,64 @@ async function collectAdzunaSignals(date: string): Promise<SignalResult[]> {
   return results;
 }
 
-async function collectSerpApiJobsSignals(date: string): Promise<SignalResult[]> {
-  if (!SERP_API_KEY) {
-    console.log('[SerpAPI Jobs] No key, skipping');
-    return [];
+async function collectDataForSeoJobsSignals(date: string): Promise<SignalResult[]> {
+  if (!DATAFORSEO_LOGIN || !DATAFORSEO_PASSWORD) {
+    return [{ source: 'serpapi_jobs', signal_type: 'demand', category: 'aggregate',
+      raw_value: 0, normalized_value: 15, success: false, error: 'DataForSEO credentials are not configured' }];
   }
-  console.log('[SerpAPI Jobs] Starting Google Jobs cross-check...');
+  console.log('[DataForSEO Jobs] Retrieving prepared Google Jobs tasks...');
   const results: SignalResult[] = [];
   let totalJobs = 0;
 
+  const { data: preparation, error: preparationError } = await supabase
+    .from('pipeline_runs')
+    .select('metadata')
+    .eq('source', 'prepare-dataforseo-jobs')
+    .eq('status', 'success')
+    .contains('metadata', { target_date: date })
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (preparationError) {
+    return [{ source: 'serpapi_jobs', signal_type: 'demand', category: 'aggregate',
+      raw_value: 0, normalized_value: 15, success: false, error: `Jobs preparation lookup failed: ${preparationError.message}` }];
+  }
+  const preparedTasks = Array.isArray(preparation?.metadata?.tasks)
+    ? preparation.metadata.tasks as Array<{ id?: string; category?: string; phrase?: string }>
+    : [];
+  if (preparedTasks.length === 0) {
+    return [{ source: 'serpapi_jobs', signal_type: 'demand', category: 'aggregate',
+      raw_value: 0, normalized_value: 15, success: false, error: `No prepared DataForSEO Jobs tasks for ${date}` }];
+  }
+
   for (const role of FRACTIONAL_ROLES) {
     try {
-      const url = `https://serpapi.com/search.json?engine=google_jobs&q=${encodeURIComponent(role.phrase)}&gl=us&hl=en&api_key=${SERP_API_KEY}`;
-      const response = await fetchWithRetry(url, {}, 2, 15000);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      const jobs = data.jobs_results || [];
+      const prepared = preparedTasks.find((task) => task.category === role.category);
+      if (!prepared?.id) throw new Error('Prepared task ID is missing');
+      const tasks = await dataForSeoGet<Record<string, unknown>>(
+        `/serp/google/jobs/task_get/advanced/${encodeURIComponent(prepared.id)}`,
+        { login: DATAFORSEO_LOGIN, password: DATAFORSEO_PASSWORD },
+      );
+      const jobs = parseGoogleJobs(tasks[0]);
       const count = jobs.length;
       totalJobs += count;
       const normalized = normalizeJobCount(count);
       results.push({
         source: 'serpapi_jobs', signal_type: 'demand', category: role.category,
         raw_value: count, normalized_value: normalized,
-        metadata: { role_phrase: role.phrase, sample_titles: jobs.slice(0, 3).map((j: any) => j.title) },
+        metadata: {
+          provider: 'dataforseo', task_id: prepared.id, role_phrase: role.phrase,
+          sample_titles: jobs.slice(0, 3).map((job) => job.title),
+        },
         success: true
       });
-      console.log(`[SerpAPI Jobs] ${role.phrase}: ${count} jobs -> score ${normalized}`);
+      console.log(`[DataForSEO Jobs] ${role.phrase}: ${count} jobs -> score ${normalized}`);
     } catch (error) {
-      console.error(`[SerpAPI Jobs] ${role.phrase} failed:`, error.message);
+      console.error(`[DataForSEO Jobs] ${role.phrase} failed:`, error.message);
       results.push({
         source: 'serpapi_jobs', signal_type: 'demand', category: role.category,
-        raw_value: 0, normalized_value: 15, success: false, error: error.message
+        raw_value: 0, normalized_value: 15, metadata: { provider: 'dataforseo' },
+        success: false, error: error.message
       });
     }
   }
@@ -391,7 +434,7 @@ async function collectSerpApiJobsSignals(date: string): Promise<SignalResult[]> 
       source: 'serpapi_jobs', signal_type: 'demand', category: 'aggregate',
       raw_value: totalJobs,
       normalized_value: Math.round(successScores.reduce((a, b) => a + b, 0) / successScores.length),
-      metadata: { total_jobs: totalJobs }, success: true
+      metadata: { provider: 'dataforseo', total_jobs: totalJobs }, success: true
     });
   }
   return results;
@@ -432,41 +475,46 @@ async function collectSecEdgarSignal(date: string): Promise<SignalResult> {
 // CULTURE / MOMENTUM COLLECTORS
 // ============================================================
 
-async function collectSerpApiTrendsSignal(date: string): Promise<SignalResult> {
-  if (!SERP_API_KEY) {
-    console.log('[SerpAPI Trends] No key, falling back to Apify');
+async function collectDataForSeoTrendsSignal(date: string): Promise<SignalResult> {
+  if (!DATAFORSEO_LOGIN || !DATAFORSEO_PASSWORD) {
     return { source: 'serpapi_trends', signal_type: 'momentum', category: 'search_interest',
-      raw_value: 0, normalized_value: 25, success: false, error: 'No SERP_API_KEY' };
+      raw_value: 0, normalized_value: 25, success: false, error: 'DataForSEO credentials are not configured' };
   }
-  console.log('[SerpAPI Trends] Collecting demand-side search interest...');
+  console.log('[DataForSEO Trends] Collecting demand-side search interest...');
   try {
-    const q = GOOGLE_TRENDS_TERMS.join(',');
-    const url = `https://serpapi.com/search.json?engine=google_trends&q=${encodeURIComponent(q)}&data_type=TIMESERIES&geo=US&api_key=${SERP_API_KEY}`;
-    const response = await fetchWithRetry(url, {}, 2, 15000);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
-    const timeline = data.interest_over_time?.timeline_data || [];
+    const tasks = await dataForSeoPost<Record<string, unknown>>(
+      '/keywords_data/google_trends/explore/live',
+      [{
+        keywords: GOOGLE_TRENDS_TERMS,
+        location_code: 2840,
+        language_code: 'en',
+        time_range: 'past_90_days',
+        type: 'web',
+        item_types: ['google_trends_graph'],
+      }],
+      { login: DATAFORSEO_LOGIN, password: DATAFORSEO_PASSWORD },
+    );
+    const timeline = parseTrendsSeries(tasks[0]);
     const recent4 = timeline.slice(-4);
+    if (recent4.length === 0) throw new Error('DataForSEO Trends returned no graph data');
     const termAverages: number[] = [];
-    if (recent4.length > 0 && recent4[0].values) {
-      for (let i = 0; i < recent4[0].values.length; i++) {
-        const avg = recent4.reduce((sum: number, t: any) => sum + safeNumber(t.values[i]?.extracted_value, 0), 0) / recent4.length;
-        termAverages.push(avg);
-      }
+    for (let i = 0; i < GOOGLE_TRENDS_TERMS.length; i++) {
+      const avg = recent4.reduce((sum, point) => sum + safeNumber(point[i], 0), 0) / recent4.length;
+      termAverages.push(avg);
     }
     const overallAvg = termAverages.length > 0 ? termAverages.reduce((a, b) => a + b, 0) / termAverages.length : 0;
     const normalizedScore = normalizeTrends(overallAvg);
-    console.log(`[SerpAPI Trends] Overall avg: ${overallAvg.toFixed(1)} -> score ${normalizedScore}`);
+    console.log(`[DataForSEO Trends] Overall avg: ${overallAvg.toFixed(1)} -> score ${normalizedScore}`);
     return {
       source: 'serpapi_trends', signal_type: 'momentum', category: 'search_interest',
       raw_value: Math.round(overallAvg * 10) / 10, normalized_value: normalizedScore,
-      metadata: { terms: GOOGLE_TRENDS_TERMS, term_averages: termAverages.map(a => Math.round(a * 10) / 10), data_points: recent4.length },
+      metadata: { provider: 'dataforseo', reported_cost: Number(tasks[0].cost) || 0, terms: GOOGLE_TRENDS_TERMS, term_averages: termAverages.map(a => Math.round(a * 10) / 10), data_points: recent4.length },
       success: true
     };
   } catch (error) {
-    console.error('[SerpAPI Trends] Failed:', error.message);
+    console.error('[DataForSEO Trends] Failed:', error.message);
     return { source: 'serpapi_trends', signal_type: 'momentum', category: 'search_interest',
-      raw_value: 0, normalized_value: 25, success: false, error: error.message };
+      raw_value: 0, normalized_value: 25, metadata: { provider: 'dataforseo' }, success: false, error: error.message };
   }
 }
 
@@ -492,14 +540,14 @@ async function collectGoogleTrendsSignal(date: string): Promise<SignalResult> {
     }
     if (status !== 'SUCCEEDED') throw new Error(`Trends run ${status} after ${pollCount * 5}s`);
     const resultsResponse = await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_KEY}`);
-    const results = await resultsResponse.json();
+    const results = await resultsResponse.json() as ApifyTrendItem[];
     if (!Array.isArray(results) || results.length === 0) throw new Error('No trends data returned');
     const termAverages = results.map(item => {
       const timeline = item.interestOverTime_timelineData || [];
-      const validPoints = timeline.filter((t: any) => t.hasData && t.hasData[0]);
+      const validPoints = timeline.filter((point) => point.hasData?.[0]);
       const recent4Weeks = validPoints.slice(-4);
       return recent4Weeks.length > 0
-        ? recent4Weeks.reduce((sum: number, t: any) => sum + (t.value[0] || 0), 0) / recent4Weeks.length : 0;
+        ? recent4Weeks.reduce((sum, point) => sum + (point.value?.[0] || 0), 0) / recent4Weeks.length : 0;
     });
     const overallAvg = termAverages.reduce((a, b) => a + b, 0) / termAverages.length;
     return {
@@ -528,8 +576,8 @@ async function collectNewsApiSignal(date: string): Promise<SignalResult> {
     const data = await response.json();
     const count = safeNumber(data.totalResults, 0);
     const articles = (data.articles || []).slice(0, 5);
-    const topArticles = articles.map((a: any) => ({
-      title: a.title || '', url: a.url || '', source: a.source?.name || ''
+    const topArticles = articles.map((article: { title?: string; url?: string; source?: { name?: string } }) => ({
+      title: article.title || '', url: article.url || '', source: article.source?.name || ''
     }));
     console.log(`[NewsAPI] ${count} articles (28d), storing ${topArticles.length} headlines`);
     return {
@@ -559,8 +607,8 @@ async function collectMediastackSignal(date: string): Promise<SignalResult> {
     const data = await response.json();
     const articles = data.data || [];
     const count = safeNumber(data.pagination?.total, articles.length);
-    const topArticles = articles.slice(0, 5).map((a: any) => ({
-      title: a.title || '', url: a.url || '', source: a.source || ''
+    const topArticles = articles.slice(0, 5).map((article: { title?: string; url?: string; source?: string }) => ({
+      title: article.title || '', url: article.url || '', source: article.source || ''
     }));
     console.log(`[Mediastack] ${count} results, ${articles.length} returned`);
     return {
@@ -592,8 +640,8 @@ async function collectGuardianSignal(date: string): Promise<SignalResult> {
     const data = await response.json();
     const count = safeNumber(data.response?.total, 0);
     const articles = (data.response?.results || []).slice(0, 5);
-    const topArticles = articles.map((a: any) => ({
-      title: a.webTitle || '', url: a.webUrl || '', section: a.sectionName || ''
+    const topArticles = articles.map((article: { webTitle?: string; webUrl?: string; sectionName?: string }) => ({
+      title: article.webTitle || '', url: article.webUrl || '', section: article.sectionName || ''
     }));
     console.log(`[Guardian] ${count} articles (90d) -> score ${normalizePrestigeMedia(count)}`);
     return {
@@ -627,9 +675,9 @@ async function collectNYTSignal(date: string): Promise<SignalResult> {
     const data = await response.json();
     const docs = data.response?.docs || [];
     const count = safeNumber(data.response?.meta?.hits, docs.length);
-    const topArticles = docs.slice(0, 5).map((d: any) => ({
-      title: d.headline?.main || '', url: d.web_url || '',
-      facets: (d.des_facet || []).slice(0, 3)
+    const topArticles = docs.slice(0, 5).map((doc: { headline?: { main?: string }; web_url?: string; des_facet?: string[] }) => ({
+      title: doc.headline?.main || '', url: doc.web_url || '',
+      facets: (doc.des_facet || []).slice(0, 3)
     }));
     console.log(`[NYT] ${count} articles (90d) -> score ${normalizePrestigeMedia(count)}`);
     return {
@@ -675,7 +723,7 @@ async function collectPodchaserSignal(_date: string): Promise<SignalResult> {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     const total = safeNumber(data.data?.podcasts?.paginatorInfo?.total, 0);
-    const sampleTitles = (data.data?.podcasts?.data || []).slice(0, 5).map((p: any) => p.title);
+    const sampleTitles = (data.data?.podcasts?.data || []).slice(0, 5).map((podcast: { title?: string }) => podcast.title);
     console.log(`[Podchaser] ${total} podcasts mentioning fractional -> score ${normalizePodcastCount(total)}`);
     return {
       source: 'podchaser', signal_type: 'momentum', category: 'audio_culture',
@@ -735,14 +783,14 @@ async function collectHNSignal(_date: string): Promise<SignalResult> {
     const data = await response.json();
     const hits = data.hits || [];
     const totalHits = safeNumber(data.nbHits, hits.length);
-    const avgPoints = hits.length > 0 ? hits.reduce((s: number, h: any) => s + safeNumber(h.points, 0), 0) / hits.length : 0;
+    const avgPoints = hits.length > 0 ? hits.reduce((sum: number, hit: { points?: number }) => sum + safeNumber(hit.points, 0), 0) / hits.length : 0;
     const normalized = normalizeRedditActivity(totalHits, avgPoints);
     console.log(`[HN] ${totalHits} stories, avg points ${avgPoints.toFixed(1)} -> ${normalized}`);
     return {
       source: 'hn', signal_type: 'momentum', category: 'community_discourse',
       raw_value: totalHits, normalized_value: normalized,
       metadata: { avg_points: Math.round(avgPoints), window: 'past_month',
-        top_stories: hits.slice(0, 3).map((h: any) => ({ title: h.title, url: h.url, points: h.points })) },
+        top_stories: hits.slice(0, 3).map((hit: { title?: string; url?: string; points?: number }) => ({ title: hit.title, url: hit.url, points: hit.points })) },
       success: true
     };
   } catch (error) {
@@ -847,47 +895,58 @@ async function collectPDLSupplySignals(date: string): Promise<SignalResult[]> {
   return results;
 }
 
-async function collectSerpApiLinkedInSupply(_date: string): Promise<SignalResult[]> {
-  if (!SERP_API_KEY) { console.log('[SerpAPI LinkedIn] No key, skipping'); return []; }
-  console.log('[SerpAPI LinkedIn] Collecting LinkedIn supply proxy...');
+async function collectDataForSeoLinkedInSupply(_date: string): Promise<SignalResult[]> {
+  if (!DATAFORSEO_LOGIN || !DATAFORSEO_PASSWORD) {
+    return [{ source: 'serpapi_linkedin', signal_type: 'supply', category: 'aggregate',
+      raw_value: 0, normalized_value: 10, success: false, error: 'DataForSEO credentials are not configured' }];
+  }
+  console.log('[DataForSEO LinkedIn] Collecting LinkedIn supply proxy...');
   const results: SignalResult[] = [];
   const roles = ['fractional CFO', 'fractional CMO', 'fractional CTO', 'fractional COO'];
   let totalResults = 0;
 
   for (const role of roles) {
     try {
-      const url = `https://serpapi.com/search.json?engine=google&q=site:linkedin.com/in+%22${encodeURIComponent(role)}%22&gl=us&api_key=${SERP_API_KEY}`;
-      const response = await fetchWithRetry(url, {}, 2, 12000);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      const count = safeNumber(data.search_information?.total_results, 0);
+      const tasks = await dataForSeoPost<Record<string, unknown>>(
+        '/serp/google/organic/live/advanced',
+        [{ keyword: `site:linkedin.com/in "${role}"`, location_code: 2840, language_code: 'en', depth: 10 }],
+        { login: DATAFORSEO_LOGIN, password: DATAFORSEO_PASSWORD },
+      );
+      const count = parseOrganicCount(tasks[0]);
       totalResults += count;
       results.push({
         source: 'serpapi_linkedin', signal_type: 'supply',
         category: role.split(' ')[1]?.toLowerCase() || 'other',
         raw_value: count, normalized_value: normalizeSupplyCount(count),
-        metadata: { query: role }, success: true
+        metadata: { provider: 'dataforseo', reported_cost: Number(tasks[0].cost) || 0, query: role, search_operator: 'site:linkedin.com/in' }, success: true
       });
-      console.log(`[SerpAPI LinkedIn] "${role}": ~${count} profiles`);
+      console.log(`[DataForSEO LinkedIn] "${role}": ~${count} profiles`);
     } catch (error) {
-      console.error(`[SerpAPI LinkedIn] ${role} failed:`, error.message);
+      console.error(`[DataForSEO LinkedIn] ${role} failed:`, error.message);
+      results.push({
+        source: 'serpapi_linkedin', signal_type: 'supply',
+        category: role.split(' ')[1]?.toLowerCase() || 'other',
+        raw_value: 0, normalized_value: 10, metadata: { provider: 'dataforseo' },
+        success: false, error: error.message,
+      });
     }
   }
 
-  if (results.length > 0) {
-    const scores = results.map(r => r.normalized_value);
+  const successful = results.filter((result) => result.success);
+  if (successful.length > 0) {
+    const scores = successful.map(r => r.normalized_value);
     results.push({ source: 'serpapi_linkedin', signal_type: 'supply', category: 'aggregate',
       raw_value: totalResults,
       normalized_value: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
-      metadata: { total_results: totalResults }, success: true });
+      metadata: { provider: 'dataforseo', total_results: totalResults }, success: true });
   }
   return results;
 }
 
-// SerpAPI-independent supply source. When SerpAPI rate-limits (429), the LinkedIn
+// Provider-independent supply source. When the primary search proxy fails, the LinkedIn
 // profile-count proxy disappears and supply collapses toward its floor (~10) — this
 // is what happened May 8-18 2026. Brave is a different vendor with a separate quota,
-// so it keeps a real talent-pool reading alive when SerpAPI is down. Reuses the proven
+// so it keeps a real talent-pool reading alive when the primary provider is down. Reuses the proven
 // Brave web-search pattern; host throttling/429 retry is handled in fetchWithRetry.
 async function collectBraveTalentSupply(_date: string): Promise<SignalResult[]> {
   if (!BRAVE_API_KEY) {
@@ -934,7 +993,7 @@ async function collectBraveTalentSupply(_date: string): Promise<SignalResult[]> 
       source: 'brave_talent', signal_type: 'supply', category: 'aggregate',
       raw_value: totalProfiles,
       normalized_value: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
-      metadata: { results_returned: totalProfiles, proxy: 'brave_web_linkedin', note: 'SerpAPI-independent supply liveness backstop; coarse, page-capped' }, success: true
+      metadata: { results_returned: totalProfiles, proxy: 'brave_web_linkedin', note: 'Provider-independent supply liveness backstop; coarse, page-capped' }, success: true
     });
   }
   return results;
@@ -945,24 +1004,40 @@ async function collectGoFractionalSupply(_date: string): Promise<SignalResult> {
     return { source: 'gofractional', signal_type: 'supply', category: 'marketplace',
       raw_value: 0, normalized_value: 10, success: false, error: 'No APIFY_API_KEY' };
   }
-  console.log('[GoFractional] Collecting marketplace listings via Apify web scraper...');
+  console.log('[GoFractional] Collecting published operator count via Apify web scraper...');
   try {
-    const runResponse = await fetchWithRetry(`https://api.apify.com/v2/acts/apify~web-scraper/runs?token=${APIFY_API_KEY}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        startUrls: [{ url: 'https://www.gofractional.com/fractional-executives' }],
-        pageFunction: `async function pageFunction(context) {
-          const $ = context.jQuery;
-          const results = [];
-          $('[class*="executive"], [class*="profile"], [class*="card"]').each((i, el) => {
-            results.push({ title: $(el).find('[class*="name"], h3, h4').first().text().trim() });
-          });
-          return results.length > 0 ? results : [{ count: $('a[href*="profile"], a[href*="executive"]').length || 0 }];
-        }`,
-        maxPagesPerCrawl: 3,
-      })
-    }, 2, 15000);
-    if (!runResponse.ok) throw new Error(`Apify run failed: HTTP ${runResponse.status}`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    let runResponse: Response;
+    try {
+      runResponse = await fetch('https://api.apify.com/v2/acts/apify~web-scraper/runs?maxTotalChargeUsd=0.02', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${APIFY_API_KEY}` },
+        signal: controller.signal,
+        body: JSON.stringify({
+          startUrls: [{ url: 'https://www.gofractional.com/' }],
+          pageFunction: `async function pageFunction(context) {
+            const $ = context.jQuery;
+            const pageText = $('body').text().replace(/\\s+/g, ' ');
+            const match = pageText.match(/(\\d{1,3}(?:,\\d{3})+)\\s*\\+?\\s*(?:proven\\s+)?(?:operators|leaders)/i);
+            return [{ count: match ? Number(match[1].replace(/,/g, '')) : 0 }];
+          }`,
+          maxPagesPerCrawl: 1,
+          proxyConfiguration: { useApifyProxy: true },
+          customData: { source: 'fractionl-pulse', targetDate: _date },
+        }),
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+    if (!runResponse.ok) {
+      let errorType = 'unknown';
+      try {
+        const errorBody = await runResponse.json();
+        if (typeof errorBody?.error?.type === 'string') errorType = errorBody.error.type;
+      } catch { /* retain status-only error */ }
+      throw new Error(`Apify run failed: HTTP ${runResponse.status} (${errorType})`);
+    }
     const runData = await runResponse.json();
     const runId = runData.data.id;
     const datasetId = runData.data.defaultDatasetId;
@@ -972,25 +1047,34 @@ async function collectGoFractionalSupply(_date: string): Promise<SignalResult> {
     // past the edge-function wall-clock / pg_cron caller timeout (see orchestrator deadline).
     while (status !== 'SUCCEEDED' && status !== 'FAILED' && pollCount < 10) {
       await new Promise(resolve => setTimeout(resolve, 5000));
-      const sr = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${APIFY_API_KEY}`);
+      const sr = await fetchWithRetry(`https://api.apify.com/v2/actor-runs/${runId}`, {
+        headers: { 'Authorization': `Bearer ${APIFY_API_KEY}` },
+      }, 2, 8000);
       status = (await sr.json()).data.status;
       pollCount++;
     }
     if (status !== 'SUCCEEDED') throw new Error(`GoFractional run ${status}`);
-    const items = await (await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_KEY}`)).json();
+    const itemsResponse = await fetchWithRetry(`https://api.apify.com/v2/datasets/${datasetId}/items`, {
+      headers: { 'Authorization': `Bearer ${APIFY_API_KEY}` },
+    }, 2, 8000);
+    if (!itemsResponse.ok) throw new Error(`Apify dataset read failed: HTTP ${itemsResponse.status}`);
+    const items = await itemsResponse.json();
     const listings = Array.isArray(items) ? items.flat() : [];
     const count = listings.length > 1 ? listings.length : safeNumber(listings[0]?.count, 0);
-    console.log(`[GoFractional] ${count} listings found`);
+    if (count <= 0) throw new Error('GoFractional published operator count was not found');
+    console.log(`[GoFractional] Published operator count: ${count}`);
     return {
       source: 'gofractional', signal_type: 'supply', category: 'marketplace',
       raw_value: count, normalized_value: normalizeSupplyCount(count),
-      metadata: { method: 'apify_web_scraper', listings_found: count },
+      metadata: { method: 'apify_web_scraper', metric: 'published_operator_count', operators_published: count },
       success: true
     };
   } catch (error) {
     console.error('[GoFractional] Failed:', error.message);
     return { source: 'gofractional', signal_type: 'supply', category: 'marketplace',
-      raw_value: 0, normalized_value: 10, success: false, error: error.message };
+      raw_value: 0, normalized_value: 10,
+      metadata: { provider: 'apify', actor: 'apify/web-scraper', max_total_charge_usd: 0.02, paid_post_retried: false },
+      success: false, error: error.message };
   }
 }
 
@@ -1014,11 +1098,11 @@ async function collectSupplyTrendsSignal(date: string): Promise<SignalResult> {
       pollCount++;
     }
     if (status !== 'SUCCEEDED') throw new Error(`Run ${status}`);
-    const results = await (await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_KEY}`)).json();
+    const results = await (await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_KEY}`)).json() as ApifyTrendItem[];
     if (!Array.isArray(results) || results.length === 0) throw new Error('No data');
-    const avgs = results.map((item: any) => {
-      const pts = (item.interestOverTime_timelineData || []).filter((t: any) => t.hasData?.[0]).slice(-4);
-      return pts.length > 0 ? pts.reduce((s: number, t: any) => s + (t.value[0] || 0), 0) / pts.length : 0;
+    const avgs = results.map((item) => {
+      const pts = (item.interestOverTime_timelineData || []).filter((point) => point.hasData?.[0]).slice(-4);
+      return pts.length > 0 ? pts.reduce((sum, point) => sum + (point.value?.[0] || 0), 0) / pts.length : 0;
     });
     const overall = avgs.reduce((a, b) => a + b, 0) / avgs.length;
     return {
@@ -1034,38 +1118,44 @@ async function collectSupplyTrendsSignal(date: string): Promise<SignalResult> {
   }
 }
 
-async function collectSerpApiSupplyTrends(_date: string): Promise<SignalResult> {
-  if (!SERP_API_KEY) {
+async function collectDataForSeoSupplyTrends(_date: string): Promise<SignalResult> {
+  if (!DATAFORSEO_LOGIN || !DATAFORSEO_PASSWORD) {
     return { source: 'serpapi_supply_trends', signal_type: 'supply', category: 'supply_intent',
-      raw_value: 0, normalized_value: 25, success: false, error: 'No SERP_API_KEY' };
+      raw_value: 0, normalized_value: 25, success: false, error: 'DataForSEO credentials are not configured' };
   }
-  console.log('[SerpAPI Supply Trends] Collecting supply-intent search interest...');
+  console.log('[DataForSEO Supply Trends] Collecting supply-intent search interest...');
   try {
-    const q = SUPPLY_TRENDS_TERMS.join(',');
-    const url = `https://serpapi.com/search.json?engine=google_trends&q=${encodeURIComponent(q)}&data_type=TIMESERIES&geo=US&api_key=${SERP_API_KEY}`;
-    const response = await fetchWithRetry(url, {}, 2, 15000);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
-    const timeline = data.interest_over_time?.timeline_data || [];
+    const tasks = await dataForSeoPost<Record<string, unknown>>(
+      '/keywords_data/google_trends/explore/live',
+      [{
+        keywords: SUPPLY_TRENDS_TERMS,
+        location_code: 2840,
+        language_code: 'en',
+        time_range: 'past_90_days',
+        type: 'web',
+        item_types: ['google_trends_graph'],
+      }],
+      { login: DATAFORSEO_LOGIN, password: DATAFORSEO_PASSWORD },
+    );
+    const timeline = parseTrendsSeries(tasks[0]);
     const recent4 = timeline.slice(-4);
+    if (recent4.length === 0) throw new Error('DataForSEO Trends returned no graph data');
     const termAverages: number[] = [];
-    if (recent4.length > 0 && recent4[0].values) {
-      for (let i = 0; i < recent4[0].values.length; i++) {
-        const avg = recent4.reduce((sum: number, t: any) => sum + safeNumber(t.values[i]?.extracted_value, 0), 0) / recent4.length;
-        termAverages.push(avg);
-      }
+    for (let i = 0; i < SUPPLY_TRENDS_TERMS.length; i++) {
+      const avg = recent4.reduce((sum, point) => sum + safeNumber(point[i], 0), 0) / recent4.length;
+      termAverages.push(avg);
     }
     const overall = termAverages.length > 0 ? termAverages.reduce((a, b) => a + b, 0) / termAverages.length : 0;
-    console.log(`[SerpAPI Supply Trends] Overall: ${overall.toFixed(1)} -> ${normalizeTrends(overall)}`);
+    console.log(`[DataForSEO Supply Trends] Overall: ${overall.toFixed(1)} -> ${normalizeTrends(overall)}`);
     return {
       source: 'serpapi_supply_trends', signal_type: 'supply', category: 'supply_intent',
       raw_value: Math.round(overall * 10) / 10, normalized_value: normalizeTrends(overall),
-      metadata: { terms: SUPPLY_TRENDS_TERMS, term_averages: termAverages }, success: true
+      metadata: { provider: 'dataforseo', reported_cost: Number(tasks[0].cost) || 0, terms: SUPPLY_TRENDS_TERMS, term_averages: termAverages }, success: true
     };
   } catch (error) {
-    console.error('[SerpAPI Supply Trends] Failed:', error.message);
+    console.error('[DataForSEO Supply Trends] Failed:', error.message);
     return { source: 'serpapi_supply_trends', signal_type: 'supply', category: 'supply_intent',
-      raw_value: 0, normalized_value: 25, success: false, error: error.message };
+      raw_value: 0, normalized_value: 25, metadata: { provider: 'dataforseo' }, success: false, error: error.message };
   }
 }
 
@@ -1075,13 +1165,9 @@ async function collectSerpApiSupplyTrends(_date: string): Promise<SignalResult> 
 
 async function collectFredContext(_date: string): Promise<SignalResult[]> {
   if (!FRED_API_KEY) { console.log('[FRED] No key, skipping'); return []; }
-  console.log('[FRED] Collecting macro context...');
+  console.log('[FRED] Collecting Initial Jobless Claims context...');
   const results: SignalResult[] = [];
-  const series = [
-    { id: 'JTSJOL', name: 'JOLTS Job Openings' },
-    { id: 'UNRATE', name: 'Unemployment Rate' },
-    { id: 'ICSA', name: 'Initial Jobless Claims' },
-  ];
+  const series = [{ id: 'ICSA', name: 'Initial Jobless Claims' }];
   for (const s of series) {
     try {
       const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${s.id}&api_key=${FRED_API_KEY}&file_type=json&sort_order=desc&limit=1`;
@@ -1089,7 +1175,9 @@ async function collectFredContext(_date: string): Promise<SignalResult[]> {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       const obs = data.observations?.[0];
-      const value = safeNumber(obs?.value, 0);
+      const rawValue = Number(obs?.value);
+      if (!obs?.date || !Number.isFinite(rawValue) || rawValue < 0) throw new Error(`No valid observation for ${s.id}`);
+      const value = rawValue;
       results.push({
         source: 'fred', signal_type: 'context', category: s.id.toLowerCase(),
         raw_value: value, normalized_value: 50,
@@ -1174,7 +1262,7 @@ async function collectBLSSignals(_date: string): Promise<SignalResult[]> {
       throw new Error(`BLS status=${data.status}: ${(data.message || []).join('; ')}`);
     }
     for (const seriesDef of BLS_SERIES) {
-      const series = (data.Results?.series || []).find((s: any) => s.seriesID === seriesDef.id);
+      const series = (data.Results?.series || []).find((item: { seriesID?: string }) => item.seriesID === seriesDef.id);
       const latest = series?.data?.[0];
       if (!latest) {
         results.push({
@@ -1226,7 +1314,7 @@ async function collectWikipediaPageviews(date: string): Promise<SignalResult> {
         const res = await fetchWithRetry(url, { headers: { 'User-Agent': ua } }, 2, 10000);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        const totalViews = (data.items || []).reduce((sum: number, it: any) => sum + safeNumber(it.views, 0), 0);
+        const totalViews = (data.items || []).reduce((sum: number, item: { views?: number }) => sum + safeNumber(item.views, 0), 0);
         perPage[page] = totalViews;
       } catch (err) {
         perPage[page] = 0;
@@ -1332,20 +1420,20 @@ serve(async (req) => {
 
   try {
     // Retired collectors (2026-05-30): google_trends + supply_trends (Apify), people_data_labs
-    // (404), nyt (401). collectBraveTalentSupply added as a SerpAPI-independent supply backbone.
+    // (404), nyt (401). collectBraveTalentSupply is the provider-independent supply backbone.
     //
     // Each collector is wrapped in its OWN soft timeout that degrades to a safe fallback. This
-    // replaces the old single global deadline: a slow or rate-limited vendor (e.g. a SerpAPI 429
-    // storm) now degrades just that source instead of discarding the whole run. Total wall-clock
+    // replaces the old single global deadline: a slow or rate-limited vendor now degrades just
+    // that source instead of discarding the whole run. Total wall-clock
     // is bounded by the slowest single collector (<= PER_COLLECTOR_MS), comfortably under the
     // pg_cron caller timeout, so the run always completes and the pipeline_runs row always closes.
     const PER_COLLECTOR_MS = 55000;
     const t = <T>(p: Promise<T>, fb: T, label: string) => withTimeout(p, PER_COLLECTOR_MS, fb, label);
     const [
       adzunaResults,
-      serpApiJobsResults,
+      dataForSeoJobsResults,
       edgarResult,
-      serpApiTrendsResult,
+      dataForSeoTrendsResult,
       newsResult,
       mediastackResult,
       guardianResult,
@@ -1354,10 +1442,10 @@ serve(async (req) => {
       hnResult,
       braveNewsResult,
       braveWebResult,
-      serpApiLinkedInResults,
+      dataForSeoLinkedInResults,
       braveTalentResults,
       goFractionalResult,
-      serpApiSupplyTrendsResult,
+      dataForSeoSupplyTrendsResult,
       fredResults,
       censusResult,
       blsResults,
@@ -1365,9 +1453,9 @@ serve(async (req) => {
       openAlexResult
     ] = await Promise.all([
       t(collectAdzunaSignals(today), [] as SignalResult[], 'adzuna'),
-      t(collectSerpApiJobsSignals(today), [] as SignalResult[], 'serpapi_jobs'),
+      t(collectDataForSeoJobsSignals(today), [] as SignalResult[], 'serpapi_jobs'),
       t(collectSecEdgarSignal(today), failedSignal('sec_edgar', 'demand', 'vc_pipeline'), 'sec_edgar'),
-      t(collectSerpApiTrendsSignal(today), failedSignal('serpapi_trends', 'momentum', 'search_interest'), 'serpapi_trends'),
+      t(collectDataForSeoTrendsSignal(today), failedSignal('serpapi_trends', 'momentum', 'search_interest'), 'serpapi_trends'),
       t(collectNewsApiSignal(today), failedSignal('newsapi', 'momentum', 'media_coverage'), 'newsapi'),
       t(collectMediastackSignal(today), failedSignal('mediastack', 'momentum', 'media_coverage'), 'mediastack'),
       t(collectGuardianSignal(today), failedSignal('guardian', 'momentum', 'prestige_media'), 'guardian'),
@@ -1376,10 +1464,10 @@ serve(async (req) => {
       t(collectHNSignal(today), failedSignal('hn', 'momentum', 'community_discourse'), 'hn'),
       t(collectBraveNewsSignal(today), failedSignal('brave_news', 'momentum', 'media_coverage'), 'brave_news'),
       t(collectBraveWebMentionsSignal(today), failedSignal('brave_web', 'momentum', 'web_discourse'), 'brave_web'),
-      t(collectSerpApiLinkedInSupply(today), [] as SignalResult[], 'serpapi_linkedin'),
+      t(collectDataForSeoLinkedInSupply(today), [] as SignalResult[], 'serpapi_linkedin'),
       t(collectBraveTalentSupply(today), [] as SignalResult[], 'brave_talent'),
       t(collectGoFractionalSupply(today), failedSignal('gofractional', 'supply', 'marketplace'), 'gofractional'),
-      t(collectSerpApiSupplyTrends(today), failedSignal('serpapi_supply_trends', 'supply', 'supply_intent'), 'serpapi_supply_trends'),
+      t(collectDataForSeoSupplyTrends(today), failedSignal('serpapi_supply_trends', 'supply', 'supply_intent'), 'serpapi_supply_trends'),
       t(collectFredContext(today), [] as SignalResult[], 'fred'),
       t(collectCensusACS(today), failedSignal('census_acs', 'context', 'self_employment'), 'census_acs'),
       t(collectBLSSignals(today), [] as SignalResult[], 'bls'),
@@ -1389,9 +1477,9 @@ serve(async (req) => {
 
     const allSignals: SignalResult[] = [
       ...adzunaResults,
-      ...serpApiJobsResults,
+      ...dataForSeoJobsResults,
       edgarResult,
-      serpApiTrendsResult,
+      dataForSeoTrendsResult,
       newsResult,
       mediastackResult,
       guardianResult,
@@ -1400,10 +1488,10 @@ serve(async (req) => {
       hnResult,
       braveNewsResult,
       braveWebResult,
-      ...serpApiLinkedInResults,
+      ...dataForSeoLinkedInResults,
       ...braveTalentResults,
       goFractionalResult,
-      serpApiSupplyTrendsResult,
+      dataForSeoSupplyTrendsResult,
       ...fredResults,
       censusResult,
       ...blsResults,
@@ -1494,23 +1582,23 @@ serve(async (req) => {
     // round-trips, so this tail work stays well under the caller timeout. The failed batch
     // omits last_success on purpose so a source's prior last_success is preserved.
     const now = new Date().toISOString();
-    const healthyRows: any[] = [];
-    const failedRows: any[] = [];
+    const healthyRows: Array<Record<string, unknown>> = [];
+    const failedRows: Array<Record<string, unknown>> = [];
     for (const src of Object.keys(SOURCE_CONFIDENCE_WEIGHTS)) {
       const srcSignals = allSignals.filter(s => s.source === src);
       if (srcSignals.length === 0) continue;
       const errors = srcSignals.filter(s => !s.success);
       if (srcSignals.some(s => s.success)) {
-        healthyRows.push({ source: src, last_checked: now, last_success: now, status: 'healthy', error_count: 0, metadata: { last_error: null }, updated_at: now });
+        healthyRows.push({ source: src, last_checked: now, last_success: now, status: 'healthy', error_count: 0, metadata: { last_error: null, ...providerMetadata(src) }, updated_at: now });
       } else {
-        failedRows.push({ source: src, last_checked: now, status: 'failed', error_count: errors.length, metadata: { last_error: errors[0]?.error || null }, updated_at: now });
+        failedRows.push({ source: src, last_checked: now, status: 'failed', error_count: errors.length, metadata: { last_error: errors[0]?.error || null, ...providerMetadata(src) }, updated_at: now });
       }
     }
     if (healthyRows.length > 0) await supabase.from('data_source_health').upsert(healthyRows, { onConflict: 'source' });
     if (failedRows.length > 0) await supabase.from('data_source_health').upsert(failedRows, { onConflict: 'source' });
 
     console.log('[Pipeline] Triggering FWI calculation...');
-    let fwiResult: any = { error: 'FWI calculation not attempted' };
+    let fwiResult: FwiResult = { error: 'FWI calculation not attempted' };
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
@@ -1519,7 +1607,7 @@ serve(async (req) => {
           headers: { 'Authorization': fwiAuthHeader }
         });
         if (fwiResponse.ok) {
-          fwiResult = await fwiResponse.json();
+          fwiResult = await fwiResponse.json() as FwiResult;
           console.log(`[Pipeline] FWI calculation succeeded: ${fwiResult.overall_score}`);
           break;
         }
