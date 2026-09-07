@@ -50,7 +50,6 @@ Objection it answers: "One person with AI can prototype, but cannot run a data p
 ## What is next and what is waiting on Krish
 
 - Next: a production readback (`data_source_health`, `pipeline_runs`, `cached_insights.valid_until`, `/fwi-api/current`) to confirm the two 2026-08-29 fixes are delivering, then refresh `production_snapshot` in `public/product-truth.json` and the readback notes in `docs/DATA_SOURCES_ROADMAP.md`. Until then both carry the 11 August evidence and say so.
-- Waiting on Krish: `CLAUDE_CODE_OAUTH_TOKEN` as an Actions secret so `.github/workflows/docs-steward.yml` can run unattended.
 - Waiting on Krish: verify the alert sending domain with the email provider so alerts reach more than the fallback mailbox (`docs/DATA_SOURCES_ROADMAP.md` section 3).
 - Waiting on Krish: the commercial validation gate of 31 October 2026 (25 qualified conversations, ten letters of intent, five paid pilots) in `docs/CORPORATE_STRATEGY.md` section 8. No progress figures exist in the repo; the steward records none.
 - Waiting on Krish: `docs/FLEET_WIRING.md` and the governance ownership map say "Mindmaker OS". The OS was renamed Mindmake on 2026-08-29 (control-center). Renaming is a naming decision, not drift the steward resolves.
