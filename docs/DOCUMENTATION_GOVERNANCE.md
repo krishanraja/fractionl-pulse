@@ -4,6 +4,8 @@
 
 **Last reconciled:** 11 August 2026 against `main`, the production Supabase project, and the public product
 
+**Document map updated:** 7 September 2026 against `main` at `7df98a5`, when the docs steward was adopted and `NOW.md` and `docs/history/LOG.md` were added below. Production and the public product were not read, so the reconciliation date above stands.
+
 This file defines how humans and autonomous agents decide which Pulse statement is current. It exists to prevent a polished but stale document from outranking the product that actually runs.
 
 ## Truth hierarchy
@@ -52,6 +54,8 @@ If production truth cannot be fetched, the agent may prepare internal work from 
 
 | Document | Primary audience | Scope |
 |---|---|---|
+| [`NOW.md`](../NOW.md) | Any agent or person arriving cold | Router to where the current state lives, the `main` commit it was reconciled against, what changed recently, and what not to trust. It points at the documents below and restates nothing that outranks it |
+| [`docs/history/LOG.md`](history/LOG.md) | Anyone asking what changed and when | Append-only chronology of reconciliations, decisions, and files moved into `docs/history/`. Nothing in it is current guidance |
 | [`README.md`](../README.md) | Builders and new collaborators | Product summary, current scope, setup, architecture, and document map |
 | [`NORTH_STAR.md`](NORTH_STAR.md) | Product and company operators | User outcome, buyer outcome, moat metric, and near-term gate |
 | [`CORPORATE_STRATEGY.md`](CORPORATE_STRATEGY.md) | Founder, strategy, and commercial agents | Canonical commercial strategy and evidence |

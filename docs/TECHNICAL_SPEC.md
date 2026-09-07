@@ -1,6 +1,10 @@
 # Technical Specification: Fractionl Pulse
 
-_Source of truth for the system as it ships today. 21 live data sources, core and supporting edge functions, Supabase and Vercel scheduling, and an agent-native API. Generated from the live codebase; see commit history for last update._
+**Status:** Engineering reference for the system as it ships from `main`
+
+**Last reconciled:** 7 September 2026 against `main` at `7df98a5`; production not read. The production readbacks quoted below are dated 11 August 2026.
+
+_Source of truth for the system as it ships today. 21 tracked inputs, core and supporting edge functions, Supabase and Vercel scheduling, and an agent-native API. Generated from the live codebase; see commit history for last update._
 
 ---
 
@@ -42,7 +46,7 @@ _Source of truth for the system as it ships today. 21 live data sources, core an
 | `prepare-dataforseo-jobs` | Submits six idempotent, normal-priority Google Jobs tasks and records their non-secret task IDs in `pipeline_runs`; chargeable POSTs are never automatically retried. A manual `retry_rejected_auth=true` is accepted only for a definitive HTTP 401 ledger with zero task IDs | Supabase `pg_cron` at 05:00 UTC + manual |
 | `ingest-signals` | Pulls 21 tracked inputs, normalizes 0–100, runs anomaly guard, upserts `signals`, then fires `calculate-fwi` | Vercel daily and Monday schedules, Supabase Monday backstop, and manual |
 | `calculate-fwi` | Composites signals into FWI and writes `fwi_scores`; role movers compare with the current six-role average, while non-role movers compare with the prior observation | Called by `ingest-signals` |
-| `generate-pulse-insights` | GPT-4o-mini insight cards, 12-hour cache via `valid_until`; requires the service-role bearer and anchors related queries to the latest score date | Internal pipeline invocation |
+| `generate-pulse-insights` | GPT-4o-mini insight cards, 12-hour cache via `valid_until`; anchors related queries to the latest score date. Authentication is the gateway's JWT verification (`verify_jwt = true` in `supabase/config.toml`) plus the origin allowlist. The in-code comparison of the bearer against the service-role key was removed on 2026-08-29 (`7df98a5`): it had returned 403 to every daily cron call since 2026-08-10 | Internal pipeline invocation from `api/cron/daily-ingest.ts` with the service-role bearer |
 | `fwi-api` | Public REST API: `/current`, `/history?months=N`, `/trigger`. Accepts an optional `x-api-key` header for per-key operational rate accounting; anonymous reads stay free | Always-on |
 | `export-brief` | Markdown weekly intelligence brief, `?format=json` available | Always-on (`/export-brief`) |
 | `manage-api-key` | Self-serve operational API-key issuance for signed-in users: mint (POST), list (GET), revoke (DELETE). Plaintext key returned exactly once at creation; only the SHA-256 hash is stored | Called from the dashboard `/pricing` page (user JWT) |
@@ -257,7 +261,7 @@ Both views are publicly readable for the dashboard's `DataHealthCard`.
 |--------|----------|--------|---------------|
 | **DataForSEO LinkedIn proxy** | `site:linkedin.com/in "fractional CFO"` etc. | Result count proxy | Log scale |
 | **Brave Talent** | Brave Web Search on the same public profile phrases | Provider-independent backstop | Log scale |
-| **GoFractional published network** | Official `apify/web-scraper` actor against the first-party homepage, with `maxTotalChargeUsd=0.02` | Published operator count (currently advertised as 15,000+) | Log scale |
+| **GoFractional published network** | Official `apify/web-scraper` actor against the first-party homepage, with `maxTotalChargeUsd=0.02`. Since 2026-08-29 (`7df98a5`) the run URL carries no `build` pin (Apify retired the `latest` tag; the actor's default build is used) and the body sets `proxyConfiguration: { useApifyProxy: true }`, which the newer build requires | Published operator count (currently advertised as 15,000+) | Log scale |
 | **DataForSEO supply-intent Trends** | DataForSEO Trends on supply-intent terms | "become fractional executive", "fractional consulting business", etc. | Native 0-100 |
 
 ### Culture pillar (30% weight)
@@ -454,7 +458,7 @@ CRON_SECRET                 # asserted in /api/cron handlers
 | Dashboard says "stale" | `pipeline_runs` for `source='daily-cron'` | Inspect latest run error; manually `POST /fwi-api/trigger` with service role |
 | One source flat-lined | `data_source_health` row | Check `last_error`, rotate API key if 401, add to `SKIP_SOURCES` if rate-limited until fixed |
 | Score moved sharply | `pipeline_runs.metadata.successful_sources` | Compare against the prior observed reading; if a heavyweight input dropped (Adzuna, SEC EDGAR, DataForSEO Jobs), expect movement |
-| AI insights stuck | `cached_insights.valid_until` | Force-regenerate by calling `generate-pulse-insights`; OPENAI quota is most common cause |
+| AI insights stuck | `cached_insights.valid_until` | Force-regenerate by calling `generate-pulse-insights`; OPENAI quota is most common cause. From 2026-08-10 to 2026-08-29 the cause was an in-function bearer check returning 403 to the cron while the run reported success; check the function's response, not only the cron's status |
 | Cron failing | Vercel logs + `pipeline_runs.error` | Resend alert should already have fired. Re-trigger after fix |
 
 ---
@@ -463,6 +467,7 @@ CRON_SECRET                 # asserted in /api/cron handlers
 
 | Commit | What changed |
 |--------|--------------|
+| `7df98a5` | 2026-08-29: two production fixes brought into `main`. `ingest-signals`: the GoFractional Apify run drops `&build=latest` and adds `proxyConfiguration.useApifyProxy` (the collector had failed since 2026-07-03). `generate-pulse-insights`: the in-code service-role bearer check is removed; gateway `verify_jwt = true` is the auth (generation had failed since 2026-08-10). The commit states both were already running in production; the steward did not read that back |
 | `8d3a3e5` | React Query + Realtime subscriptions, daily cron, Resend alerts on failure |
 | `b2760de` | 13 source fixes, code splitting, PR export kit, 12-week backfill, SEO |
 | `658c355` | Vercel Cron pipeline + anomaly guard + WoW deltas |

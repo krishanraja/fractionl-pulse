@@ -52,3 +52,6 @@ audit/
 
 # Local AI design-session notes are not product documentation.
 .claude/docs/
+
+# Docs steward checkout of control-center scripts (see NOW.md)
+.steward/

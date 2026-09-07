@@ -220,6 +220,8 @@ The audit is read-only. It checks schedule adherence, source health, completenes
 
 | Document | Purpose |
 |---|---|
+| [Where it is right now](NOW.md) | Current-state router: lifecycle, the `main` commit it was reconciled against, recent changes, what to read next, and what not to trust |
+| [History log](docs/history/LOG.md) | Append-only record of reconciliations, decisions, and superseded documents moved into `docs/history/` |
 | [Corporate strategy](docs/CORPORATE_STRATEGY.md) | Canonical ICP, buyer pains, positioning, pricing, evidence, and validation gates |
 | [North star](docs/NORTH_STAR.md) | User outcome, buyer outcome, moat metric, and near-term gate |
 | [Monetization strategy](docs/MONETIZATION_STRATEGY.md) | Packaging, price tests, and commercial rules |

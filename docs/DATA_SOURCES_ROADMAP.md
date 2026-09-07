@@ -6,13 +6,15 @@ The credibility and value of the FWI depend entirely on the quality, breadth, an
 
 ## 1. Live Source Inventory (21 sources)
 
-**Total**: 17 composite + 4 context (stored, not scored). Last reconciled against the live database and `ingest-signals` code: **2026-08-11**.
+**Total**: 17 composite + 4 context (stored, not scored). Last reconciled against `ingest-signals` code: **2026-09-07** at `7df98a5`. Last reconciled against the live database: **2026-08-11**; the 2026-08-29 collector fix below has not been read back.
 
 > For the live source-by-source state at any moment, query `data_source_health` — this table, not this doc, is the operational truth.
 
 > **Pre-cutover production readback, 2026-08-11 02:16 UTC:** the pipeline wrote the day's observation successfully at FWI **51.5 (Stable)**, but the read was degraded at **0.63 weighted completeness** with **13 contributing sources**. The principal incident was an exhausted SerpAPI account affecting four inputs. Guardian returned 401, GoFractional returned 403, NewsAPI was silent, and FRED had never delivered. This historical readback is retained as the rollout baseline; the DataForSEO cutover must be verified against the release gates below before this note is superseded.
 
 > **Post-cutover production readback, 2026-08-11:** the latest score is **51.4 (Stable)** with **0.81 persisted confidence** from 17 contributing sources. The live health table contains the 21 current tracked source IDs. GoFractional was the only current source marked failed and its last successful observation was 2026-07-03. DataForSEO Trends, NewsAPI, and DataForSEO supply-intent trends were marked healthy but their most recent persisted signals were 12, 4, and 7 days old respectively. All four legacy `serpapi_*` IDs use DataForSEO provider metadata. Source health is dynamic, so query `data_source_health` before making a current operational claim.
+
+> **Code change, 2026-08-29 (`a123e81`, merged as `7df98a5`):** the GoFractional collector's Apify run URL dropped `&build=latest` and the request body gained `proxyConfiguration: { useApifyProxy: true }`. The commit records that Apify retired the `latest` build tag for `apify/web-scraper` (the current default is version-3), so every run since 2026-07-03 had failed, and that the fix was already running in production before the merge. This reconciliation did not read production, so GoFractional's current health is unverified here; query `data_source_health`.
 
 ### Demand pillar (50% weight)
 
@@ -28,7 +30,7 @@ The credibility and value of the FWI depend entirely on the quality, breadth, an
 |--------|--------|--------|-------------|
 | **DataForSEO LinkedIn** | `site:linkedin.com/in "fractional CFO"` proxy | Four DataForSEO organic `site:` queries | ~$0.040 |
 | **Brave Talent** | Provider-independent LinkedIn-profile backstop | 4 Brave Web Search calls | ~$0.020 gross |
-| **GoFractional** | First-party published operator-network size | Official `apify/web-scraper` actor; $0.02 hard cap | $0.011 canary |
+| **GoFractional** | First-party published operator-network size | Official `apify/web-scraper` actor on its default build, Apify proxy on; $0.02 hard cap | $0.011 canary |
 | **DataForSEO Trends (supply intent)** | Searches like "become fractional executive" | DataForSEO Trends | ~$0.011 |
 
 ### Culture pillar (30% weight)
@@ -276,6 +278,7 @@ This is the actual operating cost behind the FWI — useful when prospects ask w
 | All supply sources fail | Supply weight redistributes to demand + culture | Surfaced in API response; fix within 48h |
 | Anomalous WoW delta (>15 points) | Manual review on `pipeline_runs.metadata` | Compare against priors, possibly reject + recompute |
 | API schema change | Edge function logs error | Hotfix function, redeploy via `supabase functions deploy` |
+| Provider retires a pinned build tag or adds a required run option | `data_source_health.status = 'failed'` with the same HTTP 4xx error type on the run request for weeks, while the pipeline run itself reports success | Read the provider's current defaults, drop the pin, add the option, redeploy. GoFractional, 2026-07-03 to 2026-08-29, is the case |
 
 ---
 
@@ -307,6 +310,7 @@ We store and expose **aggregate signal values**, not raw third-party content. No
 
 See `git log` and `supabase/migrations/`. Highlights:
 
+- 2026-08-29 (`a123e81`, `7df98a5`): GoFractional Apify collector repaired (no `build` pin, Apify proxy on) after failing since 2026-07-03; `generate-pulse-insights` in-code bearer check removed after rejecting the daily cron since 2026-08-10. No migration; no document was updated until 2026-09-07.
 - `001_defensible_signals.sql` — initial 4-source schema
 - `002_pipeline_scheduling.sql` — pg_cron safety net + freshness function + quality views
 - `003_expand_signal_sources.sql` — added 17 sources to `data_source_health`, added `context` signal type
