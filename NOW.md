@@ -1,8 +1,8 @@
 ---
 repo: krishanraja/fractionl-pulse
 product: Pulse by Fractionl
-as_of: 2026-09-07
-head: 7df98a5
+as_of: 2026-09-09
+head: 7c124e2
 lifecycle: live
 production_url: https://pulse.fractionl.ai
 state_doc: docs/DOCUMENTATION_GOVERNANCE.md
@@ -31,9 +31,9 @@ Angles a writer can use (the registry anonymises this repo; say "a side build", 
 
 Objection it answers: "One person with AI can prototype, but cannot run a data product." Here is one that has accumulated daily observations since June 2026, with its audit trail in the open.
 
-## Where it is right now (as of 2026-09-07)
+## Where it is right now (as of 2026-09-09)
 
-- **Lifecycle: live**, in the governance doc's own vocabulary: a user can use the public instrument in production now and the repo's last production readback (11 August 2026: `docs/DATA_SOURCES_ROADMAP.md` section 1, `public/product-truth.json` `production_snapshot`) proves it. The steward did not read production on 2026-09-07. Anything below marked "not read back" is code truth only.
+- **Lifecycle: live**, in the governance doc's own vocabulary: a user can use the public instrument in production now and the repo's last production readback (11 August 2026: `docs/DATA_SOURCES_ROADMAP.md` section 1, `public/product-truth.json` `production_snapshot`) proves it. The steward did not read production on 2026-09-09. Anything below marked "not read back" is code truth only.
 - **Live (readback 2026-08-11):** the public FWI with demand, supply and culture components; twelve months of mixed-frequency history; six US-scoped role-demand pages; the weekly brief; Ask the Index; public REST endpoints; four hosted MCP tools; discovery files at `/product-truth.json`, `/llms.txt` and `/.well-known/ai-plugin.json`; optional accounts and free operational API keys.
 - **Schedule (code, and the 2026-08-11 readback):** Supabase `pg_cron` prepares the Google Jobs tasks at 05:00 UTC; Vercel runs the main ingest at 06:00 UTC daily with a Monday backstop; a Supabase Monday backstop remains (`vercel.json`, `docs/TECHNICAL_SPEC.md` section 2). A read-only pipeline audit runs Mondays 07:00 UTC and opens an issue on AMBER or RED (`.github/workflows/weekly-pipeline-audit.yml`).
 - **Repaired in code on 2026-08-29, not read back:** the GoFractional supply collector (dead since 2026-07-03) and insights generation (dead since 2026-08-10). Commit `7df98a5` states both fixes were already running in production before the merge. The `production_snapshot` in `public/product-truth.json` predates the fix and still lists that collector as failed; treat it as the 11 August evidence it says it is, and query `data_source_health` for today.
@@ -43,6 +43,8 @@ Objection it answers: "One person with AI can prototype, but cannot run a data p
 
 ## What changed recently
 
+- 2026-09-08 **`AGENTS.md` added, carrying the shared canon block rendered from `krishanraja/ai-harness`** (`fc91783`, synced twice since to release v2026.09.08.2 at `7c124e2`; sha `0cb0b3e5e848`). Why: every AGENTS.md in the fleet now reads off one canon; before this commit the canon existed but this repository referenced it zero times. The block is marker delimited and carries the sha256 of its own body, so drift is arithmetic rather than judgement; the docs steward never edits between the markers. Codex reads `AGENTS.md` natively, and it states that this repository's own rules (`docs/AGENT_BRIEFING.md`, `docs/DOCUMENTATION_GOVERNANCE.md`) outrank the canon on structure, naming, voice, stamps and archive location.
+- 2026-09-08 **Freshness claim in the `AGENTS.md` header corrected** (`41bea6d`, outside the canon markers). Why: the header said `NOW.md` is reconciled against the code on every push to `main` and nightly. The push half was never true: `claude-code-action` refuses the push event, so the steward had failed on every push since it shipped (the same defect the steward runbook records: shipped 2026-09-07 with `push` in the trigger list and no mode split, failing every push for a day). The header now says the push run validates only and the nightly run does the reconciling.
 - 2026-08-29 **Two production fixes restored to `main`** (`a123e81`, `7df98a5`). Why: the repo had drifted from what was running. The GoFractional collector had failed on every run since 2026-07-03 because the vendor retired the `latest` build tag its run URL pinned; the fix drops the pin and adds the proxy configuration the newer build requires. Insights generation had returned 403 on every daily cron call since 2026-08-10 because an in-function check compared the bearer token to the service-role key; the check was removed and the gateway's JWT verification is the auth. The merge conflict was `origin/main` reintroducing the broken URL, "resolved in favour of the fix." No document moved at the time; `docs/TECHNICAL_SPEC.md` and `docs/DATA_SOURCES_ROADMAP.md` were reconciled on 2026-09-07.
 - 2026-08-12 **Vite dev server allows `.vercel.run` hosts** (`70c9aff`). No documentation consequence.
 - 2026-08-11 **Pipeline cutover and full documentation reconciliation** (`e76c6f7` to `429cd68`, seven commits). Why: a single exhausted provider account had taken out four inputs on 4 August. Paid Google Jobs tasks are now prepared at 05:00 UTC and retrieved at 06:00 UTC so a chargeable POST is never retried automatically; a provider response parser that assumed an array met an object; a mover label was normalised by migration; every doc, the three truth files and `scripts/docs-audit.mjs` were reconciled against a production readback (FWI 51.4, completeness 0.81, 17 of 21 sources contributing).
@@ -58,6 +60,7 @@ Objection it answers: "One person with AI can prototype, but cannot run a data p
 
 The authority order is the truth hierarchy in `docs/DOCUMENTATION_GOVERNANCE.md`: production readback, then runtime code and applied database state, then the documents below.
 
+0. `AGENTS.md`: the entry file Codex reads natively; Claude Code and Cursor are routed to it by their own rules. Points here first, then to this repository's own rules. Carries the marker-delimited canon block rendered from `krishanraja/ai-harness`; the docs steward reads it and never writes inside the markers.
 1. `docs/DOCUMENTATION_GOVERNANCE.md`: which statement wins, the status vocabulary (Live, Validation offer, Conditional, Legacy dormant, Planned), the reconciliation checklist.
 2. `docs/CORPORATE_STRATEGY.md`: the canonical commercial strategy, ICP, pricing hypotheses and evidence matrix. Commercial claims come from here and are Krish's.
 3. `public/product-truth.json`, `public/llms.txt`, `public/.well-known/ai-plugin.json`: the machine contract agents fetch before quoting anything; they move with the prose.

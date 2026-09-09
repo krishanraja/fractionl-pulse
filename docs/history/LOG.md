@@ -4,6 +4,14 @@ Newest first. Entries are written by the docs steward (see the steward link in
 NOW.md) and by humans doing the same job by hand. Nothing in this file
 describes current behaviour; NOW.md and the state doc do.
 
+## 2026-09-09
+
+- reconciled at `7c124e2`: `NOW.md`. Head moved from `7df98a5` to `7c124e2` across five non-steward commits: `AGENTS.md` added carrying the shared canon block rendered from `krishanraja/ai-harness` (`fc91783`), synced twice to release v2026.09.08.2 (`5bc4058`, `67670cd`, `7c124e2`), and one correction outside the canon markers to the header's freshness claim (`41bea6d`). Two "What changed recently" bullets added for the addition and the correction. No existing bullet is older than 30 days, so none rolled into this log.
+- reconciled at `7c124e2`: `docs/DOCUMENTATION_GOVERNANCE.md`. Ownership map gains `AGENTS.md` as the coding-agent entry file. The "Document map updated" stamp moved to 9 September 2026; the 11 August production reconciliation stamp is unchanged because production and the public product were not read.
+- reconciled at `7c124e2`: `README.md`. Documentation map gains `AGENTS.md`. No other change.
+- no moves. `AGENTS.md`'s canon block is marker delimited and rendered from `krishanraja/ai-harness`; the steward read it and wrote nothing between the markers, per the runbook's territory split between the docs steward and the harness steward.
+- checked, left to Krish: `docs/FLEET_WIRING.md` and the governance ownership map still say "Mindmaker OS" against the 2026-08-29 Mindmake rename in control-center. Unchanged since 2026-09-07; renaming is not the steward's decision.
+
 ## 2026-09-07
 
 - decision: docs steward adopted for this repo (Krish, 2026-09-07). `NOW.md` is the router, this file is the chronology, `docs/history/` is the archive. The repo's own rules in `docs/DOCUMENTATION_GOVERNANCE.md` outrank the steward runbook on structure, voice, stamp form and status vocabulary. Bootstrapped by hand against `main` at `7df98a5`; automated by `.github/workflows/docs-steward.yml` once the `CLAUDE_CODE_OAUTH_TOKEN` secret exists. Production was not read during the bootstrap; every stamp written today says so.

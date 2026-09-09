@@ -220,6 +220,7 @@ The audit is read-only. It checks schedule adherence, source health, completenes
 
 | Document | Purpose |
 |---|---|
+| [Agent entry file](AGENTS.md) | What a coding agent reads first: routes to `NOW.md`, then this repository's own rules. Carries the marker-delimited canon block rendered from `krishanraja/ai-harness` |
 | [Where it is right now](NOW.md) | Current-state router: lifecycle, the `main` commit it was reconciled against, recent changes, what to read next, and what not to trust |
 | [History log](docs/history/LOG.md) | Append-only record of reconciliations, decisions, and superseded documents moved into `docs/history/` |
 | [Corporate strategy](docs/CORPORATE_STRATEGY.md) | Canonical ICP, buyer pains, positioning, pricing, evidence, and validation gates |
