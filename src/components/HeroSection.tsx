@@ -129,7 +129,7 @@ const HeroSection = ({ data, onShowMethodology, onRefresh, fwiLabel }: HeroSecti
             <span className="hero-title-muted">Working Index</span>
           </h1>
           <p className="text-sm text-muted-foreground mt-2.5 max-w-md leading-relaxed">
-            A public market instrument for fractional executives, refreshed daily from 21 tracked source inputs and interpreted on a weekly cadence.
+            A public market instrument for fractional executives, refreshed daily from 20 tracked source inputs and interpreted on a weekly cadence.
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">

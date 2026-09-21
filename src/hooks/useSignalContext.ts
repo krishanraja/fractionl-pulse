@@ -52,7 +52,6 @@ async function fetchSignalContext(): Promise<SignalContext> {
   // stays populated even when the primary provider is rate-limited.
   const linkedInAgg = find('serpapi_linkedin', 'aggregate') || find('brave_talent', 'aggregate');
   const goFractional = find('gofractional');
-  const supplyTrends = find('serpapi_supply_trends');
 
   if (linkedInAgg?.raw_value) supplyParts.push(`~${Math.round(linkedInAgg.raw_value).toLocaleString()} LinkedIn`);
   if (goFractional?.raw_value) {
@@ -61,7 +60,6 @@ async function fetchSignalContext(): Promise<SignalContext> {
       `${Math.round(goFractional.raw_value)} GoFractional listings${rate ? ` ($${rate}/hr median)` : ''}`
     );
   }
-  if (supplyTrends?.raw_value != null) supplyParts.push(`Supply intent: ${Math.round(supplyTrends.raw_value)}/100`);
 
   // --- Culture / Momentum ---
   const cultureParts: string[] = [];

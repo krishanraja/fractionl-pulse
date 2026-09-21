@@ -115,7 +115,7 @@ async function handleCurrentFWI(): Promise<Response> {
           weight: weights.supply,
           sources: weights.supply === 0
             ? []
-            : ['DataForSEO LinkedIn supply proxy', 'Brave LinkedIn talent proxy', 'GoFractional marketplace listings', 'Supply-side search intent (DataForSEO)'],
+            : ['DataForSEO LinkedIn supply proxy', 'Brave LinkedIn talent proxy', 'GoFractional marketplace listings'],
           status: weights.supply === 0 ? 'excluded' : 'live',
           note: weights.supply === 0
             ? 'No supply data available this week, weight redistributed to demand and culture'
@@ -147,7 +147,6 @@ async function handleCurrentFWI(): Promise<Response> {
           'DataForSEO LinkedIn profile index (site:linkedin.com/in proxy)',
           'Brave LinkedIn talent proxy (provider-independent backstop)',
           'GoFractional marketplace listings (via Apify scraper)',
-          'Supply-side search intent via DataForSEO Trends',
         ],
       },
       culture: {

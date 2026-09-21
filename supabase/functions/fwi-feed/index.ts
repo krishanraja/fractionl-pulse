@@ -43,7 +43,7 @@ serve(async (req) => {
       const score = Math.round(r.overall_score * 10) / 10;
       const lab = label(score);
       const title = `Fractional Working Index: ${score} (${lab}), week of ${r.date}`;
-      const desc = `The fractional executive market reads ${score} of 100 (${lab}) for the week of ${r.date}. Demand ${component(r.demand_score)}, Supply ${component(r.supply_score)}, Culture ${component(r.momentum_score)}. A private composite published by Fractionl using 21 tracked inputs with mixed availability; search-derived inputs are supplied by DataForSEO.`;
+      const desc = `The fractional executive market reads ${score} of 100 (${lab}) for the week of ${r.date}. Demand ${component(r.demand_score)}, Supply ${component(r.supply_score)}, Culture ${component(r.momentum_score)}. A private composite published by Fractionl using 20 tracked inputs with mixed availability; search-derived inputs are supplied by DataForSEO.`;
       return { date: r.date, score, lab, title, desc };
     });
 
@@ -66,7 +66,7 @@ serve(async (req) => {
   <channel>
     <title>Fractional Working Index (FWI) by Fractionl</title>
     <link>${SITE}</link>
-    <description>The weekly market-health index for the fractional executive economy. A private 0-100 composite published by Fractionl using 21 tracked inputs across demand, supply, culture, and context.</description>
+    <description>The weekly market-health index for the fractional executive economy. A private 0-100 composite published by Fractionl using 20 tracked inputs across demand, supply, culture, and context.</description>
     <language>en-us</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
 ${rssItems}

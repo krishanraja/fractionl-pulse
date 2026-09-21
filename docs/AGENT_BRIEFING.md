@@ -100,7 +100,7 @@ An agent may research public information, score prospects, prepare briefs, draft
 ## Rules for claims
 
 - Fetch the live score rather than hardcoding a reading.
-- Say “21 tracked inputs,” not “21 independent, healthy sources.”
+- Say “20 tracked inputs,” not “20 independent, healthy sources.”
 - Say “recalculated after successful daily ingestion, with a weekly brief and seven-day role windows,” not “real-time” or “weekly composite.”
 - Acknowledge that current role-demand collectors are US-scoped and cover six roles only. UK cultural material is not a UK market benchmark.
 - Treat role pages as demand indices. Do not invent role-level supply.

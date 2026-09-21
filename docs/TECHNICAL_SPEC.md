@@ -4,7 +4,7 @@
 
 **Last reconciled:** 7 September 2026 against `main` at `7df98a5`; production not read. The production readbacks quoted below are dated 11 August 2026.
 
-_Source of truth for the system as it ships today. 21 tracked inputs, core and supporting edge functions, Supabase and Vercel scheduling, and an agent-native API. Generated from the live codebase; see commit history for last update._
+_Source of truth for the system as it ships today. 20 tracked inputs, core and supporting edge functions, Supabase and Vercel scheduling, and an agent-native API. Generated from the live codebase; see commit history for last update._
 
 ---
 
@@ -44,7 +44,7 @@ _Source of truth for the system as it ships today. 21 tracked inputs, core and s
 | Function | Purpose | Trigger |
 |----------|---------|---------|
 | `prepare-dataforseo-jobs` | Submits six idempotent, normal-priority Google Jobs tasks and records their non-secret task IDs in `pipeline_runs`; chargeable POSTs are never automatically retried. A manual `retry_rejected_auth=true` is accepted only for a definitive HTTP 401 ledger with zero task IDs | Supabase `pg_cron` at 05:00 UTC + manual |
-| `ingest-signals` | Pulls 21 tracked inputs, normalizes 0–100, runs anomaly guard, upserts `signals`, then fires `calculate-fwi`. Collects once per calendar day; later callers get `{"skipped": true}` unless `?force=true` | Vercel daily 06:00 UTC (primary), Supabase `pg_cron` 08:00 UTC (backstop), and manual |
+| `ingest-signals` | Pulls 20 tracked inputs, normalizes 0–100, runs anomaly guard, upserts `signals`, then fires `calculate-fwi`. Collects once per calendar day; later callers get `{"skipped": true}` unless `?force=true` | Vercel daily 06:00 UTC (primary), Supabase `pg_cron` 08:00 UTC (backstop), and manual |
 | `calculate-fwi` | Composites signals into FWI and writes `fwi_scores`; role movers compare with the current six-role average, while non-role movers compare with the prior observation | Called by `ingest-signals` |
 | `generate-pulse-insights` | GPT-4o-mini insight cards, 12-hour cache via `valid_until`; anchors related queries to the latest score date. Authentication is the gateway's JWT verification (`verify_jwt = true` in `supabase/config.toml`) plus the origin allowlist. The in-code comparison of the bearer against the service-role key was removed on 2026-08-29 (`7df98a5`): it had returned 403 to every daily cron call since 2026-08-10 | Internal pipeline invocation from `api/cron/daily-ingest.ts` with the service-role bearer |
 | `fwi-api` | Public REST API: `/current`, `/history?months=N`, `/trigger`. Accepts an optional `x-api-key` header for per-key operational rate accounting; anonymous reads stay free | Always-on |

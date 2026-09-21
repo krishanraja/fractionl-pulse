@@ -14,7 +14,7 @@ const TRACKED_INPUTS = [
   'adzuna', 'serpapi_jobs', 'serpapi_trends', 'sec_edgar', 'newsapi',
   'brave_news', 'brave_web', 'mediastack', 'guardian', 'podchaser',
   'reddit', 'hn', 'serpapi_linkedin', 'brave_talent', 'gofractional',
-  'serpapi_supply_trends', 'fred', 'census_acs', 'bls',
+  'fred', 'census_acs', 'bls',
   'wikipedia_pageviews', 'openalex',
 ] as const;
 
@@ -143,7 +143,7 @@ ${insightsSection || '_Insights will be generated after the next pipeline run._'
 
 ## About This Data
 
-The Fractional Working Index tracks 21 inputs across three dimensions. Inputs are not all statistically independent, and availability varies by reading:
+The Fractional Working Index tracks 20 inputs across three dimensions. Inputs are not all statistically independent, and availability varies by reading:
 
 - **Demand (50%):** Adzuna job postings, DataForSEO Google Jobs, SEC EDGAR Form D filings
 - **Supply (20%):** DataForSEO and Brave professional-profile proxies, GoFractional marketplace listings, DataForSEO supply-intent trends
@@ -157,7 +157,7 @@ All signals are normalized to a 0-100 scale. An anomaly guard rejects data point
 
 ## Citation
 
-> Fractional Working Index (FWI), Pulse by Fractionl. Week of ${current.date}. A 0-100 private composite using 21 tracked inputs, with current completeness and methodology at https://pulse.fractionl.ai
+> Fractional Working Index (FWI), Pulse by Fractionl. Week of ${current.date}. A 0-100 private composite using 20 tracked inputs, with current completeness and methodology at https://pulse.fractionl.ai
 
 ---
 

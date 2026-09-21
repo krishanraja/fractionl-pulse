@@ -121,7 +121,6 @@ The only authenticated endpoint is `POST /fwi-api/trigger`, which forces an imme
           "DataForSEO LinkedIn supply proxy",
           "Brave LinkedIn talent proxy",
           "GoFractional published operator count",
-          "Supply-side search intent (DataForSEO)"
         ],
         "status": "live",
         "note": null

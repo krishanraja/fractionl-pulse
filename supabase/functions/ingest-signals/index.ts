@@ -40,11 +40,10 @@ const SKIP_SOURCES = (Deno.env.get('SKIP_SOURCES') || '').split(',').map(s => s.
 const SOURCE_COST_ESTIMATE: Record<string, number> = {
   adzuna: 0, sec_edgar: 0, newsapi: 0, hn: 0, census_acs: 0, fred: 0, guardian: 0,
   // Legacy source IDs are retained for API compatibility; current provider is DataForSEO.
-  serpapi_jobs: 0.0036, serpapi_trends: 0.011, serpapi_linkedin: 0.04, serpapi_supply_trends: 0.011,
+  serpapi_jobs: 0.0036, serpapi_trends: 0.011, serpapi_linkedin: 0.04,
   brave_news: 0.005, brave_web: 0.02, brave_talent: 0.02,
   mediastack: 0, nyt: 0, podchaser: 0,
   people_data_labs: 0.06, reddit: 0.015, gofractional: 0.011,
-  google_trends: 0.01, supply_trends: 0.01,
   bls: 0, wikipedia_pageviews: 0, openalex: 0,
 };
 
@@ -72,13 +71,6 @@ const GOOGLE_TRENDS_TERMS = [
   'fractional executive'
 ];
 
-const SUPPLY_TRENDS_TERMS = [
-  'become fractional executive',
-  'fractional consulting business',
-  'how to be a fractional CFO',
-  'fractional executive career',
-];
-
 const BRAVE_WEB_SEARCH_TERMS = [
   'fractional executive',
   'fractional CFO hiring',
@@ -88,8 +80,23 @@ const BRAVE_WEB_SEARCH_TERMS = [
 
 // Note: google_trends, supply_trends (both Apify), people_data_labs (HTTP 404), and
 // nyt (HTTP 401) were retired 2026-05-30 — they had been failing every run for weeks and
-// are fully covered by serpapi_trends / serpapi_supply_trends / serpapi_linkedin + brave_talent
-// / guardian respectively. Removing them keeps the confidence denominator honest.
+// are fully covered by serpapi_trends / serpapi_linkedin + brave_talent / guardian
+// respectively. Removing them keeps the confidence denominator honest.
+//
+// serpapi_supply_trends was retired 2026-09-21 (Krish's decision, recorded in
+// docs/DATA_SOURCES_ROADMAP.md §7). It measured four supply-intent search terms
+// sitting at Google Trends' reporting floor: they returned no reading on most
+// days, and on the days they did the four-term average normalised to a constant
+// 5 or 6. It was not a broken collector — it was a working collector measuring
+// something with no variance, and a floor value entering a mean is not a
+// neutral input. Over the 113 days from 2026-06-01 it contributed on 56, and on
+// those days it pulled the supply pillar from 65.13 to 59.71 (-5.42, or -1.08
+// on the headline). Its 0.03 completeness weight is redistributed pro rata
+// across the three remaining supply sources, so the supply pillar keeps its
+// 0.17 share of the denominator and a supply outage still costs the same.
+//
+// History is NOT restated. Days before 2026-09-21 keep the reading they were
+// published with; the change applies forward only.
 const SOURCE_CONFIDENCE_WEIGHTS: Record<string, number> = {
   adzuna: 0.12,
   serpapi_jobs: 0.07,
@@ -103,10 +110,9 @@ const SOURCE_CONFIDENCE_WEIGHTS: Record<string, number> = {
   podchaser: 0.02,
   reddit: 0.02,
   hn: 0.01,
-  serpapi_linkedin: 0.05,
-  brave_talent: 0.05,
-  gofractional: 0.04,
-  serpapi_supply_trends: 0.03,
+  serpapi_linkedin: 0.06,
+  brave_talent: 0.06,
+  gofractional: 0.05,
   fred: 0.01,
   census_acs: 0.01,
   bls: 0.04,
@@ -1110,91 +1116,6 @@ async function collectGoFractionalSupply(_date: string): Promise<SignalResult> {
   }
 }
 
-async function collectSupplyTrendsSignal(date: string): Promise<SignalResult> {
-  console.log('[Supply Trends] Collecting supply-side search interest...');
-  try {
-    const runResponse = await fetchWithRetry(`https://api.apify.com/v2/acts/apify~google-trends-scraper/runs?token=${APIFY_API_KEY}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ searchTerms: SUPPLY_TRENDS_TERMS, geo: 'US', timeRange: 'today 3-m', outputMode: 'complete' })
-    });
-    if (!runResponse.ok) throw new Error(`Apify run failed: HTTP ${runResponse.status}`);
-    const runData = await runResponse.json();
-    const runId = runData.data.id;
-    const datasetId = runData.data.defaultDatasetId;
-    let status = 'READY';
-    let pollCount = 0;
-    while (status !== 'SUCCEEDED' && status !== 'FAILED' && pollCount < 24) {
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      const sr = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${APIFY_API_KEY}`);
-      status = (await sr.json()).data.status;
-      pollCount++;
-    }
-    if (status !== 'SUCCEEDED') throw new Error(`Run ${status}`);
-    const results = await (await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_KEY}`)).json() as ApifyTrendItem[];
-    if (!Array.isArray(results) || results.length === 0) throw new Error('No data');
-    const avgs = results.map((item) => {
-      const pts = (item.interestOverTime_timelineData || []).filter((point) => point.hasData?.[0]).slice(-4);
-      return pts.length > 0 ? pts.reduce((sum, point) => sum + (point.value?.[0] || 0), 0) / pts.length : 0;
-    });
-    const overall = avgs.reduce((a, b) => a + b, 0) / avgs.length;
-    return {
-      source: 'supply_trends', signal_type: 'supply', category: 'supply_intent',
-      raw_value: Math.round(overall * 10) / 10, normalized_value: normalizeTrends(overall),
-      metadata: { terms: SUPPLY_TRENDS_TERMS, term_averages: avgs.map(a => Math.round(a * 10) / 10) },
-      success: true
-    };
-  } catch (error) {
-    console.error('[Supply Trends] Failed:', error.message);
-    return { source: 'supply_trends', signal_type: 'supply', category: 'supply_intent',
-      raw_value: 0, normalized_value: 25, success: false, error: error.message };
-  }
-}
-
-async function collectDataForSeoSupplyTrends(_date: string): Promise<SignalResult> {
-  if (!DATAFORSEO_LOGIN || !DATAFORSEO_PASSWORD) {
-    return { source: 'serpapi_supply_trends', signal_type: 'supply', category: 'supply_intent',
-      raw_value: 0, normalized_value: 25, success: false, error: 'DataForSEO credentials are not configured' };
-  }
-  console.log('[DataForSEO Supply Trends] Collecting supply-intent search interest...');
-  try {
-    const tasks = await dataForSeoPost<Record<string, unknown>>(
-      '/keywords_data/google_trends/explore/live',
-      [{
-        keywords: SUPPLY_TRENDS_TERMS,
-        location_code: 2840,
-        language_code: 'en',
-        time_range: 'past_90_days',
-        type: 'web',
-        item_types: ['google_trends_graph'],
-      }],
-      { login: DATAFORSEO_LOGIN, password: DATAFORSEO_PASSWORD },
-    );
-    const timeline = parseTrendsSeries(tasks[0]);
-    if (timeline.length === 0) throw new Error('DataForSEO Trends returned no graph data');
-    // Same rule as the demand series, and it matters more here: these four
-    // supply-intent terms sit near Google Trends' reporting floor, so most
-    // points come back with no reading. Counting those as zero produced an
-    // all-zero average on 57 of the 113 days since 2026-06-01, each of which was
-    // then dropped as an empty supply signal while the collector reported
-    // success. Excluding unmeasured points keeps the reading honest.
-    const termAveragesRaw = SUPPLY_TRENDS_TERMS.map((_, i) => recentTermAverage(timeline, i, 4));
-    const measuredAverages = termAveragesRaw.filter((a): a is number => a !== null);
-    if (measuredAverages.length === 0) throw new Error('DataForSEO Supply Trends returned no measured points for any term');
-    const termAverages = measuredAverages;
-    const overall = termAverages.reduce((a, b) => a + b, 0) / termAverages.length;
-    console.log(`[DataForSEO Supply Trends] Overall: ${overall.toFixed(1)} -> ${normalizeTrends(overall)}`);
-    return {
-      source: 'serpapi_supply_trends', signal_type: 'supply', category: 'supply_intent',
-      raw_value: Math.round(overall * 10) / 10, normalized_value: normalizeTrends(overall),
-      metadata: { provider: 'dataforseo', reported_cost: Number(tasks[0].cost) || 0, terms: SUPPLY_TRENDS_TERMS, term_averages: termAveragesRaw, terms_measured: measuredAverages.length, terms_total: SUPPLY_TRENDS_TERMS.length }, success: true
-    };
-  } catch (error) {
-    console.error('[DataForSEO Supply Trends] Failed:', error.message);
-    return { source: 'serpapi_supply_trends', signal_type: 'supply', category: 'supply_intent',
-      raw_value: 0, normalized_value: 25, metadata: { provider: 'dataforseo' }, success: false, error: error.message };
-  }
-}
-
 // ============================================================
 // CONTEXT COLLECTORS (not used in composite — enrichment only)
 // ============================================================
@@ -1536,7 +1457,6 @@ serve(async (req) => {
       dataForSeoLinkedInResults,
       braveTalentResults,
       goFractionalResult,
-      dataForSeoSupplyTrendsResult,
       fredResults,
       censusResult,
       blsResults,
@@ -1558,7 +1478,6 @@ serve(async (req) => {
       t(collectDataForSeoLinkedInSupply(today), [] as SignalResult[], 'serpapi_linkedin'),
       t(collectBraveTalentSupply(today), [] as SignalResult[], 'brave_talent'),
       t(collectGoFractionalSupply(today), failedSignal('gofractional', 'supply', 'marketplace'), 'gofractional'),
-      t(collectDataForSeoSupplyTrends(today), failedSignal('serpapi_supply_trends', 'supply', 'supply_intent'), 'serpapi_supply_trends'),
       t(collectFredContext(today), [] as SignalResult[], 'fred'),
       t(collectCensusACS(today), failedSignal('census_acs', 'context', 'self_employment'), 'census_acs'),
       t(collectBLSSignals(today), [] as SignalResult[], 'bls'),
@@ -1582,7 +1501,6 @@ serve(async (req) => {
       ...dataForSeoLinkedInResults,
       ...braveTalentResults,
       goFractionalResult,
-      dataForSeoSupplyTrendsResult,
       ...fredResults,
       censusResult,
       ...blsResults,

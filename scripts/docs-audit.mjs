@@ -89,7 +89,7 @@ if (truth) {
     if (!(key in truth)) failures.push(`public/product-truth.json: missing ${key}`);
   }
 
-  if (truth.coverage?.tracked_inputs !== 21) failures.push("public/product-truth.json: tracked_inputs must be 21");
+  if (truth.coverage?.tracked_inputs !== 20) failures.push("public/product-truth.json: tracked_inputs must be 20");
   if (truth.coverage?.roles?.length !== 6) failures.push("public/product-truth.json: exactly six role-demand lanes are supported");
   if (!truth.strategy?.primary_paying_icp) failures.push("public/product-truth.json: primary paying ICP is missing");
   if (truth.offers?.public_instrument?.price !== "£0") failures.push("public/product-truth.json: public instrument price drift");

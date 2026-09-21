@@ -4,7 +4,7 @@ The credibility and value of the FWI depend entirely on the quality, breadth, an
 
 ---
 
-## 1. Live Source Inventory (21 sources)
+## 1. Live Source Inventory (20 sources)
 
 **Total**: 17 composite + 4 context (stored, not scored). Last reconciled against `ingest-signals` code: **2026-09-07** at `7df98a5`. Last reconciled against the live database: **2026-08-11**; the 2026-08-29 collector fix below has not been read back.
 
@@ -68,9 +68,18 @@ These had been failing every run for weeks and are fully covered by replacements
 | Source | Retired because | Replaced by |
 |--------|-----------------|-------------|
 | **Apify Google Trends** (`google_trends`) | Persistent failures; last signal 2026-04-13 | DataForSEO Trends |
-| **Apify supply trends** (`supply_trends`) | Persistent failures | DataForSEO supply trends |
+| **Apify supply trends** (`supply_trends`) | Persistent failures | DataForSEO supply trends (itself retired 2026-09-21) |
 | **People Data Labs** | HTTP 404 every run | DataForSEO LinkedIn + Brave Talent |
 | **NY Times** | HTTP 401 every run | Guardian |
+
+### Retired 2026-09-21
+
+| Source | Retired because | Replaced by |
+|--------|-----------------|-------------|
+| **DataForSEO supply trends** (`serpapi_supply_trends`) | Not a failure. The four search terms sit at Google Trends' reporting floor, so the reading had no variance: absent most days, a constant 5–6 when present, and worth −1.08 on the headline on the days it contributed | Nothing. Supply rests on `serpapi_linkedin`, `brave_talent` and `gofractional`, and its weight moved to them. See §2 |
+
+Historical signals for all retired sources remain in the `signals` table, and
+scores published before a retirement are not restated.
 
 > The 2026-08-04 incident demonstrated provider concentration risk when one SerpAPI quota took out four inputs. DataForSEO replaces that provider, while Brave remains the independent profile-search backstop.
 
@@ -78,31 +87,59 @@ These had been failing every run for weeks and are fully covered by replacements
 
 ## 2. Source-Confidence Weights
 
-Each source has a domain-weighted contribution to the data-completeness score, baked into `SOURCE_CONFIDENCE_WEIGHTS` in `supabase/functions/ingest-signals/index.ts` (that constant is authoritative; this table mirrors it as of 2026-08-11):
+Each source has a domain-weighted contribution to the data-completeness score, baked into `SOURCE_CONFIDENCE_WEIGHTS` in `supabase/functions/ingest-signals/index.ts` (that constant is authoritative; this table mirrors it as of 2026-09-21):
 
 | Source | Weight |
 |--------|--------|
 | Adzuna | 0.12 |
 | SEC EDGAR | 0.09 |
 | DataForSEO Jobs (`serpapi_jobs`) | 0.07 |
+| Brave Talent | 0.06 |
+| DataForSEO LinkedIn (`serpapi_linkedin`) | 0.06 |
 | Wikipedia pageviews | 0.06 |
 | DataForSEO Trends (`serpapi_trends`) | 0.05 |
-| DataForSEO LinkedIn (`serpapi_linkedin`) | 0.05 |
-| Brave Talent | 0.05 |
-| NewsAPI | 0.04 |
-| GoFractional | 0.04 |
+| GoFractional | 0.05 |
 | BLS | 0.04 |
+| NewsAPI | 0.04 |
 | Brave News | 0.03 |
 | Brave Web | 0.03 |
 | Mediastack | 0.03 |
-| DataForSEO supply trends (`serpapi_supply_trends`) | 0.03 |
 | Guardian | 0.02 |
+| OpenAlex | 0.02 |
 | Podchaser | 0.02 |
 | Reddit | 0.02 |
-| OpenAlex | 0.02 |
-| Hacker News | 0.01 |
-| FRED | 0.01 |
 | Census ACS | 0.01 |
+| FRED | 0.01 |
+| Hacker News | 0.01 |
+
+Total: **0.84**. The table is a denominator, not the pillar weights — a source's
+share of completeness is its weight over that total, so `adzuna` is 14.3% of the
+evidence base, not 12%. The pillar weights (Demand 50%, Supply 20%, Culture 30%)
+live in `supabase/functions/calculate-fwi/index.ts` and are a separate thing.
+
+**Retired 2026-09-21: `serpapi_supply_trends` (was 0.03).** Krish's decision. It
+measured four supply-intent search terms — "become fractional executive",
+"fractional consulting business", "how to be a fractional CFO", "fractional
+executive career" — that sit at Google Trends' reporting floor. Most days it
+returned no reading for any of them; on the days it did, the four-term average
+normalised to a constant 5 or 6. That is not a broken collector, which is why
+nothing flagged it for months: it worked, and measured something with no
+variance. A floor value entering a mean is not a neutral input.
+
+Measured impact over the 113 days from 2026-06-01: it contributed on 56, and on
+those days it pulled the supply pillar from **65.13 to 59.71** — −5.42 on the
+pillar, −1.08 on the headline FWI, on roughly half of all days.
+
+Its 0.03 is redistributed pro rata across the three remaining supply sources
+(`serpapi_linkedin` 0.05 → 0.06, `brave_talent` 0.05 → 0.06, `gofractional`
+0.04 → 0.05), so the supply pillar keeps its 0.17 share of the denominator and a
+supply outage still costs the same completeness it did before. The total is
+unchanged at 0.84, so no other source's share moves.
+
+**History is not restated.** Every day before 2026-09-21 keeps the reading it was
+published with, computed the way it was computed at the time. An index that
+silently rewrites its own past is worth less than one that does not, and the
+change is dated here so a reader can see exactly where the series changes method.
 
 Weights reflect signal quality and uniqueness, not raw volume. They affect reported confidence only. The three score pillars average their valid normalized observations and then use the published 50/20/30 pillar weights. Source-confidence weights do **not** alter the score and do **not** measure prediction accuracy.
 

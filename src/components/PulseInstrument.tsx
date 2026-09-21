@@ -347,7 +347,7 @@ const PulseInstrument = ({
               <li>Current data coverage is {coverage}%.</li>
             </ul>
           )}
-          <div className="pulse-receipts"><span>21 inputs</span><span>6 roles</span><span>US primary</span></div>
+          <div className="pulse-receipts"><span>20 inputs</span><span>6 roles</span><span>US primary</span></div>
         </section>
         <section>
           <div className="pulse-ask-card-title"><span><BrainCircuit /></span><strong>What the data suggests</strong></div>
@@ -362,7 +362,7 @@ const PulseInstrument = ({
       </div>
 
       <button className="pulse-provenance-link" type="button" onClick={onShowMethodology}>
-        <FileText /> Sources and methods <span>21 tracked inputs</span><ArrowRight />
+        <FileText /> Sources and methods <span>20 tracked inputs</span><ArrowRight />
       </button>
     </aside>
   );

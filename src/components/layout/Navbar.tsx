@@ -60,7 +60,7 @@ const Navbar = () => {
               />
               <div className="hidden sm:flex items-center gap-1.5 text-[10px] text-muted-foreground/70 bg-muted/50 rounded-full px-2.5 py-1">
                 <Database size={10} />
-                <span>21 tracked inputs</span>
+                <span>20 tracked inputs</span>
               </div>
             </div>
 

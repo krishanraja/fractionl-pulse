@@ -29,7 +29,6 @@ const SOURCE_DISPLAY: Record<string, { label: string; category: string }> = {
   serpapi_linkedin: { label: 'LinkedIn Profiles (DataForSEO)', category: 'Supply' },
   brave_talent: { label: 'LinkedIn Profiles (Brave)', category: 'Supply' },
   gofractional: { label: 'GoFractional Marketplace', category: 'Supply' },
-  serpapi_supply_trends: { label: 'Supply Intent (DataForSEO)', category: 'Supply' },
   serpapi_trends: { label: 'Search Trends (DataForSEO)', category: 'Culture' },
   newsapi: { label: 'NewsAPI', category: 'Culture' },
   mediastack: { label: 'Mediastack News', category: 'Culture' },

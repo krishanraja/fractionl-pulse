@@ -14,7 +14,7 @@ For autonomous discovery, three files are served from the site root:
 
 ## What the FWI Measures
 
-A 0–100 composite across three dimensions built from **21 tracked inputs**. Inputs are not all statistically independent and availability varies by reading:
+A 0–100 composite across three dimensions built from **20 tracked inputs**. Inputs are not all statistically independent and availability varies by reading:
 
 | Dimension | Weight | What it captures |
 |-----------|--------|------------------|

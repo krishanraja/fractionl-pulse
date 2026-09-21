@@ -35,7 +35,7 @@ interface MoverRow {
 // in metadata.display_weights for reference.
 const WEIGHTS = {
   demand: 0.50,    // Adzuna + DataForSEO fractional jobs + SEC Form D financing context
-  supply: 0.20,    // DataForSEO + Brave LinkedIn talent proxies, GoFractional, supply-intent trends
+  supply: 0.20,    // DataForSEO + Brave LinkedIn talent proxies, GoFractional marketplace listings
   culture: 0.30    // DataForSEO Trends + NewsAPI/Mediastack/Brave/Guardian + Reddit/HN + Wikipedia
 };
 
@@ -204,12 +204,15 @@ serve(async (req) => {
     // Data completeness weights aligned with ingest-signals SOURCE_CONFIDENCE_WEIGHTS.
     // Kept in lockstep: retired google_trends/nyt/people_data_labs/supply_trends, added
     // brave_talent + the native free sources (bls/wikipedia_pageviews/openalex).
+    // 2026-09-21: serpapi_supply_trends retired; its 0.03 redistributed pro rata
+    // across the three remaining supply sources so the pillar keeps its 0.17 share.
+    // If these two tables ever disagree, the weekly audit reports it as drift.
     const SOURCE_COMPLETENESS_WEIGHTS: Record<string, number> = {
       adzuna: 0.12, serpapi_jobs: 0.07, serpapi_trends: 0.05,
       sec_edgar: 0.09, newsapi: 0.04, brave_news: 0.03, brave_web: 0.03,
       mediastack: 0.03, guardian: 0.02, podchaser: 0.02,
-      reddit: 0.02, hn: 0.01, serpapi_linkedin: 0.05, brave_talent: 0.05,
-      gofractional: 0.04, serpapi_supply_trends: 0.03,
+      reddit: 0.02, hn: 0.01, serpapi_linkedin: 0.06, brave_talent: 0.06,
+      gofractional: 0.05,
       fred: 0.01, census_acs: 0.01, bls: 0.04, wikipedia_pageviews: 0.06, openalex: 0.02,
     };
     const uniqueSources = [...new Set(signals.map(s => s.source))];
@@ -366,7 +369,7 @@ serve(async (req) => {
       sources_active: uniqueSources,
       movers_count: topMovers.length,
       weights: WEIGHTS,
-      methodology: '21 tracked inputs: Adzuna, DataForSEO Jobs and Trends, SEC Form D, NewsAPI, Guardian, Mediastack, Podchaser, Reddit, Hacker News, Brave Search, GoFractional, Wikipedia, BLS, Census ACS, FRED, and OpenAlex. Context inputs are excluded from the composite.',
+      methodology: '20 tracked inputs: Adzuna, DataForSEO Jobs and Trends, SEC Form D, NewsAPI, Guardian, Mediastack, Podchaser, Reddit, Hacker News, Brave Search, GoFractional, Wikipedia, BLS, Census ACS, FRED, and OpenAlex. Context inputs are excluded from the composite.',
       component_breakdown: {
         demand: {
           sources: signals.filter(s => s.signal_type === 'demand').map(s => `${s.source}/${s.category}`),

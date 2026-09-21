@@ -6,7 +6,7 @@
 
 ## Product scope
 
-Pulse covers fractional CFO, CMO, CTO, COO, CRO, and interim CEO roles. Current role-demand collectors are US-scoped; English-language cultural inputs can include UK material but do not create a UK market benchmark. Twenty-one tracked inputs contribute to three pillars:
+Pulse covers fractional CFO, CMO, CTO, COO, CRO, and interim CEO roles. Current role-demand collectors are US-scoped; English-language cultural inputs can include UK material but do not create a UK market benchmark. Twenty tracked inputs contribute to three pillars:
 
 ```text
 FWI = (Demand × 0.50) + (Supply × 0.20) + (Culture × 0.30)
