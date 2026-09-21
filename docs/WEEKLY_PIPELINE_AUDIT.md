@@ -149,6 +149,48 @@ npm run audit:baseline   # then review the diff and commit it
 If the count moved and you did not intend it, that is the incident. Investigate
 before touching this file.
 
+## 8. The 10/10 review
+
+Sections 1 to 7 answer "is it healthy". This one answers "could it be better",
+which is a different question and the one that actually compounds. A pipeline
+can be green every week and still be mediocre: healthy is the floor, not the
+goal.
+
+Run this after the verdict, every week, and produce **one ranked improvement**.
+Not a list — the single change with the best ratio of index value to effort,
+named, with why it is not already done. A week that produces "nothing to
+improve" is a week the review was not done properly; say what the next-best
+thing is even when it is small.
+
+Score each dimension out of 10 against what it would take to be a 10, so the
+number moves for a reason rather than by feel.
+
+| Dimension | A 10 looks like |
+|---|---|
+| **Continuity** | No gap in `fwi_scores`, and no source with a gap against its own cadence. The index being continuous while its inputs are full of holes is a 6, not a 10 — check per-source coverage, not just whether the day exists. |
+| **Honesty** | Every published value is labelled with how it was obtained. The estimated-day count matches `docs/audit-baseline.json` exactly. No surface presents an estimated value as measured, on an estimated day — tested, not assumed. |
+| **Attribution** | Every status claim is derived from the thing it describes. Health from rows persisted, not from a collector's success flag. Alert delivery from a recorded send, not from a comment. Freshness from the rendered page, not from the cron having fired. Any claim the pipeline makes about itself that nothing verifies is a defect. |
+| **Redundancy without waste** | A backstop exists for every scheduled step, and it no-ops when the primary worked. Paying a provider twice for the same row is not redundancy, it is a bug with a bill. Every scheduled actor that can write is identifiable from its own runs. |
+| **Reachability** | A failure reaches a human who will act, by a path that has been observed working this quarter. An alert nobody has ever received is not an alert path. |
+| **Concentration** | No single vendor credential gates more than ~15% of index weight without an independent backstop for the most exposed pillar. The audit already groups failures by credential; read that number as a risk, not just as a diagnosis. |
+| **Value** | The index is being read, cited or queried by someone who is not Krish, and the sales-facing claims in `docs/DATA_SOURCES_ROADMAP.md` and `docs/SALES_PLAYBOOK.md` are all still true of the live pipeline. A perfect pipeline nobody uses scores low here, and that is the intended behaviour of this row. |
+
+Two standing questions, answered in the report every week:
+
+1. **What is the single change that would most improve this, and why is it not
+   done?** If the answer is the same three weeks running, that is the finding —
+   either do it or decide out loud that it is not worth doing.
+2. **What does the pipeline currently assert about itself that nothing checks?**
+   Every defect found on 2026-09-21 was of this shape: health attested from a
+   success flag before the rows were dropped, an alert path described by a
+   six-week-old comment, a rebuild cron whose success said nothing about the
+   page, and "stale" health rows that belonged to a second pipeline nobody had
+   told the audit about. Look for the next one.
+
+This review is judgement, not mechanics. It stays outside
+`scripts/pipeline-audit.mjs` on purpose: the moment a 10/10 standard becomes a
+script assertion, it stops being a standard and becomes a threshold to pass.
+
 ---
 
 ## Automation
@@ -159,3 +201,9 @@ RED. It needs no secrets — the audit only reads public data.
 
 That job is a backstop against the audit silently not happening, not a
 replacement for §2. Nothing in CI decides whether a source is worth keeping.
+
+A scheduled Claude session runs Mondays at 09:00 UTC — after the 06:00 ingest,
+the 08:00 backstop and the 08:40 rebuild — and does the judgement halves, §2 and
+§8, that CI cannot. It follows this file, so changing this file changes what it
+does. It is read-only in the same way the rest of the audit is: it proposes and
+reports, and applies nothing.
