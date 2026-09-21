@@ -84,6 +84,18 @@ function parseWeights() {
   return weights;
 }
 
+// Sources under evaluation: collected, unweighted, and deliberately not part of
+// the published input count. Parsed from the code that runs rather than listed
+// here, for the same reason the weights are. Without this the audit reports
+// every candidate source as unreconciled drift for as long as it is on trial,
+// and a weekly finding nobody can act on is how real findings stop being read.
+function parseProbationary() {
+  const src = read('supabase/functions/ingest-signals/index.ts');
+  const m = src.match(/PROBATIONARY_SOURCES\s*=\s*\[([\s\S]*?)\]/);
+  if (!m) return [];
+  return [...m[1].matchAll(/'([a-z0-9_]+)'/g)].map((x) => x[1]);
+}
+
 function parseThresholds() {
   const src = read('api/cron/daily-ingest.ts');
   const num = (name, fallback) => {
@@ -174,6 +186,7 @@ function parseVendorMap(weights) {
 // ------------------------------------------------------------------
 
 let SB;
+let PROBATIONARY = [];
 async function rest(path) {
   const res = await fetch(`${SB.url}/rest/v1/${path}`, {
     headers: { apikey: SB.key, Authorization: `Bearer ${SB.key}` },
@@ -221,6 +234,7 @@ async function audit() {
   const alertCfg = parseAlertConfig();
   const vendors = parseVendorMap(weights);
   SB = parseSupabase();
+  PROBATIONARY = parseProbationary();
 
   const intended = Object.keys(weights);
   const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
@@ -253,8 +267,15 @@ async function audit() {
 
   // --- A. Source universe reconciliation ---------------------------------
   const intendedNotDelivering = intended.filter((s) => !delivering.includes(s));
-  const deliveringNotIntended = delivering.filter((s) => !intended.includes(s));
+  const deliveringNotIntended = delivering.filter((s) => !intended.includes(s) && !PROBATIONARY.includes(s));
+  const onTrial = delivering.filter((s) => PROBATIONARY.includes(s));
   const orphanHealth = monitored.filter((s) => !intended.includes(s) && !delivering.includes(s));
+
+  if (onTrial.length) {
+    add('info', 'reconciliation', `${onTrial.length} source(s) under evaluation`,
+      `${onTrial.join(', ')} — collected and stored, no weight, excluded from the composite and from the published input count.`,
+      'Promote with a measured result or drop it (docs/DATA_QUALITY_STRATEGY.md §5). A source on trial indefinitely is a source nobody decided about.');
+  }
 
   if (intendedNotDelivering.length) {
     const lost = intendedNotDelivering.reduce((sum, s) => sum + weights[s], 0);

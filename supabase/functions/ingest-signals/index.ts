@@ -97,6 +97,18 @@ const BRAVE_WEB_SEARCH_TERMS = [
 //
 // History is NOT restated. Days before 2026-09-21 keep the reading they were
 // published with; the change applies forward only.
+// Sources being evaluated, not yet part of the index. A probationary source is
+// collected and stored so it can build the track record the promotion decision
+// needs, but it carries no weight, contributes nothing to the composite, and is
+// NOT part of the published "tracked inputs" count. It earns weight only from a
+// measured result under docs/DATA_QUALITY_STRATEGY.md §5, or it is dropped.
+//
+// Without this list a candidate source has nowhere to live: give it a weight and
+// it silently changes the published number before anything has validated it;
+// give it none and the weekly audit reports it as an unreconciled source every
+// week until someone gets tired of the noise and does the wrong thing.
+const PROBATIONARY_SOURCES = ['sec_exec_transitions'];
+
 const SOURCE_CONFIDENCE_WEIGHTS: Record<string, number> = {
   adzuna: 0.12,
   serpapi_jobs: 0.07,
@@ -1007,6 +1019,12 @@ async function collectBraveTalentSupply(_date: string): Promise<SignalResult[]> 
   return results;
 }
 
+// BUDGET, 2026-09-21: the Apify account has ~$10 to 1 October. This is the only
+// Apify caller left in the pipeline, capped at maxTotalChargeUsd=0.02 per run and
+// now running once per calendar day (the duplicate-collection fix of the same
+// date halved it, and took Mondays from three runs to one), so the exposure to
+// 1 October is about $0.20. Do not add a second Apify collector before that date
+// without checking the balance first: the per-run cap bounds a run, not a month.
 async function collectGoFractionalSupply(_date: string): Promise<SignalResult> {
   if (!APIFY_API_KEY) {
     return { source: 'gofractional', signal_type: 'supply', category: 'marketplace',
@@ -1119,6 +1137,72 @@ async function collectGoFractionalSupply(_date: string): Promise<SignalResult> {
 // ============================================================
 // CONTEXT COLLECTORS (not used in composite — enrichment only)
 // ============================================================
+
+async function collectSecExecTransitions(_date: string): Promise<SignalResult> {
+  // PROBATIONARY (docs/DATA_QUALITY_STRATEGY.md §4). Excluded from the composite
+  // and from the tracked-input count until a measured result promotes it.
+  //
+  // SEC full-text search over 8-K filings. Item 5.02 of an 8-K is "Departure of
+  // Directors or Certain Officers; Election of Directors; Appointment of Certain
+  // Officers" — a legally required, audited, dated record of the exact event this
+  // index is about. Every other input infers executive transitions from search
+  // volume or news coverage; this one counts filings. There is no search engine
+  // between the event and the measurement, which is the whole point: it is the
+  // first input here that is independent of what people are Googling.
+  //
+  // Two terms only, and that restraint is the lesson from serpapi_supply_trends.
+  // Measured over the 90 days to 2026-09-21: "interim chief financial officer"
+  // 381 filings, "interim chief executive officer" 337 — both with room to move.
+  // The obvious extensions all sit at the reporting floor and were rejected for
+  // exactly the reason the retired source was: "interim chief operating officer"
+  // 4, "interim chief technology officer" 4, "fractional chief financial officer"
+  // 7, "fractional chief marketing officer" 0, "interim chief marketing officer"
+  // 0. A term that cannot move is not evidence, however relevant it sounds.
+  const terms = [
+    'interim chief financial officer',
+    'interim chief executive officer',
+  ];
+  const end = new Date(`${_date}T00:00:00Z`);
+  const start = new Date(end.getTime() - 90 * 86400000);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  // SEC asks for a contact address in the User-Agent and rate-limits hard; the
+  // requests are sequential and spaced for that reason, not by accident.
+  const ua = 'FWI-Pulse/1.0 data@fractionl.ai';
+  try {
+    const counts: Record<string, number> = {};
+    for (const term of terms) {
+      const url = `https://efts.sec.gov/LATEST/search-index?q=${encodeURIComponent(`"${term}"`)}`
+        + `&forms=8-K&dateRange=custom&startdt=${fmt(start)}&enddt=${fmt(end)}`;
+      const res = await fetchWithRetry(url, { headers: { 'User-Agent': ua } }, 2, 10000);
+      if (!res.ok) throw new Error(`SEC full-text search HTTP ${res.status}`);
+      const body = await res.json();
+      const total = Number(body?.hits?.total?.value);
+      if (!Number.isFinite(total)) throw new Error('SEC full-text search returned no hit total');
+      counts[term] = total;
+      await new Promise((r) => setTimeout(r, 1200));
+    }
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    if (total <= 0) throw new Error('SEC full-text search returned zero filings for every term');
+    console.log(`[SEC Exec Transitions] 90d 8-K filings: ${total} (${JSON.stringify(counts)})`);
+    return {
+      source: 'sec_exec_transitions', signal_type: 'context', category: 'exec_transitions',
+      raw_value: total,
+      // Bounded against an observed baseline of ~718 filings per 90 days. This
+      // normalisation is provisional and deliberately not tuned: nothing reads it
+      // while the source is probationary, and tuning a scale before there is a
+      // series to tune it against is how a floor gets baked in.
+      normalized_value: Math.max(0, Math.min(100, Math.round((total / 718) * 50))),
+      metadata: { provider: 'sec_edgar_fts', probationary: true, window_days: 90,
+                  forms: '8-K', terms: counts, baseline_90d: 718 },
+      success: true,
+    };
+  } catch (error) {
+    console.error('[SEC Exec Transitions] Failed:', error.message);
+    return { source: 'sec_exec_transitions', signal_type: 'context', category: 'exec_transitions',
+      raw_value: 0, normalized_value: 0, metadata: { provider: 'sec_edgar_fts', probationary: true },
+      success: false, error: error.message };
+  }
+}
 
 async function collectFredContext(_date: string): Promise<SignalResult[]> {
   if (!FRED_API_KEY) { console.log('[FRED] No key, skipping'); return []; }
@@ -1457,6 +1541,7 @@ serve(async (req) => {
       dataForSeoLinkedInResults,
       braveTalentResults,
       goFractionalResult,
+      secExecTransitionsResult,
       fredResults,
       censusResult,
       blsResults,
@@ -1478,6 +1563,7 @@ serve(async (req) => {
       t(collectDataForSeoLinkedInSupply(today), [] as SignalResult[], 'serpapi_linkedin'),
       t(collectBraveTalentSupply(today), [] as SignalResult[], 'brave_talent'),
       t(collectGoFractionalSupply(today), failedSignal('gofractional', 'supply', 'marketplace'), 'gofractional'),
+      t(collectSecExecTransitions(today), failedSignal('sec_exec_transitions', 'context', 'exec_transitions'), 'sec_exec_transitions'),
       t(collectFredContext(today), [] as SignalResult[], 'fred'),
       t(collectCensusACS(today), failedSignal('census_acs', 'context', 'self_employment'), 'census_acs'),
       t(collectBLSSignals(today), [] as SignalResult[], 'bls'),
@@ -1501,6 +1587,7 @@ serve(async (req) => {
       ...dataForSeoLinkedInResults,
       ...braveTalentResults,
       goFractionalResult,
+      secExecTransitionsResult,
       ...fredResults,
       censusResult,
       ...blsResults,

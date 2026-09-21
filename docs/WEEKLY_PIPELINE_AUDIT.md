@@ -113,6 +113,16 @@ single-vendor concentration.
 - 🔴 **RED** — missed day, completeness < 0.75, fewer than 14 healthy sources,
   public API down, or any estimated value published as measured
 
+**Decided 2026-09-21 (Krish): "attested success today but wrote nothing" is
+AMBER, not RED.** It was raised as a candidate for RED on the grounds that the
+pipeline publishing a false claim about itself is worse than a source being
+visibly down. The ruling is that RED is reserved for the index being wrong or
+absent, and this is the index being *thinly sourced while saying so* — the
+finding names the source and its weight, and the health fix means it now
+self-corrects on the next collection. Keeping RED scarce is what makes it mean
+something. Do not re-litigate this weekly; if it recurs for the same source four
+weeks running, that is a different finding about that source.
+
 ## 5. Escalate the same day
 
 - **The estimated-day count changes.** An increase means someone ran a backfill

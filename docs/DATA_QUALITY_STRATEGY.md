@@ -106,6 +106,28 @@ Two reasons this is worth doing, and the second is the important one:
   credibility move, and it is free.
 
 Cost: one query and about forty lines of maths, run weekly.
+Built and running: `scripts/quality-metrics.mjs`.
+
+**First measurement, 2026-09-21** (113 days, 16 sources with enough overlap):
+
+```
+Effective inputs   10.7 of 20 tracked (53.5% of the count)
+No pair of inputs correlates at |r| >= 0.8
+Most redundant:    serpapi_trends 0.45, serpapi_linkedin 0.40, sec_edgar 0.37
+                   (mean |r| against every other input)
+```
+
+**This contradicted the hypothesis above and the hypothesis was wrong.** The
+expectation written into the first draft of this file was that the four news
+APIs would collapse into one signal and the effective count would be nearer 5
+than 20. It is 10.7, and not one pair reaches the 0.8 redundancy threshold. The
+inputs are substantially more independent than the count suggested they would
+be. Recorded here rather than quietly edited out, because a strategy that only
+keeps its correct predictions is not evidence of anything.
+
+The claim to publish is therefore **"20 tracked inputs, 10.7 effective"** — and
+it is a stronger claim than expected, which is the opposite of the usual reason
+for publishing your own weakest number.
 
 ---
 
@@ -125,6 +147,34 @@ days and the index currently reports them identically. It also gives the weekly
 audit a far better degradation trigger than a completeness threshold — the
 question stops being "did enough arrive" and becomes "did enough arrive to say
 anything".
+
+**First measurement, 2026-09-21** (`scripts/quality-metrics.mjs`, 500 draws/day,
+seeded so a band never moves when nothing moved):
+
+```
+Latest 2026-09-21   median 52.4   IQR ±3.3   90% span 16.7 points
+Last 28 days        mean IQR 7.0 points
+Widest day          2026-09-12, 90% span 22.1 points
+```
+
+**This is the most actionable number in this document and it is a problem.** The
+FWI is published to one decimal place. The resampling says that on a typical
+recent day, the composite would have landed anywhere in a ~7-point interquartile
+range on a different draw of the same day's sources. A tenth of a point is two
+orders of magnitude finer than the evidence supports, and every surface — the
+page title, the API, the RSS feed, the OG image — carries that false precision.
+
+What it measures, precisely, so it is not over-read: the dispersion of the
+composite under resampling *which of the day's arriving sources feed each
+pillar*. It is not a confidence interval on the true state of the market, and it
+should never be described as one. It answers "how much does today's number
+depend on which sources happened to show up", which is a question the index
+currently cannot answer at all.
+
+The decision this forces, and it is Krish's: publish the band beside the score,
+round the score to something the evidence supports, or both. The recommendation
+is both — a whole number with a stated band is more credible than a decimal with
+none, and "52 ± 3" survives scrutiny that "52.6" does not.
 
 ---
 
@@ -153,6 +203,28 @@ Ranked candidates, all free, all independent of search and news:
    appointment and resignation records. Not for the current index — the US
    scoping is a deliberate claim — but it is the cheapest possible path to a
    second geography if that is ever wanted, and worth knowing the shape of.
+
+**Shipped 2026-09-21: `sec_exec_transitions`, probationary.** Candidate 1,
+implemented and collecting. SEC full-text search over 8-K filings, free, no key,
+no provider account. Verified volumes over the 90 days to 2026-09-21:
+"interim chief financial officer" 381 filings, "interim chief executive officer"
+337.
+
+Two terms only, and the restraint is the entire lesson from
+`serpapi_supply_trends`. The obvious extensions all sit at the reporting floor
+and were rejected on the spot for exactly the reason the retired source was
+retired: "interim chief operating officer" 4, "interim chief technology officer"
+4, "fractional chief financial officer" 7, "fractional chief marketing officer"
+0, "interim chief marketing officer" 0. A term that cannot move is not evidence,
+however relevant it sounds. Adding all seven would have rebuilt the exact defect
+this programme exists to prevent, on day one.
+
+It is **probationary**: collected and stored, zero weight, excluded from the
+composite and from the published input count, declared in `PROBATIONARY_SOURCES`
+in `ingest-signals` and understood by the weekly audit. It earns weight from a
+measured result under §5 or it is dropped. A candidate source that silently
+starts moving the published number before anything has validated it is how an
+index loses the right to be called one.
 
 Explicitly rejected: anything requiring a scraper against a site whose terms
 forbid it, and anything that is a fourth news API. The first is a legal risk for

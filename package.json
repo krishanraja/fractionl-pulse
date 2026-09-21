@@ -11,6 +11,8 @@
     "audit": "node scripts/pipeline-audit.mjs",
     "audit:json": "node scripts/pipeline-audit.mjs --json",
     "audit:baseline": "node scripts/pipeline-audit.mjs --update-baseline",
+    "quality": "node scripts/quality-metrics.mjs",
+    "quality:json": "node scripts/quality-metrics.mjs --json",
     "smoke:release": "node scripts/release-smoke.mjs",
     "test:dataforseo": "node --test supabase/functions/_shared/dataforseo.test.ts",
     "test:e2e": "playwright test",
