@@ -67,10 +67,11 @@ The authority order is the truth hierarchy in `docs/DOCUMENTATION_GOVERNANCE.md`
 4. `README.md`: scope, live surfaces, API, architecture, setup, document map.
 5. `docs/TECHNICAL_SPEC.md`: edge functions, schedule, schema, sources, composite, API. Reconciled against `main` at `7df98a5`.
 6. `docs/DATA_SOURCES_ROADMAP.md`: the 20 inputs, confidence weights, incidents, cost model, roadmap. Code side reconciled at `7df98a5`; database side last read 2026-08-11.
-7. `docs/WEEKLY_PIPELINE_AUDIT.md` with `.github/workflows/weekly-pipeline-audit.yml` and `scripts/pipeline-audit.mjs`: a versioned runbook with a thin scheduled invoker. The docs steward follows the same pattern: the procedure lives in control-center and `.github/workflows/docs-steward.yml` only calls it.
-8. `docs/AGENT_BRIEFING.md`, `docs/AUTONOMOUS_GTM_PLAYBOOK.md`, `docs/SALES_PLAYBOOK.md`: what an agent may say and do, in that order.
-9. `docs/AGENT_INTEGRATION.md` and `docs/MCP_TOOL.md`: REST and MCP contracts. `docs/DESIGN_SYSTEM.md`: the interface contract. `docs/FLEET_WIRING.md`: attribution wiring to the OS warehouse, pending on the OS side.
-10. `docs/NORTH_STAR.md` and `docs/MONETIZATION_STRATEGY.md`: short views of the same strategy; both name `CORPORATE_STRATEGY.md` as canonical.
+7. `docs/DATA_QUALITY_STRATEGY.md`: the improvement programme — validation against official statistics, the effective number of independent inputs, error bars, and the weekly ratchet that promotes or retires one source at a time. Adopted 2026-09-21. Paired with, and deliberately separate from, the audit below.
+8. `docs/WEEKLY_PIPELINE_AUDIT.md` with `.github/workflows/weekly-pipeline-audit.yml` and `scripts/pipeline-audit.mjs`: a versioned runbook with a thin scheduled invoker. The docs steward follows the same pattern: the procedure lives in control-center and `.github/workflows/docs-steward.yml` only calls it.
+9. `docs/AGENT_BRIEFING.md`, `docs/AUTONOMOUS_GTM_PLAYBOOK.md`, `docs/SALES_PLAYBOOK.md`: what an agent may say and do, in that order.
+10. `docs/AGENT_INTEGRATION.md` and `docs/MCP_TOOL.md`: REST and MCP contracts. `docs/DESIGN_SYSTEM.md`: the interface contract. `docs/FLEET_WIRING.md`: attribution wiring to the OS warehouse, pending on the OS side.
+11. `docs/NORTH_STAR.md` and `docs/MONETIZATION_STRATEGY.md`: short views of the same strategy; both name `CORPORATE_STRATEGY.md` as canonical.
 
 ## Do not trust
 

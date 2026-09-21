@@ -191,6 +191,14 @@ This review is judgement, not mechanics. It stays outside
 `scripts/pipeline-audit.mjs` on purpose: the moment a 10/10 standard becomes a
 script assertion, it stops being a standard and becomes a threshold to pass.
 
+**Scoring the Value row honestly requires `docs/DATA_QUALITY_STRATEGY.md`.** That
+file is the improvement programme — validation against official statistics, the
+effective number of independent inputs, error bars, and the weekly ratchet that
+promotes or retires one source at a time. This review reports the score; that
+programme is what moves it. They run on different days on purpose (§6 there):
+when integrity and evolution share a session, the broken thing always wins and
+the evolution work never happens.
+
 ---
 
 ## Automation
