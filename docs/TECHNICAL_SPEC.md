@@ -2,7 +2,7 @@
 
 **Status:** Engineering reference for the system as it ships from `main`
 
-**Last reconciled:** 7 September 2026 against `main` at `7df98a5`; production not read. The production readbacks quoted below are dated 11 August 2026.
+**Last reconciled:** 21 September 2026 against `main` at `c319148`. Section 2's schedule carries its own 2026-09-21 production readback; the production readbacks elsewhere in this document are dated 11 August 2026.
 
 _Source of truth for the system as it ships today. 20 tracked inputs, core and supporting edge functions, Supabase and Vercel scheduling, and an agent-native API. Generated from the live codebase; see commit history for last update._
 
@@ -32,7 +32,7 @@ _Source of truth for the system as it ships today. 20 tracked inputs, core and s
                                │
         ┌──────────────────────┼─────────────────────────────────┐
         ▼                      ▼                                  ▼
-   21 external             OpenAI                            Resend
+   20 external             OpenAI                            Resend
    data sources         (gpt-4o-mini                      (failure email
    (see §4)             insights)                          alerts)
 ```
@@ -272,7 +272,7 @@ Both views are publicly readable for the dashboard's `DataHealthCard`.
 
 ---
 
-## 4. Signal Collection (21 Sources)
+## 4. Signal Collection (20 Sources)
 
 ### Demand pillar (50% weight)
 
@@ -288,8 +288,9 @@ Both views are publicly readable for the dashboard's `DataHealthCard`.
 |--------|----------|--------|---------------|
 | **DataForSEO LinkedIn proxy** | `site:linkedin.com/in "fractional CFO"` etc. | Result count proxy | Log scale |
 | **Brave Talent** | Brave Web Search on the same public profile phrases | Provider-independent backstop | Log scale |
-| **GoFractional published network** | Official `apify/web-scraper` actor against the first-party homepage, with `maxTotalChargeUsd=0.02`. Since 2026-08-29 (`7df98a5`) the run URL carries no `build` pin (Apify retired the `latest` tag; the actor's default build is used) and the body sets `proxyConfiguration: { useApifyProxy: true }`, which the newer build requires | Published operator count (currently advertised as 15,000+) | Log scale |
-| **DataForSEO supply-intent Trends** | DataForSEO Trends on supply-intent terms | "become fractional executive", "fractional consulting business", etc. | Native 0-100 |
+| **GoFractional published network** | Official `apify/web-scraper` actor against the first-party homepage, with `maxTotalChargeUsd=0.02`. Since 2026-08-29 (`7df98a5`) the run URL carries no `build` pin (Apify retired the `latest` tag; the actor's default build is used) and the body sets `proxyConfiguration: { useApifyProxy: true }`, which the newer build requires. A rejected proxied run (Apify Proxy allowance exhausted) is retried once without the proxy as of 2026-09-21 | Published operator count (currently advertised as 15,000+) | Log scale |
+
+DataForSEO supply-intent Trends (`serpapi_supply_trends`) was retired 2026-09-21: its four search terms sat at Google Trends' reporting floor and normalized to a constant 5-6 on the days they returned anything, pulling the supply pillar down by 5.42 on roughly half of all days in the 113-day sample measured. Its weight was redistributed pro rata within this pillar (`docs/DATA_SOURCES_ROADMAP.md` section 2). The retirement is a code change; the last production verification in the commit history still showed 21 healthy sources, so the deploy had not landed as of the last commit in this range.
 
 ### Culture pillar (30% weight)
 
@@ -314,6 +315,10 @@ Both views are publicly readable for the dashboard's `DataHealthCard`.
 | **FRED** | Initial Jobless Claims only; BLS is primary for JOLTS, unemployment, and wages |
 | **Census ACS** | US self-employment household percentage |
 | **OpenAlex** | Academic and thought-leadership coverage |
+
+### Probationary sources
+
+`sec_exec_transitions` (SEC EDGAR full-text search on 8-K Item 5.02 filings, two terms: "interim chief financial officer" and "interim chief executive officer") was added 2026-09-21. It is collected and stored but carries zero weight, is excluded from the composite and from the published tracked-input count, and is declared in `PROBATIONARY_SOURCES` in `ingest-signals`; the weekly audit reports it as under evaluation rather than as drift.
 
 ### Source skip list
 

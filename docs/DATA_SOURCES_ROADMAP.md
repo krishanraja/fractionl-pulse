@@ -6,7 +6,7 @@ The credibility and value of the FWI depend entirely on the quality, breadth, an
 
 ## 1. Live Source Inventory (20 sources)
 
-**Total**: 17 composite + 4 context (stored, not scored). Last reconciled against `ingest-signals` code: **2026-09-07** at `7df98a5`. Last reconciled against the live database: **2026-08-11**; the 2026-08-29 collector fix below has not been read back.
+**Total**: 16 composite + 4 context (stored, not scored). Last reconciled against `ingest-signals` code: **2026-09-21** at `c319148`. Last reconciled against the live database: **2026-08-11**; the 2026-08-29 collector fix, the 2026-09-21 integrity and dedup fixes, and the `serpapi_supply_trends` retirement below have not been read back. The retirement is a code change only: the 2026-09-21 production verification in the code history still observed 21 healthy sources, so the deploy had not landed as of the last commit in this range.
 
 > For the live source-by-source state at any moment, query `data_source_health` — this table, not this doc, is the operational truth.
 
@@ -31,7 +31,8 @@ The credibility and value of the FWI depend entirely on the quality, breadth, an
 | **DataForSEO LinkedIn** | `site:linkedin.com/in "fractional CFO"` proxy | Four DataForSEO organic `site:` queries | ~$0.040 |
 | **Brave Talent** | Provider-independent LinkedIn-profile backstop | 4 Brave Web Search calls | ~$0.020 gross |
 | **GoFractional** | First-party published operator-network size | Official `apify/web-scraper` actor on its default build, Apify proxy on; $0.02 hard cap | $0.011 canary |
-| **DataForSEO Trends (supply intent)** | Searches like "become fractional executive" | DataForSEO Trends | ~$0.011 |
+
+DataForSEO Trends (supply intent) was retired 2026-09-21; see below.
 
 ### Culture pillar (30% weight)
 
@@ -181,7 +182,7 @@ DataForSEO Google Jobs uses a two-stage ledger. `prepare-dataforseo-jobs` submit
 - **warning** — insights generation failed after a successful ingest
 - **warning** — the run "succeeded" but is degraded: data completeness below `COMPLETENESS_ALERT_THRESHOLD` (default 0.75) or healthy sources below `MIN_HEALTHY_SOURCES` (default 14). The email names each failing source with its last error and last-success date, so partial outages (quota 429s, expired keys) can no longer fail silently.
 
-Deliverability: sends go from `ALERT_FROM` (default `alerts@fractionl.ai`). As of 2026-08-07 **fractionl.ai is not a verified domain on the Pulse Resend account**, so the function automatically falls back to Resend's `onboarding@resend.dev` test domain, which can only deliver to the Resend account owner (`ALERT_FALLBACK_TO`, default `hello@krishraja.com`). Verifying fractionl.ai at resend.com/domains (or swapping `RESEND_API_KEY` to the account that already has it verified) restores branded, multi-recipient delivery automatically — no redeploy needed.
+Deliverability: sends go from `ALERT_FROM` (default `alerts@fractionl.ai`). The 2026-08-07 note that fractionl.ai was not a verified domain on the Pulse Resend account was six weeks stale: as of 2026-09-21 the domain carries the full Resend DNS set (DKIM at `resend._domainkey`, SPF and the feedback-smtp MX at `send.`, and DMARC). Rather than assert the primary path now delivers, every alert records which address actually delivered it, and the weekly audit reads that record instead of the domain-verification comment; `onboarding@resend.dev` (`ALERT_FALLBACK_TO`, default `hello@krishraja.com`) remains the last-resort path when the primary send is refused.
 
 ---
 
@@ -347,6 +348,7 @@ We store and expose **aggregate signal values**, not raw third-party content. No
 
 See `git log` and `supabase/migrations/`. Highlights:
 
+- 2026-09-21 (`183393a`, `3d05a30`, `a6815c7`, `c319148`; migrations `017`-`019`): source health is now attributed from persisted rows, not the collector's success flag; duplicate same-day collection (up to four runs, three on Mondays) is closed to one run per calendar day with a `?force=true` override; absence in the trends parser no longer counts as a measured zero; `serpapi_supply_trends` is retired in code (weight redistributed within supply, §2) though the last production verification in this range still showed 21 healthy sources, so the deploy had not landed; `sec_exec_transitions` (SEC 8-K Item 5.02 filings) added as a probationary, zero-weight source excluded from the published count; the alert sending domain's DNS is verified and the pipeline now records which address actually delivered rather than assuming it.
 - 2026-08-29 (`a123e81`, `7df98a5`): GoFractional Apify collector repaired (no `build` pin, Apify proxy on) after failing since 2026-07-03; `generate-pulse-insights` in-code bearer check removed after rejecting the daily cron since 2026-08-10. No migration; no document was updated until 2026-09-07.
 - `001_defensible_signals.sql` — initial 4-source schema
 - `002_pipeline_scheduling.sql` — pg_cron safety net + freshness function + quality views
