@@ -106,7 +106,21 @@ function parseSupabase() {
   const url = src.match(/DEFAULT_SUPABASE_URL\s*=\s*'([^']+)'/);
   const key = src.match(/(eyJ[A-Za-z0-9._-]+)/);
   if (!url || !key) throw new Error('Could not read Supabase URL/anon key from src/lib/supabase.ts');
-  return { url: process.env.SUPABASE_URL || url[1], key: process.env.SUPABASE_ANON_KEY || key[1] };
+  // URL and key are taken as a PAIR. Overriding one without the other points a
+  // foreign project at this repo's key, every request 401s, and the audit exits
+  // 3 — reporting "the pipeline could not be confirmed healthy" when the only
+  // broken thing is an unrelated SUPABASE_URL in the shell. The committed pair
+  // is public-read and always works, so it is the safe default.
+  const envUrl = process.env.SUPABASE_URL;
+  const envKey = process.env.SUPABASE_ANON_KEY;
+  if (envUrl && envKey) return { url: envUrl, key: envKey };
+  if (envUrl || envKey) {
+    console.error(
+      `[audit] Ignoring a half-set Supabase override (${envUrl ? 'SUPABASE_URL' : 'SUPABASE_ANON_KEY'} ` +
+      'set without its pair) and using the committed public-read pair instead.',
+    );
+  }
+  return { url: url[1], key: key[1] };
 }
 
 // The alert path's real sender and recipients, so the audit reports what to
@@ -361,10 +375,32 @@ async function audit() {
       }`);
   }
 
+  // Attested-but-empty: the health row was written TODAY claiming success while
+  // the source wrote no row today. This is not a stale status column — it is a
+  // status column actively asserting something false, published next to the
+  // number on the health surface. It is the sharpest form of the standing rule
+  // and it is reported separately from ordinary staleness, which understates it.
+  const attestedEmpty = Object.entries(perSource).filter(
+    ([, v]) =>
+      v.status !== 'failed' &&
+      v.lastSuccess?.slice(0, 10) === TODAY &&
+      v.lastSignal !== TODAY,
+  );
+  for (const [s, v] of attestedEmpty) {
+    add('amber', 'source', `${s} attested success today but wrote nothing`,
+      `data_source_health.last_success = ${TODAY}; newest signal row ${v.lastSignal || 'never'}${
+        v.staleDays !== null ? ` (${v.staleDays}d ago)` : ''
+      } · ${pct(v.weight)} of the index`,
+      'Health is attributed from the collector success flag before the empty/outlier drops. Attribute it from persisted rows (supabase/functions/ingest-signals/index.ts).');
+  }
+
   // Healthy-but-silent: the case a status column can never catch, because a
   // source that is skipped updates neither status nor last_success.
+  const attestedEmptySources = new Set(attestedEmpty.map(([s]) => s));
   const silent = Object.entries(perSource).filter(
-    ([, v]) => v.status !== 'failed' && v.staleDays !== null && v.staleDays > 2 * v.cadenceDays,
+    ([s, v]) =>
+      !attestedEmptySources.has(s) &&
+      v.status !== 'failed' && v.staleDays !== null && v.staleDays > 2 * v.cadenceDays,
   );
   for (const [s, v] of silent) {
     add('amber', 'source', `${s} is marked ${v.status} but has not delivered in ${v.staleDays}d`,
@@ -648,7 +684,9 @@ async function audit() {
       sourcesConfigured: intended.length,
       sourcesDelivering: delivering.length,
       sourcesFailed: failed.map(([s]) => s),
-      sourcesSilent: silent.map(([s]) => s),
+      // Attested-but-empty sources belong in the headline "sources down" count
+      // too: they are delivering nothing, whatever their status column claims.
+      sourcesSilent: [...attestedEmpty.map(([s]) => s), ...silent.map(([s]) => s)],
       signalRowsLast30d: recent.length,
       missingDays,
       completeness: confidence,

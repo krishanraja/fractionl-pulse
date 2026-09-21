@@ -1581,6 +1581,17 @@ serve(async (req) => {
     // Batched into two uniform-column upserts (healthy / failed) instead of ~21 sequential
     // round-trips, so this tail work stays well under the caller timeout. The failed batch
     // omits last_success on purpose so a source's prior last_success is preserved.
+    // Health is attributed from what was PERSISTED, not from what the collector
+    // claimed. Read the body, not the status code: a collector can report
+    // success and still have every one of its readings dropped above — as an
+    // empty supply reading (raw_value <= 0) or as an anomaly-guard outlier — in
+    // which case it wrote nothing and is not healthy. Attributing health from
+    // the success flag alone stamps last_success = now on a source that
+    // delivered no data, which is then published next to the number on the
+    // public health surface and silences the daily alert path. The weekly audit
+    // catches this only later and second-hand, as "marked healthy but has not
+    // delivered in Nd".
+    const persistedSources = new Set(signalRecords.map(r => r.source));
     const now = new Date().toISOString();
     const healthyRows: Array<Record<string, unknown>> = [];
     const failedRows: Array<Record<string, unknown>> = [];
@@ -1588,8 +1599,16 @@ serve(async (req) => {
       const srcSignals = allSignals.filter(s => s.source === src);
       if (srcSignals.length === 0) continue;
       const errors = srcSignals.filter(s => !s.success);
-      if (srcSignals.some(s => s.success)) {
+      const claimedSuccess = srcSignals.some(s => s.success);
+      if (claimedSuccess && persistedSources.has(src)) {
         healthyRows.push({ source: src, last_checked: now, last_success: now, status: 'healthy', error_count: 0, metadata: { last_error: null, ...providerMetadata(src) }, updated_at: now });
+      } else if (claimedSuccess) {
+        // Reported success, persisted nothing. `last_success` is deliberately
+        // omitted so the prior genuine success is preserved and the staleness
+        // clock keeps running.
+        const dropped = srcSignals.filter(s => s.success).length;
+        console.log(`[Health] ${src} reported success but persisted 0 rows (${dropped} dropped)`);
+        failedRows.push({ source: src, last_checked: now, status: 'failed', error_count: dropped, metadata: { last_error: `Collector reported success but no reading survived validation: ${dropped} signal(s) dropped as empty or out-of-range`, ...providerMetadata(src) }, updated_at: now });
       } else {
         failedRows.push({ source: src, last_checked: now, status: 'failed', error_count: errors.length, metadata: { last_error: errors[0]?.error || null, ...providerMetadata(src) }, updated_at: now });
       }

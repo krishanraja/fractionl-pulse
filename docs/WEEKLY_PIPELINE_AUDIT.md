@@ -55,7 +55,7 @@ The script covers, without a fixed source list anywhere in it:
 |---|---|
 | Source universe | Reconciles intended (`SOURCE_CONFIDENCE_WEIGHTS`) vs monitored (`data_source_health`) vs delivering (`signals`, 30d), and flags every asymmetry |
 | Schedule | Every calendar day present in `signals`, newest write < 24h, `fwi_scores` row for today, no gap > 7d in history |
-| Source health | Failures with `last_error` and days-since-success; **plus** sources marked healthy that are overdue against their own inferred cadence |
+| Source health | Failures with `last_error` and days-since-success; **plus** sources whose health row attests success *today* while no row was written today, and sources marked healthy that are overdue against their own inferred cadence |
 | Root cause | Groups failures by the credential that gates them, derived by reading the collectors — so five dead sources report as one vendor account with a blast radius in index-weight |
 | Denominator hygiene | Sources weighted but silent > 14 days, quantified as the completeness tax they impose |
 | Composite quality | Completeness vs the thresholds in `api/cron/daily-ingest.ts`, week-over-week trend, healthy-source floor |
