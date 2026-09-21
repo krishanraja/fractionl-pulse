@@ -230,7 +230,13 @@ async function audit() {
   const since30 = shift(TODAY, -30);
   const since60 = shift(TODAY, -60);
   const [health, signals, scores] = await Promise.all([
-    restAll('data_source_health?select=source,status,last_success,last_checked,error_count,metadata&order=source.asc'),
+    // Only the FWI source universe. harvest-content-signals writes its own rows
+    // into this table for the content radar; reconciling those against the index
+    // weight table is what produced the recurring "stale health rows" finding.
+    // `pipeline` was added in migration 017 with default 'fwi', so a project
+    // that has not applied it yet returns 400 and falls back to the full table.
+    restAll("data_source_health?select=source,pipeline,status,last_success,last_checked,error_count,metadata&pipeline=eq.fwi&order=source.asc")
+      .catch(() => restAll('data_source_health?select=source,status,last_success,last_checked,error_count,metadata&order=source.asc')),
     restAll(`signals?select=source,date,created_at&date=gte.${since60}&order=date.asc`),
     restAll('fwi_scores?select=date,confidence,overall_score,supply_score,metadata&order=date.asc'),
   ]);
@@ -609,11 +615,30 @@ async function audit() {
       `Primary delivers to ${alertCfg.primaryTo.join(', ') || 'nobody'}; the fallback delivers only to ${alertCfg.fallbackTo.join(', ') || 'nobody'}.`,
       'An incident with no alert email means the alert path is broken, regardless of what the pipeline reports.');
   }
-  if (alertCfg.fallbackTo.length && !alertCfg.fallbackTo.some((a) => alertCfg.primaryTo.includes(a))) {
-    add('amber', 'alerting', 'Alert fallback delivers to an address that is not on the primary recipient list',
-      `primary: ${alertCfg.primaryTo.join(', ') || 'none'} · fallback: ${alertCfg.fallbackTo.join(', ') || 'none'}. ` +
-      'While the primary domain is unverified, every alert goes only to the fallback address.',
-      'Verify the sending domain at resend.com/domains so alerts reach the primary list again.');
+  // Which address actually delivered, read from the recorded alert runs rather
+  // than assumed from a comment in the source. Before this, the audit asserted
+  // every week that the primary domain was unverified because a note in
+  // send-pipeline-alert said so; that note was six weeks out of date.
+  const alertRuns = await rest(
+    'pipeline_runs?source=eq.pipeline-alert&select=started_at,status,metadata&order=started_at.desc&limit=5',
+  ).catch(() => []);
+  const lastAlert = alertRuns[0];
+  if (lastAlert) {
+    const usedFrom = lastAlert.metadata?.from ?? null;
+    if (usedFrom && alertCfg.fallbackFrom && usedFrom.includes(alertCfg.fallbackFrom)) {
+      add('amber', 'alerting', 'The last alert was delivered by the fallback sender',
+        `${lastAlert.started_at.slice(0, 10)}: sent from ${usedFrom}, which reaches only ${alertCfg.fallbackTo.join(', ') || 'nobody'} — ` +
+        `not the primary list (${alertCfg.primaryTo.join(', ') || 'none'}).`,
+        'The primary sending domain was refused by Resend. Check it at resend.com/domains.');
+    } else if (usedFrom) {
+      add('info', 'alerting', `Alerts are delivering from the primary sender (${usedFrom})`,
+        `last alert ${lastAlert.started_at.slice(0, 10)} to ${alertCfg.primaryTo.join(', ') || 'nobody'}.`);
+    }
+  } else if (alertCfg.fallbackTo.length && !alertCfg.fallbackTo.some((a) => alertCfg.primaryTo.includes(a))) {
+    add('info', 'alerting', 'The alert path has never been observed delivering',
+      `No pipeline-alert run is recorded, so which of ${alertCfg.primaryFrom} / ${alertCfg.fallbackFrom} delivers is unproven. ` +
+      `The fallback reaches ${alertCfg.fallbackTo.join(', ') || 'nobody'}, who is not on the primary list.`,
+      'Unproven is not broken and not working. The next alert records which sender delivered.');
   }
   if (!alertReachesAuditor) {
     add('amber', 'alerting', 'No primary alert recipients configured', 'ALERT_EMAILS resolves to an empty list.');

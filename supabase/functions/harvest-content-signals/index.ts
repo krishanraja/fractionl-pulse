@@ -532,8 +532,12 @@ serve(async (req) => {
     const now = new Date().toISOString();
     const sourceNames = ['serpapi_related', 'serpapi_paa', 'google_autocomplete', 'newsapi', 'mediastack', 'guardian', 'brave_news', 'brave_web', 'reddit', 'hn', 'podchaser', 'ats_boards', 'youtube', 'marketplace'];
     const produced = new Set(allDocs.map(d => d.source));
+    // `pipeline` keeps these out of the FWI source universe. They share one
+    // table with the index's own sources, and without the discriminator the
+    // weekly audit reconciles them against SOURCE_CONFIDENCE_WEIGHTS every week
+    // and reports seven "stale rows" that are in fact a healthy second pipeline.
     const healthy = sourceNames.filter(s => produced.has(s)).map(s => ({
-      source: s, last_checked: now, last_success: now, status: 'healthy', error_count: 0,
+      source: s, pipeline: 'content_radar', last_checked: now, last_success: now, status: 'healthy', error_count: 0,
       metadata: { last_error: null, ...(s === 'serpapi_related' || s === 'serpapi_paa' ? { provider: 'dataforseo' } : {}) },
       updated_at: now,
     }));

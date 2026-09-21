@@ -6,6 +6,7 @@ import {
   parseGoogleJobs,
   parseOrganicCount,
   parseTrendsSeries,
+  recentTermAverage,
 } from '../_shared/dataforseo.ts';
 
 const corsHeaders = {
@@ -495,20 +496,21 @@ async function collectDataForSeoTrendsSignal(date: string): Promise<SignalResult
       { login: DATAFORSEO_LOGIN, password: DATAFORSEO_PASSWORD },
     );
     const timeline = parseTrendsSeries(tasks[0]);
-    const recent4 = timeline.slice(-4);
-    if (recent4.length === 0) throw new Error('DataForSEO Trends returned no graph data');
-    const termAverages: number[] = [];
-    for (let i = 0; i < GOOGLE_TRENDS_TERMS.length; i++) {
-      const avg = recent4.reduce((sum, point) => sum + safeNumber(point[i], 0), 0) / recent4.length;
-      termAverages.push(avg);
-    }
-    const overallAvg = termAverages.length > 0 ? termAverages.reduce((a, b) => a + b, 0) / termAverages.length : 0;
+    if (timeline.length === 0) throw new Error('DataForSEO Trends returned no graph data');
+    // Average each term over its last four MEASURED points. A term with no
+    // reading at all is excluded from the mean rather than entered as a zero,
+    // so a trailing incomplete period cannot pull the index down.
+    const termAveragesRaw = GOOGLE_TRENDS_TERMS.map((_, i) => recentTermAverage(timeline, i, 4));
+    const measuredAverages = termAveragesRaw.filter((a): a is number => a !== null);
+    if (measuredAverages.length === 0) throw new Error('DataForSEO Trends returned no measured points for any term');
+    const termAverages = measuredAverages;
+    const overallAvg = termAverages.reduce((a, b) => a + b, 0) / termAverages.length;
     const normalizedScore = normalizeTrends(overallAvg);
     console.log(`[DataForSEO Trends] Overall avg: ${overallAvg.toFixed(1)} -> score ${normalizedScore}`);
     return {
       source: 'serpapi_trends', signal_type: 'momentum', category: 'search_interest',
       raw_value: Math.round(overallAvg * 10) / 10, normalized_value: normalizedScore,
-      metadata: { provider: 'dataforseo', reported_cost: Number(tasks[0].cost) || 0, terms: GOOGLE_TRENDS_TERMS, term_averages: termAverages.map(a => Math.round(a * 10) / 10), data_points: recent4.length },
+      metadata: { provider: 'dataforseo', reported_cost: Number(tasks[0].cost) || 0, terms: GOOGLE_TRENDS_TERMS, term_averages: termAveragesRaw.map(a => a === null ? null : Math.round(a * 10) / 10), terms_measured: measuredAverages.length, terms_total: GOOGLE_TRENDS_TERMS.length, data_points: timeline.length },
       success: true
     };
   } catch (error) {
@@ -1008,35 +1010,65 @@ async function collectGoFractionalSupply(_date: string): Promise<SignalResult> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
-    let runResponse: Response;
-    try {
-      runResponse = await fetch('https://api.apify.com/v2/acts/apify~web-scraper/runs?maxTotalChargeUsd=0.02', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${APIFY_API_KEY}` },
-        signal: controller.signal,
-        body: JSON.stringify({
-          startUrls: [{ url: 'https://www.gofractional.com/' }],
-          pageFunction: `async function pageFunction(context) {
+    // Apify Proxy is a plan-gated feature. When the account's proxy allowance is
+    // exhausted or its plan changes, Apify rejects the run POST with HTTP 403
+    // error.type 'platform-feature-disabled' — which is what killed this source
+    // on 2026-09-21, one day after a successful run. gofractional.com is a
+    // public marketing page that does not need a proxy to read, so a rejected
+    // proxied run is retried once without one.
+    //
+    // This is not the chargeable-POST retry the cost rule forbids: a 403 means
+    // Apify refused to create the run, so nothing was started and nothing was
+    // billed. A run that was accepted is never re-POSTed.
+    const runBody = (useProxy: boolean) => JSON.stringify({
+      startUrls: [{ url: 'https://www.gofractional.com/' }],
+      pageFunction: `async function pageFunction(context) {
             const $ = context.jQuery;
             const pageText = $('body').text().replace(/\\s+/g, ' ');
             const match = pageText.match(/(\\d{1,3}(?:,\\d{3})+)\\s*\\+?\\s*(?:proven\\s+)?(?:operators|leaders)/i);
             return [{ count: match ? Number(match[1].replace(/,/g, '')) : 0 }];
           }`,
-          maxPagesPerCrawl: 1,
-          proxyConfiguration: { useApifyProxy: true },
-          customData: { source: 'fractionl-pulse', targetDate: _date },
-        }),
-      });
+      maxPagesPerCrawl: 1,
+      ...(useProxy ? { proxyConfiguration: { useApifyProxy: true } } : {}),
+      customData: { source: 'fractionl-pulse', targetDate: _date },
+    });
+    const postRun = (useProxy: boolean) => fetch(
+      'https://api.apify.com/v2/acts/apify~web-scraper/runs?maxTotalChargeUsd=0.02',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${APIFY_API_KEY}` },
+        signal: controller.signal,
+        body: runBody(useProxy),
+      },
+    );
+    const readErrorType = async (res: Response) => {
+      try {
+        const errorBody = await res.json();
+        return typeof errorBody?.error?.type === 'string' ? errorBody.error.type : 'unknown';
+      } catch {
+        return 'unknown';
+      }
+    };
+
+    let runResponse: Response;
+    let usedProxy = true;
+    try {
+      runResponse = await postRun(true);
+      if (!runResponse.ok) {
+        const errorType = await readErrorType(runResponse);
+        if (runResponse.status === 403 && errorType === 'platform-feature-disabled') {
+          console.warn('[GoFractional] Apify Proxy unavailable on this account; retrying without proxy');
+          usedProxy = false;
+          runResponse = await postRun(false);
+          if (!runResponse.ok) {
+            throw new Error(`Apify run failed without proxy: HTTP ${runResponse.status} (${await readErrorType(runResponse)})`);
+          }
+        } else {
+          throw new Error(`Apify run failed: HTTP ${runResponse.status} (${errorType})`);
+        }
+      }
     } finally {
       clearTimeout(timeout);
-    }
-    if (!runResponse.ok) {
-      let errorType = 'unknown';
-      try {
-        const errorBody = await runResponse.json();
-        if (typeof errorBody?.error?.type === 'string') errorType = errorBody.error.type;
-      } catch { /* retain status-only error */ }
-      throw new Error(`Apify run failed: HTTP ${runResponse.status} (${errorType})`);
     }
     const runData = await runResponse.json();
     const runId = runData.data.id;
@@ -1066,7 +1098,7 @@ async function collectGoFractionalSupply(_date: string): Promise<SignalResult> {
     return {
       source: 'gofractional', signal_type: 'supply', category: 'marketplace',
       raw_value: count, normalized_value: normalizeSupplyCount(count),
-      metadata: { method: 'apify_web_scraper', metric: 'published_operator_count', operators_published: count },
+      metadata: { method: 'apify_web_scraper', metric: 'published_operator_count', operators_published: count, apify_proxy: usedProxy },
       success: true
     };
   } catch (error) {
@@ -1138,19 +1170,23 @@ async function collectDataForSeoSupplyTrends(_date: string): Promise<SignalResul
       { login: DATAFORSEO_LOGIN, password: DATAFORSEO_PASSWORD },
     );
     const timeline = parseTrendsSeries(tasks[0]);
-    const recent4 = timeline.slice(-4);
-    if (recent4.length === 0) throw new Error('DataForSEO Trends returned no graph data');
-    const termAverages: number[] = [];
-    for (let i = 0; i < SUPPLY_TRENDS_TERMS.length; i++) {
-      const avg = recent4.reduce((sum, point) => sum + safeNumber(point[i], 0), 0) / recent4.length;
-      termAverages.push(avg);
-    }
-    const overall = termAverages.length > 0 ? termAverages.reduce((a, b) => a + b, 0) / termAverages.length : 0;
+    if (timeline.length === 0) throw new Error('DataForSEO Trends returned no graph data');
+    // Same rule as the demand series, and it matters more here: these four
+    // supply-intent terms sit near Google Trends' reporting floor, so most
+    // points come back with no reading. Counting those as zero produced an
+    // all-zero average on 57 of the 113 days since 2026-06-01, each of which was
+    // then dropped as an empty supply signal while the collector reported
+    // success. Excluding unmeasured points keeps the reading honest.
+    const termAveragesRaw = SUPPLY_TRENDS_TERMS.map((_, i) => recentTermAverage(timeline, i, 4));
+    const measuredAverages = termAveragesRaw.filter((a): a is number => a !== null);
+    if (measuredAverages.length === 0) throw new Error('DataForSEO Supply Trends returned no measured points for any term');
+    const termAverages = measuredAverages;
+    const overall = termAverages.reduce((a, b) => a + b, 0) / termAverages.length;
     console.log(`[DataForSEO Supply Trends] Overall: ${overall.toFixed(1)} -> ${normalizeTrends(overall)}`);
     return {
       source: 'serpapi_supply_trends', signal_type: 'supply', category: 'supply_intent',
       raw_value: Math.round(overall * 10) / 10, normalized_value: normalizeTrends(overall),
-      metadata: { provider: 'dataforseo', reported_cost: Number(tasks[0].cost) || 0, terms: SUPPLY_TRENDS_TERMS, term_averages: termAverages }, success: true
+      metadata: { provider: 'dataforseo', reported_cost: Number(tasks[0].cost) || 0, terms: SUPPLY_TRENDS_TERMS, term_averages: termAveragesRaw, terms_measured: measuredAverages.length, terms_total: SUPPLY_TRENDS_TERMS.length }, success: true
     };
   } catch (error) {
     console.error('[DataForSEO Supply Trends] Failed:', error.message);
@@ -1406,12 +1442,67 @@ serve(async (req) => {
   const urlParams = new URL(req.url).searchParams;
   const today = urlParams.get('date') || new Date().toISOString().slice(0, 10);
   const callerAuth = req.headers.get('Authorization') || '';
-  console.log(`[Pipeline] Starting signal collection for ${today}`);
+  const force = urlParams.get('force') === 'true';
+  // Who asked. Three schedulers can reach this function (Vercel daily, Vercel
+  // weekly, the pg_cron backstops) and until now none of them left a fingerprint,
+  // so a duplicate run could be counted but not attributed. Caller is taken from
+  // an explicit ?caller= or the User-Agent, never from anything privileged.
+  const caller = urlParams.get('caller') || req.headers.get('user-agent') || 'unknown';
+
+  // Collect once per calendar day. Every collector call here costs money at a
+  // provider (DataForSEO, Apify, Adzuna, Brave), and the signals upsert is keyed
+  // on (date, source, signal_type, category) — so a second run of the same day
+  // buys nothing and pays twice. It also re-runs the FWI calculation hours after
+  // the static site was rebuilt, which is how the published page ends up showing
+  // a different number from the API.
+  //
+  // This is a guard, not a lock: the pg_cron backstops still run and still take
+  // over when the primary run failed or never happened. ?force=true is the
+  // deliberate override for a manual re-collection.
+  if (!force) {
+    // Two windows, because the duplicates arrive in two shapes. The schedulers
+    // that clash at 06:00 start within ~20s of each other, so the first run is
+    // still `running` when the second arrives and a success-only check would
+    // miss it; a later caller finds a completed run instead. An in-flight run is
+    // only honoured for IN_FLIGHT_MS so a crashed row cannot block the day.
+    const IN_FLIGHT_MS = 10 * 60 * 1000;
+    const { data: priorRuns } = await supabase
+      .from('pipeline_runs')
+      .select('id, started_at, status, records_inserted')
+      .eq('source', 'ingest-signals')
+      .in('status', ['success', 'running'])
+      .gte('started_at', `${today}T00:00:00Z`)
+      .lte('started_at', `${today}T23:59:59Z`)
+      .order('started_at', { ascending: false })
+      .limit(20);
+    // Read the body, not the status code: a completed run that wrote nothing is
+    // not a reason to skip. Only a run that actually persisted rows counts, or
+    // one that is still in flight and may yet persist some.
+    const prior = (priorRuns || []).find((r) => {
+      if (r.status === 'success') return (r.records_inserted ?? 0) > 0;
+      return Date.now() - new Date(r.started_at).getTime() < IN_FLIGHT_MS;
+    });
+    if (prior) {
+      console.log(`[Pipeline] ${today} already ${prior.status === 'running' ? 'in flight since' : 'collected by'} ${prior.started_at} — skipping. Use ?force=true to re-collect.`);
+      await supabase.from('pipeline_runs').insert({
+        source: 'ingest-signals', started_at: new Date().toISOString(),
+        completed_at: new Date().toISOString(), status: 'skipped', records_inserted: 0,
+        metadata: { target_date: today, caller, reason: prior.status === 'running' ? 'collection_in_flight' : 'already_collected_today', superseded_by: prior.id },
+      });
+      return new Response(JSON.stringify({
+        ok: true, skipped: true,
+        reason: prior.status === 'running' ? 'collection_in_flight' : 'already_collected_today',
+        date: today, prior_run_at: prior.started_at, caller,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+  }
+
+  console.log(`[Pipeline] Starting signal collection for ${today} (caller: ${caller}${force ? ', forced' : ''})`);
 
   const { data: runData } = await supabase
     .from('pipeline_runs')
     .insert({ source: 'ingest-signals', started_at: new Date().toISOString(), status: 'running',
-      metadata: { target_date: today } })
+      metadata: { target_date: today, caller, forced: force } })
     .select().single();
 
   // Per-run reset of the throttle counters so a prior warm invocation's leftover
@@ -1601,16 +1692,16 @@ serve(async (req) => {
       const errors = srcSignals.filter(s => !s.success);
       const claimedSuccess = srcSignals.some(s => s.success);
       if (claimedSuccess && persistedSources.has(src)) {
-        healthyRows.push({ source: src, last_checked: now, last_success: now, status: 'healthy', error_count: 0, metadata: { last_error: null, ...providerMetadata(src) }, updated_at: now });
+        healthyRows.push({ source: src, pipeline: 'fwi', last_checked: now, last_success: now, status: 'healthy', error_count: 0, metadata: { last_error: null, ...providerMetadata(src) }, updated_at: now });
       } else if (claimedSuccess) {
         // Reported success, persisted nothing. `last_success` is deliberately
         // omitted so the prior genuine success is preserved and the staleness
         // clock keeps running.
         const dropped = srcSignals.filter(s => s.success).length;
         console.log(`[Health] ${src} reported success but persisted 0 rows (${dropped} dropped)`);
-        failedRows.push({ source: src, last_checked: now, status: 'failed', error_count: dropped, metadata: { last_error: `Collector reported success but no reading survived validation: ${dropped} signal(s) dropped as empty or out-of-range`, ...providerMetadata(src) }, updated_at: now });
+        failedRows.push({ source: src, pipeline: 'fwi', last_checked: now, status: 'failed', error_count: dropped, metadata: { last_error: `Collector reported success but no reading survived validation: ${dropped} signal(s) dropped as empty or out-of-range`, ...providerMetadata(src) }, updated_at: now });
       } else {
-        failedRows.push({ source: src, last_checked: now, status: 'failed', error_count: errors.length, metadata: { last_error: errors[0]?.error || null, ...providerMetadata(src) }, updated_at: now });
+        failedRows.push({ source: src, pipeline: 'fwi', last_checked: now, status: 'failed', error_count: errors.length, metadata: { last_error: errors[0]?.error || null, ...providerMetadata(src) }, updated_at: now });
       }
     }
     if (healthyRows.length > 0) await supabase.from('data_source_health').upsert(healthyRows, { onConflict: 'source' });

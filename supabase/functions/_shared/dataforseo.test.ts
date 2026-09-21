@@ -8,6 +8,7 @@ import {
   parsePeopleAlsoAsk,
   parseRelatedQueries,
   parseTrendsSeries,
+  recentTermAverage,
   requireTaskResult,
   validateDataForSeoEnvelope,
 } from './dataforseo.ts';
@@ -18,6 +19,25 @@ test('parses valid Trends, related-query, organic, PAA, and Jobs fixtures', () =
     result: [{ items: [{ type: 'google_trends_graph', data: [{ values: [25, 50] }, { values: [30, 60] }] }] }],
   };
   assert.deepEqual(parseTrendsSeries(graphTask), [[25, 50], [30, 60]]);
+
+  // Absence stays absent. A null value, and every value inside a period Google
+  // marks missing_data, must come back as null rather than 0 — a 0 here is a
+  // measured floor and would be averaged in as a real reading.
+  const sparseTask = {
+    status_code: 20000,
+    result: [{ items: [{ type: 'google_trends_graph', data: [
+      { values: [10, null] },
+      { values: [20, 40], missing_data: true },
+      { values: [{ value: null }, { value: 60 }] },
+    ] }] }],
+  };
+  assert.deepEqual(parseTrendsSeries(sparseTask), [[10, null], [null, null], [null, 60]]);
+
+  // The tail average skips unmeasured points instead of counting them as zero.
+  const sparse = parseTrendsSeries(sparseTask);
+  assert.equal(recentTermAverage(sparse, 0, 4), 10);
+  assert.equal(recentTermAverage(sparse, 1, 4), 60);
+  assert.equal(recentTermAverage([[null, null]], 0, 4), null);
 
   const relatedTask = {
     status_code: 20000,

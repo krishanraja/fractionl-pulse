@@ -18,6 +18,8 @@ interface IngestResult {
   signals_collected?: number;
   confidence?: number;
   sources_healthy?: number;
+  skipped?: boolean;
+  reason?: string;
   fwi_result?: { overall_score?: number };
 }
 
@@ -103,8 +105,44 @@ async function sendAlert(
       body: JSON.stringify({ severity, subject, details }),
     });
 
-    if (!res.ok) {
-      console.error('[Alert] Edge function failed:', res.status, await res.text());
+    // Record which address actually delivered. The weekly audit previously had
+    // to infer the alert path by parsing this repo's source and a hand-written
+    // comment about domain verification; that comment was six weeks stale. A row
+    // per alert makes the delivering address an observed fact.
+    let delivery: Record<string, unknown> = { ok: res.ok };
+    if (res.ok) {
+      try {
+        const body = await res.json() as { from?: string; id?: string };
+        delivery = { ok: true, from: body.from ?? null, message_id: body.id ?? null };
+        console.log(`[Alert] Delivered from ${body.from ?? 'unknown'}`);
+      } catch {
+        delivery = { ok: true, from: null };
+      }
+    } else {
+      const errText = await res.text();
+      console.error('[Alert] Edge function failed:', res.status, errText);
+      delivery = { ok: false, status: res.status, error: errText.slice(0, 500) };
+    }
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/pipeline_runs`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_SERVICE_ROLE_KEY,
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({
+          source: 'pipeline-alert',
+          started_at: new Date().toISOString(),
+          completed_at: new Date().toISOString(),
+          status: delivery.ok ? 'success' : 'error',
+          records_inserted: 0,
+          metadata: { severity, subject, ...delivery },
+        }),
+      });
+    } catch {
+      // Alert-path logging is best-effort and must never fail the alert.
     }
   } catch (err: unknown) {
     console.error('[Alert] Send error:', errorMessage(err));
@@ -135,6 +173,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     headers,
     'ingest-signals',
   );
+
+  // ingest-signals collects once per calendar day; a second caller is answered
+  // with skipped:true rather than a second round of paid provider calls. Nothing
+  // changed, so there is nothing to regenerate and nothing to alert about.
+  const skipped = ingest.ok && ingest.result?.skipped === true;
+  if (skipped) {
+    console.log(`[Cron] ${today} already collected (${ingest.result?.reason}); nothing to do.`);
+    return res.status(200).json({
+      ok: true, skipped: true, reason: ingest.result?.reason ?? 'already_collected_today', date: today,
+    });
+  }
 
   let insights: CallResult<unknown> = { ok: false, attempts: 0 };
   if (ingest.ok) {

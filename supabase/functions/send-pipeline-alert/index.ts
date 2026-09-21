@@ -7,11 +7,19 @@ const ALERT_EMAILS = (Deno.env.get('ALERT_EMAILS') || 'krish@fractionl.ai,krisha
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
+// fractionl.ai now carries the full Resend DNS set, checked 2026-09-21:
+//   resend._domainkey.fractionl.ai  TXT  p=MIGf... (DKIM)
+//   send.fractionl.ai               TXT  v=spf1 include:amazonses.com ~all
+//   send.fractionl.ai               MX   feedback-smtp.us-east-1.amazonses.com
+//   _dmarc.fractionl.ai             TXT  v=DMARC1; p=none;
+// The 2026-08-07 note that said this domain was unverified is stale; it is the
+// sending domain the product should use, and the primary path is expected to
+// deliver. The fallback below stays as a fallback, not as the normal route.
 const ALERT_FROM = Deno.env.get('ALERT_FROM') || 'Pulse Alerts <alerts@fractionl.ai>';
-// Resend rejects sends from unverified domains (fractionl.ai is not verified on
-// this account as of 2026-08-07). resend.dev is Resend's built-in test domain:
-// it needs no verification but only delivers to the Resend account owner's
-// address — a degraded-but-deliverable path until the domain is verified.
+// resend.dev is Resend's built-in test domain: it needs no verification but only
+// delivers to the Resend account owner's address. It is the last resort when the
+// primary send is refused, and every use of it is now recorded (see below) so
+// "the alert path is degraded" is an observed fact rather than an assumption.
 const FALLBACK_FROM = 'Pulse Alerts <onboarding@resend.dev>';
 const FALLBACK_TO = (Deno.env.get('ALERT_FALLBACK_TO') || 'hello@krishraja.com')
   .split(',')

@@ -119,21 +119,49 @@ function numericValue(value: unknown): number {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
-export function parseTrendsSeries(task: DataForSeoTask<Record<string, unknown>>): number[][] {
+// Absent is null, never 0. Google Trends returns null for a term in a period it
+// has no reading for, and marks a whole incomplete period `missing_data: true`.
+// Coercing either to 0 turns "not measured" into "measured as zero", which for a
+// low-volume term set drags the tail average to 0 — the reading is then dropped
+// downstream as an empty supply signal and the day silently loses the source.
+// The repo's own rule everywhere else is that an unmeasured value stays null;
+// this parser is where that rule was being broken.
+export function parseTrendsSeries(task: DataForSeoTask<Record<string, unknown>>): Array<Array<number | null>> {
   const result = requireTaskResult(task);
   const items = result.flatMap((entry) => Array.isArray(entry.items) ? entry.items as Array<Record<string, unknown>> : []);
   const graph = items.find((item) => item.type === 'google_trends_graph');
   const points = Array.isArray(graph?.data) ? graph.data as Array<Record<string, unknown>> : [];
   return points.map((point) => {
     const values = Array.isArray(point.values) ? point.values : [];
+    if (point.missing_data === true) return values.map(() => null);
     return values.map((value) => {
-      if (value && typeof value === 'object') {
+      if (value === null || value === undefined) return null;
+      if (typeof value === 'object') {
         const record = value as Record<string, unknown>;
-        return numericValue(record.value ?? record.extracted_value);
+        const raw = record.value ?? record.extracted_value;
+        return raw === null || raw === undefined ? null : numericValue(raw);
       }
       return numericValue(value);
     });
   });
+}
+
+// The mean of the most recent `window` points that actually carry a reading for
+// this term. Points with no data are skipped rather than counted as zero, so a
+// trailing incomplete period cannot depress the average. Returns null when the
+// term has no reading at all in the series — which is a different fact from 0.
+export function recentTermAverage(
+  timeline: Array<Array<number | null>>,
+  termIndex: number,
+  window: number,
+): number | null {
+  const measured: number[] = [];
+  for (let i = timeline.length - 1; i >= 0 && measured.length < window; i--) {
+    const value = timeline[i]?.[termIndex];
+    if (typeof value === 'number') measured.push(value);
+  }
+  if (measured.length === 0) return null;
+  return measured.reduce((a, b) => a + b, 0) / measured.length;
 }
 
 export function parseRelatedQueries(task: DataForSeoTask<Record<string, unknown>>): Array<{ query: string; value: number }> {
