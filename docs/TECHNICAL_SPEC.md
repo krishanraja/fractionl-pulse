@@ -20,8 +20,8 @@ _Source of truth for the system as it ships today. 21 tracked inputs, core and s
                                ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │                 VERCEL (pulse.fractionl.ai)                       │
-│  Static SPA · /api/cron/daily-ingest · /api/cron/weekly-ingest    │
-│  /api/health  ·  Vercel Cron triggers                             │
+│  Static SPA · /api/cron/daily-ingest · /api/health                │
+│  Vercel Cron triggers                                             │
 └──────────────────────────────┬───────────────────────────────────┘
                                │ Service-role JWT
                                ▼
@@ -44,7 +44,7 @@ _Source of truth for the system as it ships today. 21 tracked inputs, core and s
 | Function | Purpose | Trigger |
 |----------|---------|---------|
 | `prepare-dataforseo-jobs` | Submits six idempotent, normal-priority Google Jobs tasks and records their non-secret task IDs in `pipeline_runs`; chargeable POSTs are never automatically retried. A manual `retry_rejected_auth=true` is accepted only for a definitive HTTP 401 ledger with zero task IDs | Supabase `pg_cron` at 05:00 UTC + manual |
-| `ingest-signals` | Pulls 21 tracked inputs, normalizes 0–100, runs anomaly guard, upserts `signals`, then fires `calculate-fwi` | Vercel daily and Monday schedules, Supabase Monday backstop, and manual |
+| `ingest-signals` | Pulls 21 tracked inputs, normalizes 0–100, runs anomaly guard, upserts `signals`, then fires `calculate-fwi`. Collects once per calendar day; later callers get `{"skipped": true}` unless `?force=true` | Vercel daily 06:00 UTC (primary), Supabase `pg_cron` 08:00 UTC (backstop), and manual |
 | `calculate-fwi` | Composites signals into FWI and writes `fwi_scores`; role movers compare with the current six-role average, while non-role movers compare with the prior observation | Called by `ingest-signals` |
 | `generate-pulse-insights` | GPT-4o-mini insight cards, 12-hour cache via `valid_until`; anchors related queries to the latest score date. Authentication is the gateway's JWT verification (`verify_jwt = true` in `supabase/config.toml`) plus the origin allowlist. The in-code comparison of the bearer against the service-role key was removed on 2026-08-29 (`7df98a5`): it had returned 403 to every daily cron call since 2026-08-10 | Internal pipeline invocation from `api/cron/daily-ingest.ts` with the service-role bearer |
 | `fwi-api` | Public REST API: `/current`, `/history?months=N`, `/trigger`. Accepts an optional `x-api-key` header for per-key operational rate accounting; anonymous reads stay free | Always-on |
@@ -58,16 +58,43 @@ _Source of truth for the system as it ships today. 21 tracked inputs, core and s
 ```json
 {
   "crons": [
-    { "path": "/api/cron/daily-ingest",  "schedule": "0 6 * * *" },
-    { "path": "/api/cron/weekly-ingest", "schedule": "0 6 * * 1" }
+    { "path": "/api/cron/daily-ingest", "schedule": "0 6 * * *" }
   ]
 }
 ```
 
-- `daily-ingest.ts`: runs full ingest and insights with two retries and 5-second backoff, writes `pipeline_runs`, and fires `send-pipeline-alert` on failure.
-- `weekly-ingest.ts`: Monday backstop run with the same retry envelope.
-- Production readback on 11 August 2026 showed Supabase `pg_cron` preparing DataForSEO Google Jobs tasks at 05:00 UTC and retaining a Monday 06:00 UTC ingest backstop. It did not show the older Supabase daily-ingest, daily-insights, or daily-redeploy jobs defined in historical migrations.
-- Vercel schedules the main daily ingest at 06:00 UTC and a redundant Monday run. Neither Vercel route submits paid DataForSEO Jobs tasks.
+- `daily-ingest.ts`: runs full ingest and insights with two retries and 5-second
+  backoff, writes `pipeline_runs`, and fires `send-pipeline-alert` on failure. It
+  is the primary and the only Vercel cron. A `{"skipped": true}` response means
+  the day was already collected; it then does nothing further and does not alert.
+- `weekly-ingest.ts` still exists as a manually invocable route but is no longer
+  scheduled. Its Monday 06:00 UTC schedule was removed on 2026-09-21: the daily
+  cron already covers Monday, so it was a third simultaneous collection.
+
+### Full daily schedule (production readback, 2026-09-21)
+
+| UTC | Job | Where | What it does |
+|---|---|---|---|
+| 05:00 | `pulse-prepare-dataforseo-jobs` | Supabase `pg_cron` | Submits the paid Google Jobs tasks |
+| 06:00 | `daily-ingest` | Vercel Cron | **Primary.** Full collection, insights, alerting |
+| 06:20 | `pulse-daily-insights` | Supabase `pg_cron` | Insights refresh |
+| 06:40 | `pulse-daily-redeploy` | Supabase `pg_cron` | Prerender rebuild via the Vercel deploy hook |
+| 08:00 | `pulse-daily-ingest` | Supabase `pg_cron` | **Backstop.** No-ops when the primary collected |
+| 08:40 | `pulse-backstop-redeploy` | Supabase `pg_cron` | Second rebuild, for the day the backstop ran |
+
+Read the backstop as a backstop, not a second primary. `ingest-signals` collects
+once per calendar day and answers any later caller with `{"skipped": true}`, so
+the 08:00 job only does real work when the 06:00 run produced nothing. Before
+2026-09-21 it ran at 06:00 alongside the primary and performed a full second
+collection every day — paying every provider twice for rows the upsert then
+deduplicated — and `weekly-fwi-ingest` (migration 002) added a third on Mondays.
+That job is unscheduled; `018_ingest_schedule.sql` is the change.
+
+`?force=true` overrides the guard for a deliberate manual re-collection. Runs
+record their caller in `pipeline_runs.metadata->>'caller'`, so a future duplicate
+is attributable rather than merely countable.
+
+- Neither Vercel route submits paid DataForSEO Jobs tasks.
 - The legacy `SERP_API_KEY` may remain in deployed secrets temporarily for rollback, but no current function reads it or calls `serpapi.com`.
 
 ---
