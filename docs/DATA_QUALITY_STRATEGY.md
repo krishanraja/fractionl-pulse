@@ -124,13 +124,24 @@ this programme runs on.
 - BLS JOLTS releases monthly, so the same n ≈ 12-15 threshold is 12+ months
   away on the currently wired series regardless of how much BLS history is
   pulled — the FWI's own daily era, not BLS's, is the limiting length.
-- The BLS series currently collected is total nonfarm job openings
-  (`JTS000000000000000JOL`), not the professional & business services series
-  this section names as the better anchor (`JTS540099000000000JOL`, unverified
-  spelling — needs confirming against the BLS series directory). Swapping the
-  series ID in `ingest-signals`' `BLS_SERIES` is a small, separate change, not
-  made in this read-only session; worth doing before the next monthly release
-  so the better series starts accumulating history now rather than later.
+- **Done 2026-09-24:** the professional & business services series this
+  section names as the better anchor is now collected. `JTS540099000000000JOL`
+  is confirmed correct against the BLS series directory
+  (`download.bls.gov/pub/time.series/jt/jt.series`): seasonally adjusted, job
+  openings level, industry code `540099` = "Professional and business
+  services" per `jt.industry`, covering 2000-M12 to 2026-M07 — the same
+  coverage as the total nonfarm series. It is added to `ingest-signals`'
+  `BLS_SERIES` rather than replacing total nonfarm, under its own category
+  `job_openings_pbs`. Two reasons: the series sit at different levels
+  (trailing-12 means 1,237 vs 7,106 thousand openings), so reusing the
+  `job_openings` category would write a step change into the middle of the
+  column this script correlates on and manufacture a spurious result; and
+  both series ship in the one BLS request that already runs, so keeping the
+  broader control costs nothing. Both stay `signal_type: 'context'`, so the
+  composite, the weights and the published input count are unchanged.
+  Its own n starts at zero: the first release lands at the next monthly
+  JOLTS publication, so it reaches n ≈ 12-15 around late 2027. That is the
+  cost of not having wired it sooner, and it is why it is wired now.
 
 **Recommendation:** re-run `node scripts/validate-anchor.mjs` in this same
 Thursday session once FRED ICSA crosses ~12 releases (~late November 2026);

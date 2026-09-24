@@ -49,10 +49,14 @@ const FWI_FIELDS = { overall: 'overall_score', demand: 'demand_score', supply: '
 
 // Context sources currently collected that are candidate anchors. Verified
 // against supabase/functions/calculate-fwi/index.ts and ingest-signals: all
-// three are `signal_type: 'context'`, never read by calculate-fwi, so none
+// are `signal_type: 'context'`, never read by calculate-fwi, so none
 // of them feed the thing they would validate.
 const ANCHORS = [
-  { source: 'bls', category: 'job_openings', label: 'BLS JOLTS job openings (total nonfarm — not yet the professional/business-services-specific series named in §1)' },
+  { source: 'bls', category: 'job_openings', label: 'BLS JOLTS job openings (total nonfarm)' },
+  // Wired 2026-09-24, so its history starts then and it will report no rows
+  // until the first monthly release lands. This is the anchor §1 actually
+  // names; total nonfarm stays above as the broader control.
+  { source: 'bls', category: 'job_openings_pbs', label: 'BLS JOLTS job openings (professional & business services — the §1 anchor, collected from 2026-09-24)' },
   { source: 'fred', category: 'icsa', label: 'FRED initial jobless claims (ICSA)' },
   { source: 'census_acs', category: 'self_employment', label: 'Census ACS self-employment' },
 ];

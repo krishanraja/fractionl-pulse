@@ -143,6 +143,18 @@ const WIKIPEDIA_PAGES = [
 
 const BLS_SERIES = [
   { id: 'JTS000000000000000JOL', name: 'JOLTS Job Openings', category: 'job_openings', baseline: 7000 },
+  // The professional & business services cut is the anchor
+  // docs/DATA_QUALITY_STRATEGY.md §1 names as the closest official measure of
+  // the demand the FWI claims to track. Collected under its own category
+  // rather than replacing total nonfarm: the two sit at different levels
+  // (~1,200 vs ~7,100 thousand openings), so reusing `job_openings` would put
+  // a step change mid-series in the column validate-anchor.mjs correlates on.
+  // Same BLS request, no extra call. Series ID, seasonal adjustment and
+  // coverage (2000-M12 to 2026-M07) verified 2026-09-24 against the BLS
+  // series directory at download.bls.gov/pub/time.series/jt/jt.series;
+  // baseline is the trailing-12-month mean (1,237) rounded as for total
+  // nonfarm (7,000 against a 7,106 mean).
+  { id: 'JTS540099000000000JOL', name: 'JOLTS Job Openings (Professional & Business Services)', category: 'job_openings_pbs', baseline: 1200 },
   { id: 'LNS14000000', name: 'Unemployment Rate', category: 'unemployment', baseline: 4.0 },
   { id: 'CES0500000003', name: 'Avg Hourly Earnings (Private)', category: 'wages', baseline: 35 },
 ];
