@@ -80,6 +80,63 @@ r = X, n = Y". That single sentence is worth more than five more inputs.
 measuring conversation rather than market, and it should say so on the
 methodology page rather than wait to be caught.
 
+**First measurement, 2026-09-24** (`scripts/validate-anchor.mjs`, daily era
+2026-06-01 to today, lag 0, one row per official release rather than one row
+per day — see the script header for why a daily join would overstate n).
+
+```
+BLS JOLTS job openings (total nonfarm)        n = 5 releases
+  r(FWI demand)   = -0.326   95% CI [-0.94, 0.78]
+  r(FWI overall)  = -0.447   95% CI [-0.95, 0.72]
+
+FRED initial jobless claims (ICSA)            n = 5 releases
+  r(FWI demand)   =  0.312   95% CI [-0.79, 0.94]
+  r(FWI culture)  = -0.902   95% CI [-0.99, -0.10]
+
+Census ACS self-employment                    1 distinct value in 116 days
+  skipped — zero variance across the daily era, not usable as an anchor
+```
+
+**The result is not a correlation, it is that the pipeline is too young to
+validate yet, and that is worth knowing precisely rather than approximately.**
+Every anchor except Census ACS produced *a* number, and every CI except one
+spans nearly the full [-1, 1] range — at n = 4-5 independent releases that is
+the correct CI, not a bug, and no coefficient here should be read as evidence
+of anything. The one exception, FRED ICSA against the culture pillar
+(r = -0.90, CI excludes zero), is flagged and explicitly not claimed: eight
+pillar × anchor pairs were tested at n = 5, and one CI excluding zero by
+chance alone is the expected outcome of that many comparisons, not a
+discovery. It should be re-checked once FRED has more releases, not acted on.
+
+**Census ACS fails the same test `serpapi_supply_trends` failed** for a
+different reason: it collects successfully every day and carries zero
+information, because ACS 5-year estimates update annually and the collector
+has only ever seen the one 2023 value. It should not be treated as a
+candidate anchor going forward; it may still be worth keeping as a slow
+background context signal, but it cannot validate anything on the timescale
+this programme runs on.
+
+**What would unblock this, in order of speed:**
+- FRED ICSA is the fastest path — it releases weekly and Pulse only started
+  collecting it 2026-08-11 (5 releases so far). Continuing collection with no
+  other change reaches n ≈ 12-15 (the point a CI stops spanning the full
+  range) in roughly 7-10 more weeks, around late November 2026.
+- BLS JOLTS releases monthly, so the same n ≈ 12-15 threshold is 12+ months
+  away on the currently wired series regardless of how much BLS history is
+  pulled — the FWI's own daily era, not BLS's, is the limiting length.
+- The BLS series currently collected is total nonfarm job openings
+  (`JTS000000000000000JOL`), not the professional & business services series
+  this section names as the better anchor (`JTS540099000000000JOL`, unverified
+  spelling — needs confirming against the BLS series directory). Swapping the
+  series ID in `ingest-signals`' `BLS_SERIES` is a small, separate change, not
+  made in this read-only session; worth doing before the next monthly release
+  so the better series starts accumulating history now rather than later.
+
+**Recommendation:** re-run `node scripts/validate-anchor.mjs` in this same
+Thursday session once FRED ICSA crosses ~12 releases (~late November 2026);
+until then, no anchor here supports a claim in either direction and none
+should be published.
+
 ---
 
 ## 2. Independence: publish the effective number of inputs
