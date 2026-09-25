@@ -323,10 +323,43 @@ decoration with a running cost. Four consecutive weeks below the floor and it is
 proposed for retirement, with the measured impact stated, the way §2 of
 `DATA_SOURCES_ROADMAP.md` now states it for `serpapi_supply_trends`.
 
-**Restatement rule, and it is absolute.** No change made under this strategy
-restates published history. A methodology change gets an effective date and a
-recorded before/after impact. The series is allowed to have a seam; it is not
-allowed to have a rewrite.
+**Built 2026-09-25** (`scripts/quality-metrics.mjs`, outcome 4 — a quality
+primitive): the floor rule as written names a specific number, "the composite
+changes by less than the published error band" if a source is removed, and
+nothing computed that number. §2 measured redundancy (mean |r| against other
+inputs) and §3 measured the band, but redundancy is a proxy for the floor
+rule, not the test itself — a source can correlate with nothing and still
+move the composite by less than noise. The script now does the literal test:
+for every day a source contributed, it recomputes the composite with that
+source's rows pulled from its pillar and records the swing, then compares the
+mean swing to the 28-day mean IQR band from §3.
+
+**First read, 2026-09-25**, 117 days, 16 composite-eligible sources:
+
+```
+Band (28-day mean IQR)                              6.79 points
+Every one of 16 sources reads below it, range 0.30 (newsapi) to 5.40 (serpapi_linkedin)
+```
+
+**This is a result, not a bug, and it changes what the floor rule can mean in
+practice.** Every pillar but supply carries several sources, so one source's
+share of a pillar's mean is diluted by the others in it, while the band is
+resampled across all three pillars at once — noise that accumulates across
+the whole composite against a swing that is confined to one pillar. Applying
+the rule exactly as written, every source in a multi-source pillar will
+structurally under-run a composite-wide band, four weeks running, regardless
+of whether it is redundant. Read literally, the rule would propose most of
+the index for retirement at once, which cannot be the intent — §5 exists to
+retire one input at a time on a measured case, not to empty the pillars.
+
+**Decision needed, not yet Krish's call:** compare a source's swing to a
+band scoped to its own pillar (recomputed the same way, resampling only that
+pillar) rather than the whole-composite band, or keep the composite-wide
+band but raise or lower the bar it is compared to. No source is proposed for
+retirement from this first read either way — one week is one week, and §5
+requires four consecutive reads under whichever floor is adopted. The number
+above is recorded so the four-week clock, once it starts, starts from a
+comparison that has been thought through rather than the first one that ran.
 
 ---
 
