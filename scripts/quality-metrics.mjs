@@ -138,6 +138,69 @@ function eigenvalues(M) {
   return A.map((row, i) => row[i]).sort((a, b) => b - a);
 }
 
+// ----------------------------------------------------------- marginal contribution
+
+// Weighted composite from a {pillar: [values]} map — the same arithmetic
+// calculate-fwi applies, with no resampling. Used both for "the composite as
+// actually observed" and for "the composite with one source's rows removed".
+function compositeOf(byPillar) {
+  let composite = 0, weightUsed = 0;
+  for (const [pillar, weight] of Object.entries(PILLAR_WEIGHTS)) {
+    const vals = byPillar[pillar];
+    if (!vals || vals.length === 0) continue;
+    composite += (mean(vals)) * weight;
+    weightUsed += weight;
+  }
+  return weightUsed > 0 ? composite / weightUsed : null;
+}
+
+// docs/DATA_QUALITY_STRATEGY.md §5, the floor rule: an input whose removal
+// "changes the composite by less than the published error band" is not
+// evidence, it is decoration with a running cost. §2 (redundancy) and §3
+// (the band) were both built; nothing computed the one number the rule
+// actually tests against. This is that number: for every day a source
+// contributed, recompute the composite with that source's rows pulled out of
+// its pillar, and average the swing. A source whose mean swing sits under the
+// band moves the number less than resampling noise already does.
+function marginalContribution(daySourcePillar, sources) {
+  const bySource = {};
+  for (const s of sources) bySource[s] = { deltas: [], days: 0 };
+
+  for (const pillars of Object.values(daySourcePillar)) {
+    const all = {};
+    for (const [pillar, entries] of Object.entries(pillars)) all[pillar] = entries.map((e) => e.v);
+    const withAll = compositeOf(all);
+    if (withAll == null) continue;
+
+    const touchedBySource = new Map();
+    for (const [pillar, entries] of Object.entries(pillars)) {
+      for (const e of entries) {
+        if (!bySource[e.source]) continue;
+        (touchedBySource.get(e.source) ?? touchedBySource.set(e.source, new Set()).get(e.source)).add(pillar);
+      }
+    }
+
+    for (const [source, pillarsTouched] of touchedBySource) {
+      const without = {};
+      for (const [pillar, entries] of Object.entries(pillars)) {
+        without[pillar] = pillarsTouched.has(pillar)
+          ? entries.filter((e) => e.source !== source).map((e) => e.v)
+          : entries.map((e) => e.v);
+      }
+      const withoutSource = compositeOf(without);
+      if (withoutSource == null) continue;
+      bySource[source].deltas.push(withAll - withoutSource);
+      bySource[source].days += 1;
+    }
+  }
+
+  return sources.map((s) => {
+    const { deltas, days } = bySource[s];
+    const meanAbsDelta = deltas.length ? mean(deltas.map(Math.abs)) : null;
+    return { source: s, days, meanAbsDelta };
+  });
+}
+
 // ------------------------------------------------------------------ bootstrap
 
 function mulberry32(seed) {
@@ -191,7 +254,7 @@ async function run() {
   // so a source emitting six role rows does not outvote one emitting a single
   // aggregate. Context signals are excluded — they are not in the composite.
   const series = {}, pillarOf = {};
-  const dayPillar = {};
+  const dayPillar = {}, daySourcePillar = {};
   for (const r of rows) {
     const pillar = TYPE_TO_PILLAR[r.signal_type];
     if (!pillar) continue;
@@ -203,6 +266,7 @@ async function run() {
     (series[r.source][d] ||= []).push(v);
     pillarOf[r.source] = pillar;
     ((dayPillar[d] ||= {})[pillar] ||= []).push(v);
+    (((daySourcePillar[d] ||= {})[pillar] ||= [])).push({ source: r.source, v });
   }
   for (const src of Object.keys(series)) {
     for (const d of Object.keys(series[src])) series[src][d] = mean(series[src][d]);
@@ -251,6 +315,12 @@ async function run() {
     const b = bootstrapDay(dayPillar[d], 20260921 + i);
     return b && { date: d, ...b, iqr: b.p75 - b.p25, span90: b.p95 - b.p05 };
   }).filter(Boolean);
+  const band = bands.length ? mean(bands.map((b) => b.iqr)) : null;
+
+  const marginal = marginalContribution(daySourcePillar, sources)
+    .map((m) => ({ ...m, meanAbsDelta: m.meanAbsDelta == null ? null : Math.round(m.meanAbsDelta * 1000) / 1000,
+                   belowFloor: band != null && m.meanAbsDelta != null ? m.meanAbsDelta < band : null }))
+    .sort((a, b) => (a.meanAbsDelta ?? Infinity) - (b.meanAbsDelta ?? Infinity));
 
   return {
     window: { since: SINCE, days: days.length, sources: n },
@@ -265,6 +335,8 @@ async function run() {
       iqr: Math.round(b.iqr * 10) / 10,
       span90: Math.round(b.span90 * 10) / 10,
     })),
+    band: band == null ? null : Math.round(band * 100) / 100,
+    marginalContribution: marginal,
   };
 }
 
@@ -304,6 +376,18 @@ function report(x) {
     out.push(`  Widest day          ${widest.date}  90% span ${widest.span90} points`);
     out.push('  A day where the sources agree and a day where they disagree can have the');
     out.push('  same completeness. This is the difference completeness cannot report.');
+  }
+  out.push('');
+
+  if (x.marginalContribution.length && x.band != null) {
+    out.push(`MARGINAL CONTRIBUTION — leave-one-out swing vs the ${x.band.toFixed(2)}pt band (§5 floor rule)`);
+    out.push('  Mean |Δ composite| on days the source contributed, if it were dropped that day.');
+    for (const m of x.marginalContribution) {
+      const flag = m.belowFloor ? '  BELOW FLOOR' : '';
+      out.push(`  ${m.meanAbsDelta == null ? ' n/a' : m.meanAbsDelta.toFixed(3).padStart(6)}  ${m.source.padEnd(22)} (${m.days}d)${flag}`);
+    }
+    out.push('  Below floor once is not a retirement case — §5 requires four consecutive');
+    out.push('  weekly reads below the band before a source is proposed for retirement.');
   }
   return out.join('\n');
 }
