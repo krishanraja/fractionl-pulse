@@ -108,6 +108,37 @@ pillar × anchor pairs were tested at n = 5, and one CI excluding zero by
 chance alone is the expected outcome of that many comparisons, not a
 discovery. It should be re-checked once FRED has more releases, not acted on.
 
+**Second measurement, 2026-10-01** (`scripts/validate-anchor-weekly.mjs`,
+`npm run validate:weekly`). The 2026-09-24 note above says FRED ICSA is capped
+at n = 5-6 until late November because Pulse only started collecting it on
+2026-08-11. **That cap was wrong, and it is recorded as wrong.** ICSA is public
+back to 1967 on the keyless FRED CSV endpoint; the only real limit is the FWI's
+own daily era. Weekly FWI means against weekly ICSA give n = 15 complete weeks
+(2026-06-13 to 2026-09-19) at lag 0, not 6.
+
+```
+FWI demand vs ICSA, lag 0       levels   n = 15  r = -0.008  CI [-0.52, 0.51]
+FWI overall vs ICSA, lag 0      levels   n = 15  r =  0.179  CI [-0.37, 0.63]
+FWI demand vs ICSA, lag 0       WoW chg  n = 14  r =  0.739  CI [ 0.34, 0.91]   Spearman 0.741
+FWI overall vs ICSA, lag 0      WoW chg  n = 14  r =  0.641  CI [ 0.17, 0.87]
+Lags 1-6, all four fields, levels and changes: every other CI spans zero
+(n = 8-14); no lead of the FWI over claims is visible at any lag tested.
+```
+
+**What was measured:** levels show no relationship at any lag. Week-over-week
+changes in the demand pillar move with changes in claims in the same week
+(r = 0.74, n = 14), robust to dropping any single week (0.63 to 0.79) and to
+rank correlation. **What is inferred, and not claimed:** this is 2 hits out of 56
+comparisons (7 lags x 4 fields x 2 transforms), the overall hit is not
+independent of the demand hit, the sign was not pre-registered, and the
+strongest single week is the seasonal July auto-retooling dip in claims. It is a
+lead for a pre-registered retest, not a validation. It is also lag 0, not the
+"FWI leads the official series" claim §1 says is worth having, and that claim
+is not supported: nothing at lags 1-6 clears zero. **Pre-registered for the
+retest:** demand-pillar WoW change vs ICSA WoW change, lag 0, positive sign,
+single test, to be read once n >= 24 weeks (about 2026-11-21), with the result
+reported whichever way it falls.
+
 **Census ACS fails the same test `serpapi_supply_trends` failed** for a
 different reason: it collects successfully every day and carries zero
 information, because ACS 5-year estimates update annually and the collector
@@ -143,10 +174,9 @@ this programme runs on.
   JOLTS publication, so it reaches n ≈ 12-15 around late 2027. That is the
   cost of not having wired it sooner, and it is why it is wired now.
 
-**Recommendation:** re-run `node scripts/validate-anchor.mjs` in this same
-Thursday session once FRED ICSA crosses ~12 releases (~late November 2026);
-until then, no anchor here supports a claim in either direction and none
-should be published.
+**Recommendation:** no anchor here supports a published claim yet. Re-run
+`npm run validate:weekly` once the weekly pairing reaches 24 weeks (about
+2026-11-21) against the single pre-registered test above.
 
 ---
 
