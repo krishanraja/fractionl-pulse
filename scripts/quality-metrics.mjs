@@ -87,6 +87,11 @@ async function restAll(path) {
 // ---------------------------------------------------------------- correlation
 
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+const median = (xs) => {
+  if (!xs.length) return null;
+  const s = [...xs].sort((a, b) => a - b), m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
 
 // Pairwise-complete Pearson. Sources come online at different dates and miss
 // different days, so restricting to rows complete across all sources would throw
@@ -199,6 +204,69 @@ function marginalContribution(daySourcePillar, sources) {
     const meanAbsDelta = deltas.length ? mean(deltas.map(Math.abs)) : null;
     return { source: s, days, meanAbsDelta };
   });
+}
+
+// §5 floor rule, pillar-scoped (2026-10-08). The composite-wide band above is
+// structurally unreachable: a source's removal moves one pillar, the band is
+// noise across three. This compares like with like, in pillar points: the swing
+// in the pillar MEAN when the source is dropped, against the bootstrap IQR of
+// that same pillar mean (resampling which of the pillar's sources arrived).
+// Also reported: the swing against the median swing of the source's pillar
+// peers, because leave-one-out swing is bounded by roughly sd/(k-1) while the
+// bootstrap IQR is roughly 1.35*sd/sqrt(k), so a source can sit under the
+// pillar band by construction. The peer ratio is what can single one out.
+// Days where the pillar has a single source are skipped: dropping it empties
+// the pillar, which is a coverage question, not a marginal one.
+function pillarFloor(daySourcePillar, sources, pillarOf, days) {
+  const perDay = {}; // date -> { source -> |Δ pillar mean| }, and date -> pillar -> IQR
+  const iqrOf = {};
+  days.forEach((d, di) => {
+    for (const [pillar, entries] of Object.entries(daySourcePillar[d] || {})) {
+      const bySrc = {};
+      for (const e of entries) (bySrc[e.source] ||= []).push(e.v);
+      const srcs = Object.keys(bySrc);
+      if (srcs.length < 2) continue;
+      const vals = entries.map((e) => e.v);
+      const full = mean(vals);
+      const b = bootstrapDay({ [pillar]: vals }, 20261008 + di);
+      if (!b) continue;
+      (iqrOf[d] ||= {})[pillar] = b.p75 - b.p25;
+      for (const s of srcs) {
+        if (!sources.includes(s)) continue;
+        const rest = entries.filter((e) => e.source !== s).map((e) => e.v);
+        (perDay[d] ||= {})[s] = Math.abs(full - mean(rest));
+      }
+    }
+  });
+
+  const windowStats = (windowDays) => sources.map((s) => {
+    const p = pillarOf[s];
+    const swings = windowDays.map((d) => perDay[d]?.[s]).filter((v) => v != null);
+    const bands = windowDays.filter((d) => perDay[d]?.[s] != null).map((d) => iqrOf[d][p]);
+    const peerMed = median(windowDays.flatMap((d) =>
+      Object.entries(perDay[d] || {}).filter(([o]) => o !== s && pillarOf[o] === p).map(([, v]) => v)));
+    return { source: s, pillar: p, days: swings.length,
+             swing: swings.length ? mean(swings) : null,
+             band: bands.length ? mean(bands) : null,
+             peerMedian: peerMed };
+  });
+
+  // Four consecutive non-overlapping 7-day windows ending at the latest day:
+  // the §5 clock, evaluated retroactively from history rather than started
+  // from zero, since the rows already exist.
+  const weeks = [3, 2, 1, 0].map((i) => days.slice(Math.max(0, days.length - 7 * (i + 1)), days.length - 7 * i));
+  const weekly = weeks.map(windowStats);
+  const overall = windowStats(days.slice(-28));
+  return overall.map((o, idx) => {
+    const reads = weekly.map((w) => w[idx]);
+    const belowBand = reads.map((r) => r.swing != null && r.band != null && r.swing < r.band);
+    const belowPeers = reads.map((r) => r.swing != null && r.peerMedian != null && r.swing < 0.5 * r.peerMedian);
+    return { ...o,
+      peerRatio: o.swing != null && o.peerMedian ? o.swing / o.peerMedian : null,
+      weeksBelowBand: belowBand.filter(Boolean).length,
+      weeksBelowPeers: belowPeers.filter(Boolean).length,
+      weekReads: reads.map((r) => r.swing == null ? null : Math.round(r.swing * 100) / 100) };
+  }).sort((a, b) => (a.peerRatio ?? Infinity) - (b.peerRatio ?? Infinity));
 }
 
 // ------------------------------------------------------------------ bootstrap
@@ -322,6 +390,8 @@ async function run() {
                    belowFloor: band != null && m.meanAbsDelta != null ? m.meanAbsDelta < band : null }))
     .sort((a, b) => (a.meanAbsDelta ?? Infinity) - (b.meanAbsDelta ?? Infinity));
 
+  const pillarFloors = pillarFloor(daySourcePillar, sources, pillarOf, days);
+
   return {
     window: { since: SINCE, days: days.length, sources: n },
     effectiveInputs: effective,
@@ -337,6 +407,11 @@ async function run() {
     })),
     band: band == null ? null : Math.round(band * 100) / 100,
     marginalContribution: marginal,
+    pillarFloor: pillarFloors.map((f) => ({ ...f,
+      swing: f.swing == null ? null : Math.round(f.swing * 1000) / 1000,
+      band: f.band == null ? null : Math.round(f.band * 1000) / 1000,
+      peerMedian: f.peerMedian == null ? null : Math.round(f.peerMedian * 1000) / 1000,
+      peerRatio: f.peerRatio == null ? null : Math.round(f.peerRatio * 100) / 100 })),
   };
 }
 
@@ -388,6 +463,15 @@ function report(x) {
     }
     out.push('  Below floor once is not a retirement case — §5 requires four consecutive');
     out.push('  weekly reads below the band before a source is proposed for retirement.');
+  }
+  if (x.pillarFloor.length) {
+    out.push('');
+    out.push('PILLAR-SCOPED FLOOR — swing in the pillar mean vs that pillar\'s own bootstrap IQR, last 28 days');
+    out.push('  swing/band in pillar points. peer = swing / median swing of same-pillar peers.');
+    out.push('  wk<band / wk<half-peer = of the last 4 weekly windows, how many read under each test.');
+    for (const f of x.pillarFloor) {
+      out.push(`  ${f.pillar.padEnd(7)} ${f.source.padEnd(21)} swing ${f.swing == null ? ' n/a' : f.swing.toFixed(2).padStart(5)}  band ${f.band == null ? ' n/a' : f.band.toFixed(2).padStart(5)}  peer ${f.peerRatio == null ? ' n/a' : f.peerRatio.toFixed(2).padStart(4)}  wk<band ${f.weeksBelowBand}/4  wk<half-peer ${f.weeksBelowPeers}/4  (${f.days}d)`);
+    }
   }
   return out.join('\n');
 }
