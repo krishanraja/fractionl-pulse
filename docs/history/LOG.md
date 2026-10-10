@@ -4,6 +4,13 @@ Newest first. Entries are written by the docs steward (see the steward link in
 NOW.md) and by humans doing the same job by hand. Nothing in this file
 describes current behaviour; NOW.md and the state doc do.
 
+## 2026-10-10
+
+- reconciled at `a370f9d`: `NOW.md`. No non-steward commit since the last run (the only commit in range was the steward's own 2026-10-06 reconcile), so head is unchanged and `as_of` moved to 2026-10-10. Nothing in the code or the other documents moved.
+- rolled from NOW.md: 2026-09-08 **`AGENTS.md` added, carrying the shared canon block rendered from `krishanraja/ai-harness`** (`fc91783`, synced twice since to release v2026.09.08.2 at `7c124e2`; sha `0cb0b3e5e848`). Why: every AGENTS.md in the fleet now reads off one canon; before this commit the canon existed but this repository referenced it zero times. The block is marker delimited and carries the sha256 of its own body, so drift is arithmetic rather than judgement; the docs steward never edits between the markers. Codex reads `AGENTS.md` natively, and it states that this repository's own rules (`docs/AGENT_BRIEFING.md`, `docs/DOCUMENTATION_GOVERNANCE.md`) outrank the canon on structure, naming, voice, stamps and archive location.
+- rolled from NOW.md: 2026-09-08 **Freshness claim in the `AGENTS.md` header corrected** (`41bea6d`, outside the canon markers). Why: the header said `NOW.md` is reconciled against the code on every push to `main` and nightly. The push half was never true: `claude-code-action` refuses the push event, so the steward had failed on every push since it shipped (the same defect the steward runbook records: shipped 2026-09-07 with `push` in the trigger list and no mode split, failing every push for a day). The header now says the push run validates only and the nightly run does the reconciling.
+- no moves. `AGENTS.md`'s canon block was read and left alone, per the runbook's territory split.
+
 ## 2026-10-06
 
 - reconciled at `a370f9d`: `NOW.md`. Head moved from `38d6d49` to `a370f9d`. The only commit in the range is the canon block sync (`a370f9d`), which touched `AGENTS.md` between the `krish-canon` markers and nothing else. No documentation consequence; production and the code were not re-read.
