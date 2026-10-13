@@ -361,6 +361,50 @@ requires four consecutive reads under whichever floor is adopted. The number
 above is recorded so the four-week clock, once it starts, starts from a
 comparison that has been thought through rather than the first one that ran.
 
+**Built 2026-10-08** (`scripts/quality-metrics.mjs`, outcome 4, finishing the
+half-built item above). The band-scope decision was pending, so the script now
+computes the pillar-scoped version and tests whether it can work at all.
+Measured, 130 days of daily era, last 28 days for the reads:
+
+```
+Pillar-scoped band (swing in the pillar mean vs that pillar's own bootstrap IQR)
+  13 of 16 sources read BELOW it in all four weekly windows.
+  The only ones above: serpapi_linkedin and brave_talent (supply, 2-3 sources).
+```
+
+**The pillar-scoped band does not rescue the rule, and the reason is
+structural, not empirical.** Dropping one of k sources moves the pillar mean by
+about sd/(k-1); the bootstrap IQR of that mean is about 1.35·sd/√k. For any k
+of 3 or more the swing is the smaller number whatever the source does. Culture
+has 12 sources, so a pillar-scoped floor flags the whole pillar. Both scopes of
+"swing below the band" are therefore uninformative; this is inference from the
+algebra, checked against the output above, not a separate measurement. The
+2026-09-25 composite-wide read and this one agree for the same underlying
+reason.
+
+What can single a source out is the swing **relative to its same-pillar
+peers** (median of their swings, which controls for k). Under a provisional
+test of "under half the peer median in all four weekly windows", exactly two
+sources qualify, both culture:
+
+```
+newsapi      peer ratio 0.31  4/4 weeks   weight 0.04   composite swing 0.35 pts
+brave_news   peer ratio 0.40  4/4 weeks   weight 0.03   composite swing 0.61 pts
+```
+(`brave_web` is 3/4, `hn` and `gofractional` 2/4 on 16-17 days only, so not
+read.) The 0.5 threshold is mine, chosen before looking at where the gap falls
+but not adopted by Krish; treat it as a candidate definition, not the floor
+rule. A low ratio means the source sits close to the pillar consensus. That
+can mean redundant, or it can mean a good instrument that agrees with its
+peers; the correlation matrix says no pair reaches |r| 0.8, which argues for
+the latter. So no retirement is proposed. Next week's read says whether the
+pattern holds on a fifth week.
+
+**Decision needed (Krish):** adopt the peer-relative test as the §5 floor rule
+(recommended: it is the only version of the three that can return a
+non-trivial answer), and keep composite-wide and pillar-scoped band comparisons
+as printed context only.
+
 ---
 
 ## 6. Why this is separate from the weekly audit
