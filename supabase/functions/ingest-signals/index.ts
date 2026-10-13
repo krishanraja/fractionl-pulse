@@ -8,6 +8,7 @@ import {
   parseTrendsSeries,
   recentTermAverage,
 } from '../_shared/dataforseo.ts';
+import { isRatioOutlier } from '../_shared/outlier.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -937,6 +938,17 @@ async function collectDataForSeoLinkedInSupply(_date: string): Promise<SignalRes
   const roles = ['fractional CFO', 'fractional CMO', 'fractional CTO', 'fractional COO'];
   let totalResults = 0;
 
+  // Google's estimated result count for a site: query is unstable: the same role
+  // reads ~40,000 one day and ~50 the next, and supply is a plain mean of every
+  // supply row, so one ~50 reading is published as a collapse in talent supply.
+  // Judge each role against its own recent level; an outlier counts as missing.
+  const since = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
+  const { data: priorRows } = await supabase
+    .from('signals').select('category, raw_value')
+    .eq('source', 'serpapi_linkedin').neq('category', 'aggregate').gte('date', since);
+  const priorByRole: Record<string, number[]> = {};
+  for (const r of (priorRows || [])) (priorByRole[r.category] ||= []).push(Number(r.raw_value));
+
   for (const role of roles) {
     try {
       const tasks = await dataForSeoPost<Record<string, unknown>>(
@@ -945,6 +957,16 @@ async function collectDataForSeoLinkedInSupply(_date: string): Promise<SignalRes
         { login: DATAFORSEO_LOGIN, password: DATAFORSEO_PASSWORD },
       );
       const count = parseOrganicCount(tasks[0]);
+      const category = role.split(' ')[1]?.toLowerCase() || 'other';
+      if (isRatioOutlier(count, priorByRole[category] || [])) {
+        console.warn(`[DataForSEO LinkedIn] "${role}": ${count} is >10x off its 14-day level; treated as missing`);
+        results.push({
+          source: 'serpapi_linkedin', signal_type: 'supply', category,
+          raw_value: 0, normalized_value: 10, metadata: { provider: 'dataforseo' },
+          success: false, error: `Result count ${count} is more than 10x from its 14-day median; provider estimate unstable`,
+        });
+        continue;
+      }
       totalResults += count;
       results.push({
         source: 'serpapi_linkedin', signal_type: 'supply',

@@ -16,7 +16,7 @@
     "validate": "node scripts/validate-anchor.mjs",
     "validate:json": "node scripts/validate-anchor.mjs --json",
     "smoke:release": "node scripts/release-smoke.mjs",
-    "test:dataforseo": "node --test supabase/functions/_shared/dataforseo.test.ts",
+    "test:dataforseo": "node --test supabase/functions/_shared/dataforseo.test.ts supabase/functions/_shared/outlier.test.ts",
     "test:e2e": "playwright test",
     "test:e2e:update": "playwright test --update-snapshots",
     "backfill:supply-simulated": "npx tsx scripts/simulate-supply-backfill.ts",
