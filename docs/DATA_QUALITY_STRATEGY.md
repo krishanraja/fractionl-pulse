@@ -143,7 +143,56 @@ this programme runs on.
   JOLTS publication, so it reaches n ≈ 12-15 around late 2027. That is the
   cost of not having wired it sooner, and it is why it is wired now.
 
-**Recommendation:** re-run `node scripts/validate-anchor.mjs` in this same
+**Second measurement, 2026-10-15** (`scripts/validate-anchor-weekly.mjs`,
+`npm run validate:weekly`). The first measurement's limit on n was our own
+collector, not the world: FRED ICSA and Census Business Formation Statistics
+are public, keyless and carry full weekly history. Pulling them directly and
+joining to the FWI's weekly mean (daily era, 19 complete weeks to 2026-10-10)
+gives n = 17-19 instead of 5-6. The "wait until late November" recommendation
+above was therefore wrong about what was needed: it needed a different
+script, not more weeks of collection. Recorded as such.
+
+```
+Census BFS high-propensity applications (the named supply-side anchor)
+  YoY level, lag 0:  r(overall) -0.04  n=18  95% CI [-0.50, 0.43]
+                     r(demand)  -0.06  n=18  95% CI [-0.52, 0.42]
+  week-on-week change, lag 0: r(overall) 0.10, r(demand) 0.10  n=17 (CIs span +/-0.5)
+Census BFS all / planned-wages: lag-0 r within +/-0.30 on every pillar, every CI spans zero
+FRED ICSA, levels, lag 0: r(overall) 0.01  n=18  CI [-0.46, 0.48]
+FRED ICSA, week-on-week change, lag 0:
+                     r(overall) 0.66  n=17  CI [0.26, 0.86]
+                     r(demand)  0.69  n=17  CI [0.31, 0.88]
+```
+
+288 correlations were computed (4 anchors x levels/changes x lags -4..+4 x 4
+pillars), so about 14 would exclude zero by chance alone. Read plainly:
+
+- **Measured: at lag 0 the FWI does not co-move with business formation.**
+  High-propensity applications, the closest free measure of fractional
+  operators setting up, correlate at r ~ 0 with every pillar, and the CIs
+  (about +/-0.45) rule out anything stronger than a moderate relationship at
+  this n. This is the near-zero result the strategy said to report, not retry.
+  It is not yet proof the index tracks conversation rather than market: 19
+  weeks is one summer, BFS has no obvious reason to lead or lag a
+  search-derived demand series by exactly zero, and the lagged scan found
+  nothing stable (every strongest-lag cell is one of 288).
+- **Measured, exploratory, post hoc: ICSA week-on-week change correlates with
+  FWI change** (0.66 overall, 0.69 demand; Spearman 0.67; leave-one-out range
+  0.58-0.75, so no single week drives it). But split in half it is 0.89 at
+  n = 8 then 0.27 at n = 9, i.e. front-loaded, and it is one cell found by
+  scanning 288. It was not a pre-registered hypothesis and is **not claimed**.
+- **Inferred, unverified:** a positive sign (claims rising as the index
+  rises) would fit a countercyclical story, fractional demand rising with
+  layoffs, but no mechanism has been checked and a shared artefact (an input
+  that reads layoff news) has not been ruled out.
+
+**Pre-registered for the next read** (written before the data exists): over
+the weeks after 2026-10-10, the lag-0 correlation of weekly ICSA change with
+weekly FWI overall change is positive. Test it on the out-of-sample weeks only,
+not on the pooled series. If it is not positive at n >= 10 new weeks, record
+the ICSA cell as a chance finding.
+
+**Superseded recommendation (2026-10-15, see above):** re-run `node scripts/validate-anchor.mjs` in this same
 Thursday session once FRED ICSA crosses ~12 releases (~late November 2026);
 until then, no anchor here supports a claim in either direction and none
 should be published.
