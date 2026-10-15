@@ -9,7 +9,7 @@ state_doc: docs/DOCUMENTATION_GOVERNANCE.md
 history_log: docs/history/LOG.md
 truth_files: [public/product-truth.json, public/llms.txt, public/.well-known/ai-plugin.json]
 authority_order: [production readback, runtime code and applied database state, docs/CORPORATE_STRATEGY.md, public/product-truth.json, task-specific guides under docs/]
-steward: https://github.com/krishanraja/control-center/blob/main/docs/steward/RUNBOOK.md
+steward: https://github.com/krishanraja/ai-harness/blob/main/docs/steward/RUNBOOK.md
 never_publish: [the product name and its domain, the index name and abbreviation, the current score or label, any named data source or provider, pricing hypotheses and validation targets, Supabase project ids, credential and secret names, alert mailbox addresses, per-provider spend figures]
 ---
 # Pulse by Fractionl: where it is right now
