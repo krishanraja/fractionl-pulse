@@ -1,8 +1,8 @@
 ---
 repo: krishanraja/fractionl-pulse
 product: Pulse by Fractionl
-as_of: 2026-10-10
-head: a370f9d
+as_of: 2026-10-15
+head: 5e16f2c
 lifecycle: live
 production_url: https://pulse.fractionl.ai
 state_doc: docs/DOCUMENTATION_GOVERNANCE.md
@@ -31,7 +31,7 @@ Angles a writer can use (the registry anonymises this repo; say "a side build", 
 
 Objection it answers: "One person with AI can prototype, but cannot run a data product." Here is one that has accumulated daily observations since June 2026, with its audit trail in the open.
 
-## Where it is right now (as of 2026-10-10)
+## Where it is right now (as of 2026-10-15)
 
 - **Lifecycle: live**, in the governance doc's own vocabulary: a user can use the public instrument in production now. **Production was read directly on 2026-09-24** (`data_source_health`, `pipeline_runs`, `signals`, `fwi_scores`, `supabase_migrations.schema_migrations`): the FWI reads **50.30 for 2026-09-24 at 0.93 completeness**, and the FWI pipeline carries **20 health rows, 18 healthy**, the two not healthy being `hn` and `gofractional`. That readback settles the "20 in code, 21 in production" question left open on 2026-09-21: production reads 20. `public/product-truth.json` `production_snapshot` and `docs/DATA_SOURCES_ROADMAP.md` section 1 are still stamped 11 August 2026 and remain stale; this file, not those, carries the current reading.
 - **Live (readback 2026-08-11, schedule readback 2026-09-21):** the public FWI with demand, supply and culture components; twelve months of mixed-frequency history; six US-scoped role-demand pages; the weekly brief; Ask the Index; public REST endpoints; four hosted MCP tools; discovery files at `/product-truth.json`, `/llms.txt` and `/.well-known/ai-plugin.json`; optional accounts and free operational API keys.
@@ -83,7 +83,7 @@ The authority order is the truth hierarchy in `docs/DOCUMENTATION_GOVERNANCE.md`
 5. `docs/TECHNICAL_SPEC.md`: edge functions, schedule, schema, sources, composite, API. Reconciled against `main` at `c319148`; section 2's schedule carries its own 2026-09-21 production readback.
 6. `docs/DATA_SOURCES_ROADMAP.md`: the 20 inputs, confidence weights, incidents, cost model, roadmap. Code side reconciled at `c319148`; database side last read 2026-08-11, so it does not yet reflect the 2026-09-21 integrity fixes or the `serpapi_supply_trends` retirement.
 7. `docs/DATA_QUALITY_STRATEGY.md`: the improvement programme, validation against official statistics, the effective number of independent inputs, error bars, and the weekly ratchet that promotes or retires one source at a time. Adopted 2026-09-21; the §5 floor rule's leave-one-out test shipped 2026-09-25 and its first read is recorded above. Paired with, and deliberately separate from, the audit below.
-8. `docs/WEEKLY_PIPELINE_AUDIT.md` with `.github/workflows/weekly-pipeline-audit.yml` and `scripts/pipeline-audit.mjs`: a versioned runbook with a thin scheduled invoker. The docs steward follows the same pattern: the procedure lives in control-center and `.github/workflows/docs-steward.yml` only calls it.
+8. `docs/WEEKLY_PIPELINE_AUDIT.md` with `.github/workflows/weekly-pipeline-audit.yml` and `scripts/pipeline-audit.mjs`: a versioned runbook with a thin scheduled invoker. The docs steward follows the same pattern: the procedure lives in `krishanraja/ai-harness` (moved from control-center on 2026-10-15, when control-center went private) and `.github/workflows/docs-steward.yml` only calls it.
 9. `docs/AGENT_BRIEFING.md`, `docs/AUTONOMOUS_GTM_PLAYBOOK.md`, `docs/SALES_PLAYBOOK.md`: what an agent may say and do, in that order.
 10. `docs/AGENT_INTEGRATION.md` and `docs/MCP_TOOL.md`: REST and MCP contracts. `docs/DESIGN_SYSTEM.md`: the interface contract. `docs/FLEET_WIRING.md`: attribution wiring to the OS warehouse, pending on the OS side.
 11. `docs/NORTH_STAR.md` and `docs/MONETIZATION_STRATEGY.md`: short views of the same strategy; both name `CORPORATE_STRATEGY.md` as canonical.
