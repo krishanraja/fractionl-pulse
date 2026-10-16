@@ -1,8 +1,8 @@
 ---
 repo: krishanraja/fractionl-pulse
 product: Pulse by Fractionl
-as_of: 2026-10-15
-head: 5e16f2c
+as_of: 2026-10-16
+head: 05ee6d6
 lifecycle: live
 production_url: https://pulse.fractionl.ai
 state_doc: docs/DOCUMENTATION_GOVERNANCE.md
@@ -31,7 +31,7 @@ Angles a writer can use (the registry anonymises this repo; say "a side build", 
 
 Objection it answers: "One person with AI can prototype, but cannot run a data product." Here is one that has accumulated daily observations since June 2026, with its audit trail in the open.
 
-## Where it is right now (as of 2026-10-15)
+## Where it is right now (as of 2026-10-16)
 
 - **Lifecycle: live**, in the governance doc's own vocabulary: a user can use the public instrument in production now. **Production was read directly on 2026-09-24** (`data_source_health`, `pipeline_runs`, `signals`, `fwi_scores`, `supabase_migrations.schema_migrations`): the FWI reads **50.30 for 2026-09-24 at 0.93 completeness**, and the FWI pipeline carries **20 health rows, 18 healthy**, the two not healthy being `hn` and `gofractional`. That readback settles the "20 in code, 21 in production" question left open on 2026-09-21: production reads 20. `public/product-truth.json` `production_snapshot` and `docs/DATA_SOURCES_ROADMAP.md` section 1 are still stamped 11 August 2026 and remain stale; this file, not those, carries the current reading.
 - **Live (readback 2026-08-11, schedule readback 2026-09-21):** the public FWI with demand, supply and culture components; twelve months of mixed-frequency history; six US-scoped role-demand pages; the weekly brief; Ask the Index; public REST endpoints; four hosted MCP tools; discovery files at `/product-truth.json`, `/llms.txt` and `/.well-known/ai-plugin.json`; optional accounts and free operational API keys.
@@ -47,6 +47,7 @@ Objection it answers: "One person with AI can prototype, but cannot run a data p
 
 ## What changed recently
 
+- 2026-10-16 **The shared canon block in `AGENTS.md` moved twice more, to v2026.10.06.3 and then v2026.10.15.2** (`6cac33b` on 2026-10-07, `36a66ef`, merged as PR #44). Why: same mechanism as the 2026-10-06 sync below, the block is rendered from `krishanraja/ai-harness` and carries the hash of its own body, so each release arrives as one sync commit and nothing else. No product, pipeline or documentation claim changed; the digest for this run lists no source files moved.
 - 2026-10-06 **The shared canon block in `AGENTS.md` moved to release v2026.10.05.1** (`a370f9d`, "Sync the canon block (#37)"). Why: the block is rendered from `krishanraja/ai-harness` and carries the hash of its own body, so a release bump arrives as a single sync commit and nothing else. No product, pipeline or documentation claim changed with it; this repository's own rules in `docs/AGENT_BRIEFING.md` and `docs/DOCUMENTATION_GOVERNANCE.md` still outrank the canon on structure, naming, voice and stamps.
 - 2026-09-25 **The §5 floor rule got a literal test, and applying it as written would flag most of the index at once** (`38d6d49`, `scripts/quality-metrics.mjs`). Why: the floor rule names a specific number, whether removing a source changes the composite by less than the published error band, but §2 (redundancy) and §3 (the band) never computed that number; redundancy is a proxy for the floor rule, not the test itself. The script now does the leave-one-out test directly: for every day a source contributed, it recomputes the composite with that source's rows pulled from its pillar and averages the swing. First read, 117 days, 16 composite-eligible sources: every one swings less than the 6.79-point band, from 0.30 (newsapi) to 5.40 (serpapi_linkedin). Recorded as a finding, not a retirement case: most pillars carry several sources, so one source's share of a pillar mean is diluted while the band is resampled across all three pillars at once, meaning a composite-wide band would structurally under-run for any single source in a multi-source pillar, four weeks running, regardless of redundancy. Flagged for Krish as an open design decision, composite-wide band versus one scoped to each pillar, and not acted on; no source is proposed for retirement from this first read either way.
 - 2026-09-24 **§1 of the data-quality strategy executed for the first time, and the answer was "too early to tell"** (`2b0450d`, `scripts/validate-anchor.mjs`, `npm run validate`). Why: the programme adopted on 2026-09-21 had never been run, so the FWI had still never been checked against an external measure of what it claims to track. The script correlates the FWI against the three context inputs already excluded from the composite (`bls`, `fred`, `census_acs`), collapsed to one row per official release rather than one per day, because the collector snaps the latest published value daily and a naive daily join would inflate n by 20-30x, the exact pseudo-replication §1 warns about. Result: BLS JOLTS and FRED ICSA have 5 independent releases each since the daily era began, so every CI but one spans nearly the full [-1, 1]. Census ACS has had one distinct value in 116 days and cannot anchor anything. The one CI excluding zero (FRED ICSA against the culture pillar, r = -0.90) is explicitly **not** claimed: eight pillar × anchor pairs were tested at n = 5, and one such result is the expected outcome of that many comparisons. Nothing is published from this; the finding is that the pipeline is too young to validate, stated precisely rather than approximately.
