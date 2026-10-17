@@ -1,15 +1,8 @@
 # AGENTS.md
 
-Entry file for coding agents working in Pulse by Fractionl. Codex reads this file natively;
-Claude Code and Cursor are routed here by their own rules.
+Read `NOW.md` first.
 
-**Read `NOW.md` first.** It is the current state of this repository in one file: what
-it is, who it is for, what changed recently, what is waiting, and what not to trust.
-It is validated on every push to `main` and reconciled against the code nightly, so it
-is never more than a day behind the tree. Chronology lives in `docs/history/LOG.md`.
-
-This repository's own rules and deeper state: `docs/AGENT_BRIEFING.md`, `docs/DOCUMENTATION_GOVERNANCE.md`. They outrank the
-canon below on anything specific to this repository.
+Rules: `docs/AGENT_BRIEFING.md`, `docs/DOCUMENTATION_GOVERNANCE.md`.
 
 <!-- krish-canon:start release=v2026.10.15.2 sha=5288df7108c7 rendered=2026-10-15 -->
 ## Krish canon
@@ -71,3 +64,9 @@ authoritative for reading; the repository is authoritative for what is correct.
 
 **This repository's own rules:** `AGENTS.md`, `docs/AGENT_BRIEFING.md`, `docs/DOCUMENTATION_GOVERNANCE.md`
 <!-- krish-canon:end -->
+
+<!-- krish-repo-admin:start brain=c3389b60c708 sha=0cc207a2c492 -->
+## Administer this repository
+
+Use `docs/HARNESS_CONTEXT.md` for the owning workflow, source of truth and checks. Preserve the goal and accepted decisions when a revision changes one part; explain material trade-offs. Verify the downstream result. Record corrections and observed outcomes through the existing capture path. Experimental results retain their conditions; inferred requirements remain proposals.
+<!-- krish-repo-admin:end -->
