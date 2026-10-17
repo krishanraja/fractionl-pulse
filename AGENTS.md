@@ -4,13 +4,13 @@ Read `NOW.md` first.
 
 Rules: `docs/AGENT_BRIEFING.md`, `docs/DOCUMENTATION_GOVERNANCE.md`.
 
-<!-- krish-canon:start release=v2026.10.15.2 sha=5288df7108c7 rendered=2026-10-15 -->
+<!-- krish-canon:start release=v2026.10.17.1 sha=74b0b7d9f285 rendered=2026-10-17 -->
 ## Krish canon
 
-Rendered from `krishanraja/ai-harness` at release v2026.10.15.2. Nothing inside these
+Rendered from `krishanraja/ai-harness` at release v2026.10.17.1. Nothing inside these
 markers is hand-maintained: an edit here is detected and proposed back to the canon,
-never silently overwritten, and never lost. Everything outside the markers belongs to
-this repository and is never read or rewritten by the harness.
+never silently overwritten, and never lost. This sync preserves all other text.
+Separately approved repository administration owns only its declared regions and context file.
 
 **Precedence.** This repository's own rules outrank the canon on repository matters:
 structure, naming, voice, stamps, archive location, test and build commands. The canon
