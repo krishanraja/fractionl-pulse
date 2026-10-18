@@ -1,23 +1,27 @@
 # AGENTS.md
 
-Entry file for coding agents working in Pulse by Fractionl. Codex reads this file natively;
-Claude Code and Cursor are routed here by their own rules.
+<!-- north-star:start -->
+## North Star: read it first, every session
 
-**Read `NOW.md` first.** It is the current state of this repository in one file: what
-it is, who it is for, what changed recently, what is waiting, and what not to trust.
-It is validated on every push to `main` and reconciled against the code nightly, so it
-is never more than a day behind the tree. Chronology lives in `docs/history/LOG.md`.
+This repository's North Star is [`docs/NORTH_STAR.md`](docs/NORTH_STAR.md): an ambition Krish set that is not reached yet.
 
-This repository's own rules and deeper state: `docs/AGENT_BRIEFING.md`, `docs/DOCUMENTATION_GOVERNANCE.md`. They outrank the
-canon below on anything specific to this repository.
+- Read it before any work, every session.
+- Before you start, say which part of it the task moves. If it moves nothing, say so first and let Krish decide.
+- Prefer the work that moves it furthest, and close by noting what moved.
+- Only Krish changes it.
+<!-- north-star:end -->
 
-<!-- krish-canon:start release=v2026.10.05.1 sha=ce28b41c277a rendered=2026-10-06 -->
+Read `NOW.md` first.
+
+Rules: `docs/AGENT_BRIEFING.md`, `docs/DOCUMENTATION_GOVERNANCE.md`.
+
+<!-- krish-canon:start release=v2026.10.17.1 sha=74b0b7d9f285 rendered=2026-10-17 -->
 ## Krish canon
 
-Rendered from `krishanraja/ai-harness` at release v2026.10.05.1. Nothing inside these
+Rendered from `krishanraja/ai-harness` at release v2026.10.17.1. Nothing inside these
 markers is hand-maintained: an edit here is detected and proposed back to the canon,
-never silently overwritten, and never lost. Everything outside the markers belongs to
-this repository and is never read or rewritten by the harness.
+never silently overwritten, and never lost. This sync preserves all other text.
+Separately approved repository administration owns only its declared regions and context file.
 
 **Precedence.** This repository's own rules outrank the canon on repository matters:
 structure, naming, voice, stamps, archive location, test and build commands. The canon
@@ -57,12 +61,12 @@ skill wins; a broad "always" or "mandatory" claim inside a skill never overrides
 router. One primary writer; validators may stack after it, competing writers may not.
 
 **Who Krish is.** Purpose: "I see what is coming before it is obvious and make it
-legible to people while it still counts." Mindmake is his mission; Heartside, Full Time,
-Legibility, CTRL and Pulse are a separate product portfolio. Both are current: when they
-compete for his own time, surface the trade-off and let him choose. Profile, decision
-rules and paused plans: `skills/krish-principles/references/who-krish-is.md` in the
-harness. What he works on is live, never copied here; read it from Control Center at
-https://raw.githubusercontent.com/krishanraja/control-center/main/docs/KRISH.md (and `docs/PORTFOLIO.md` beside it).
+legible to people while it still counts." Mindmake is his mission and his one company;
+Heartside, Full Time, Legibility, CTRL and Pulse roll into it. One queue: the mission
+leads, and product work is ordered beneath it by the live priority ladder. Profile,
+decision rules and standing rulings: `skills/krish-principles/references/who-krish-is.md`
+in the harness. What he works on is live, never copied here; read it from Control Center at
+https://controlcenter.krishraja.com/api/canon/KRISH.md (and `PORTFOLIO.md` beside it).
 
 **Where the rest lives.** The operating contract, the routing contract and the
 29 curated skills are in `krishanraja/ai-harness`. On a machine with the
@@ -71,3 +75,9 @@ authoritative for reading; the repository is authoritative for what is correct.
 
 **This repository's own rules:** `AGENTS.md`, `docs/AGENT_BRIEFING.md`, `docs/DOCUMENTATION_GOVERNANCE.md`
 <!-- krish-canon:end -->
+
+<!-- krish-repo-admin:start brain=c3389b60c708 sha=0cc207a2c492 -->
+## Administer this repository
+
+Use `docs/HARNESS_CONTEXT.md` for the owning workflow, source of truth and checks. Preserve the goal and accepted decisions when a revision changes one part; explain material trade-offs. Verify the downstream result. Record corrections and observed outcomes through the existing capture path. Experimental results retain their conditions; inferred requirements remain proposals.
+<!-- krish-repo-admin:end -->
