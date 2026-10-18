@@ -108,6 +108,37 @@ pillar × anchor pairs were tested at n = 5, and one CI excluding zero by
 chance alone is the expected outcome of that many comparisons, not a
 discovery. It should be re-checked once FRED has more releases, not acted on.
 
+**Second measurement, 2026-10-01** (`scripts/validate-anchor-weekly-20261001.mjs`,
+`node scripts/validate-anchor-weekly-20261001.mjs`). The 2026-09-24 note above says FRED ICSA is capped
+at n = 5-6 until late November because Pulse only started collecting it on
+2026-08-11. **That cap was wrong, and it is recorded as wrong.** ICSA is public
+back to 1967 on the keyless FRED CSV endpoint; the only real limit is the FWI's
+own daily era. Weekly FWI means against weekly ICSA give n = 15 complete weeks
+(2026-06-13 to 2026-09-19) at lag 0, not 6.
+
+```
+FWI demand vs ICSA, lag 0       levels   n = 15  r = -0.008  CI [-0.52, 0.51]
+FWI overall vs ICSA, lag 0      levels   n = 15  r =  0.179  CI [-0.37, 0.63]
+FWI demand vs ICSA, lag 0       WoW chg  n = 14  r =  0.739  CI [ 0.34, 0.91]   Spearman 0.741
+FWI overall vs ICSA, lag 0      WoW chg  n = 14  r =  0.641  CI [ 0.17, 0.87]
+Lags 1-6, all four fields, levels and changes: every other CI spans zero
+(n = 8-14); no lead of the FWI over claims is visible at any lag tested.
+```
+
+**What was measured:** levels show no relationship at any lag. Week-over-week
+changes in the demand pillar move with changes in claims in the same week
+(r = 0.74, n = 14), robust to dropping any single week (0.63 to 0.79) and to
+rank correlation. **What is inferred, and not claimed:** this is 2 hits out of 56
+comparisons (7 lags x 4 fields x 2 transforms), the overall hit is not
+independent of the demand hit, the sign was not pre-registered, and the
+strongest single week is the seasonal July auto-retooling dip in claims. It is a
+lead for a pre-registered retest, not a validation. It is also lag 0, not the
+"FWI leads the official series" claim §1 says is worth having, and that claim
+is not supported: nothing at lags 1-6 clears zero. **Pre-registered for the
+retest:** demand-pillar WoW change vs ICSA WoW change, lag 0, positive sign,
+single test, to be read once n >= 24 weeks (about 2026-11-21), with the result
+reported whichever way it falls.
+
 **Census ACS fails the same test `serpapi_supply_trends` failed** for a
 different reason: it collects successfully every day and carries zero
 information, because ACS 5-year estimates update annually and the collector
@@ -143,7 +174,7 @@ this programme runs on.
   JOLTS publication, so it reaches n ≈ 12-15 around late 2027. That is the
   cost of not having wired it sooner, and it is why it is wired now.
 
-**Second measurement, 2026-10-15** (`scripts/validate-anchor-weekly.mjs`,
+**Third measurement, 2026-10-15** (`scripts/validate-anchor-weekly.mjs`,
 `npm run validate:weekly`). The first measurement's limit on n was our own
 collector, not the world: FRED ICSA and Census Business Formation Statistics
 are public, keyless and carry full weekly history. Pulling them directly and
@@ -196,6 +227,15 @@ the ICSA cell as a chance finding.
 Thursday session once FRED ICSA crosses ~12 releases (~late November 2026);
 until then, no anchor here supports a claim in either direction and none
 should be published.
+
+**Retest continuity (2026-10-18 consolidation):** both dated commitments
+remain. Re-run the 2026-10-01 demand-pillar test with
+`node scripts/validate-anchor-weekly-20261001.mjs` at n >= 24 weeks, and the
+2026-10-15 overall-pillar test on its ten new out-of-sample weeks only.
+The current `npm run validate:weekly` runs the later four-anchor method.
+The dated script preserves the earlier method for reproducing that result;
+merging the two measurements does not turn either exploratory result into
+a validated claim.
 
 ---
 
@@ -409,6 +449,50 @@ retirement from this first read either way — one week is one week, and §5
 requires four consecutive reads under whichever floor is adopted. The number
 above is recorded so the four-week clock, once it starts, starts from a
 comparison that has been thought through rather than the first one that ran.
+
+**Built 2026-10-08** (`scripts/quality-metrics.mjs`, outcome 4, finishing the
+half-built item above). The band-scope decision was pending, so the script now
+computes the pillar-scoped version and tests whether it can work at all.
+Measured, 130 days of daily era, last 28 days for the reads:
+
+```
+Pillar-scoped band (swing in the pillar mean vs that pillar's own bootstrap IQR)
+  13 of 16 sources read BELOW it in all four weekly windows.
+  The only ones above: serpapi_linkedin and brave_talent (supply, 2-3 sources).
+```
+
+**The pillar-scoped band does not rescue the rule, and the reason is
+structural, not empirical.** Dropping one of k sources moves the pillar mean by
+about sd/(k-1); the bootstrap IQR of that mean is about 1.35·sd/√k. For any k
+of 3 or more the swing is the smaller number whatever the source does. Culture
+has 12 sources, so a pillar-scoped floor flags the whole pillar. Both scopes of
+"swing below the band" are therefore uninformative; this is inference from the
+algebra, checked against the output above, not a separate measurement. The
+2026-09-25 composite-wide read and this one agree for the same underlying
+reason.
+
+What can single a source out is the swing **relative to its same-pillar
+peers** (median of their swings, which controls for k). Under a provisional
+test of "under half the peer median in all four weekly windows", exactly two
+sources qualify, both culture:
+
+```
+newsapi      peer ratio 0.31  4/4 weeks   weight 0.04   composite swing 0.35 pts
+brave_news   peer ratio 0.40  4/4 weeks   weight 0.03   composite swing 0.61 pts
+```
+(`brave_web` is 3/4, `hn` and `gofractional` 2/4 on 16-17 days only, so not
+read.) The 0.5 threshold is mine, chosen before looking at where the gap falls
+but not adopted by Krish; treat it as a candidate definition, not the floor
+rule. A low ratio means the source sits close to the pillar consensus. That
+can mean redundant, or it can mean a good instrument that agrees with its
+peers; the correlation matrix says no pair reaches |r| 0.8, which argues for
+the latter. So no retirement is proposed. Next week's read says whether the
+pattern holds on a fifth week.
+
+**Decision needed (Krish):** adopt the peer-relative test as the §5 floor rule
+(recommended: it is the only version of the three that can return a
+non-trivial answer), and keep composite-wide and pillar-scoped band comparisons
+as printed context only.
 
 ---
 
