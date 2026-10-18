@@ -4,7 +4,7 @@
 
 ## Horizon
 
-> By the end of 2027, Pulse is the number journalists, firms and AI agents cite when they ask whether fractional leadership is growing, because it rests on the largest verified cohort of real fractional engagements anywhere.
+> By June 2027, Pulse is the number journalists, firms and AI agents cite when they ask whether fractional leadership is growing, because it rests on the largest verified cohort of real fractional engagements anywhere.
 
 Set by Krish on 18 October 2026, and not reached yet. Everything below serves it, every session in this repository works toward it, and only Krish changes it.
 
