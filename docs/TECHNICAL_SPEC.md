@@ -2,7 +2,7 @@
 
 **Status:** Engineering reference for the system as it ships from `main`
 
-**Last reconciled:** 21 September 2026 against `main` at `c319148`. Section 2's schedule carries its own 2026-09-21 production readback; the production readbacks elsewhere in this document are dated 11 August 2026.
+**Last reconciled:** 21 September 2026 against `main` at `c319148`. Section 3 (views) and section 4 (LinkedIn proxy guard) were updated 2026-10-18 from the `68967f1` diff only. Section 2's schedule carries its own 2026-09-21 production readback; the production readbacks elsewhere in this document are dated 11 August 2026.
 
 _Source of truth for the system as it ships today. 20 tracked inputs, core and supporting edge functions, Supabase and Vercel scheduling, and an agent-native API. Generated from the live codebase; see commit history for last update._
 
@@ -270,6 +270,8 @@ Rows are created, metered, and revoked **only** by the service-role edge functio
 
 Both views are publicly readable for the dashboard's `DataHealthCard`.
 
+- `pipeline_run_status` (migration `020_pipeline_run_status_view.sql`, in the repo 2026-10-13; applied state not read back) - a narrow view over `pipeline_runs` for the weekly audit, which could not read the closed table and reported permission-denied as "no rows". It exposes only the two sources the audit verifies, with no raw metadata or error text, and reduces the alert sender to `primary`, `fallback` or `unknown`. `pipeline_runs` itself stays closed to the public key. The audit says "could not be read" when the view is absent.
+
 ---
 
 ## 4. Signal Collection (20 Sources)
@@ -289,6 +291,8 @@ Both views are publicly readable for the dashboard's `DataHealthCard`.
 | **DataForSEO LinkedIn proxy** | `site:linkedin.com/in "fractional CFO"` etc. | Result count proxy | Log scale |
 | **Brave Talent** | Brave Web Search on the same public profile phrases | Provider-independent backstop | Log scale |
 | **GoFractional published network** | Official `apify/web-scraper` actor against the first-party homepage, with `maxTotalChargeUsd=0.02`. Since 2026-08-29 (`7df98a5`) the run URL carries no `build` pin (Apify retired the `latest` tag; the actor's default build is used) and the body sets `proxyConfiguration: { useApifyProxy: true }`, which the newer build requires. A rejected proxied run (Apify Proxy allowance exhausted) is retried once without the proxy as of 2026-09-21 | Published operator count (currently advertised as 15,000+) | Log scale |
+
+The LinkedIn proxy stores a search engine's estimated result count, which flips between about 50 and 40,000 or more for the same role. In code since 2026-10-13, deployment not read back (`68967f1`, `supabase/functions/_shared/outlier.ts`) a role reading more than 10x above, or below a tenth of, its own 14-day median is treated as missing (a ratio guard, applied only with at least five usable history points). Before the guard, 44 of 347 role readings since 2026-06-14 were published as a collapse in talent supply. History is not restated.
 
 DataForSEO supply-intent Trends (`serpapi_supply_trends`) was retired 2026-09-21: its four search terms sat at Google Trends' reporting floor and normalized to a constant 5-6 on the days they returned anything, pulling the supply pillar down by 5.42 on roughly half of all days in the 113-day sample measured. Its weight was redistributed pro rata within this pillar (`docs/DATA_SOURCES_ROADMAP.md` section 2). The retirement is a code change; the last production verification in the commit history still showed 21 healthy sources, so the deploy had not landed as of the last commit in this range.
 

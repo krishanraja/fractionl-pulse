@@ -4,6 +4,14 @@ Newest first. Entries are written by the docs steward (see the steward link in
 NOW.md) and by humans doing the same job by hand. Nothing in this file
 describes current behaviour; NOW.md and the state doc do.
 
+## 2026-10-18
+
+- reconciled at `ce8c483`: `NOW.md`. Head moved from `05ee6d6` to `ce8c483` across nineteen non-steward commits (three validation and floor-rule ratchet merges, the serpapi_linkedin ratio guard with migration 020, the North Star, the harness-context file, one canon sync and a May resilience branch merged as history). Six "What changed recently" bullets added, one waiting-on-Krish item extended with the peer-relative floor-rule decision.
+- reconciled at `ce8c483`: `docs/TECHNICAL_SPEC.md`. Section 3 views gains `pipeline_run_status` (migration 020); section 4 gains the LinkedIn proxy ratio guard note. Both read against the `68967f1` diff only; production and deployment were not read, and the text says so. The document's other sections were not re-read.
+- checked, left alone: `docs/DATA_QUALITY_STRATEGY.md` (already carries the 2026-10-01 and 2026-10-15 measurements and the retest continuity note), `docs/NORTH_STAR.md`, `docs/HARNESS_CONTEXT.md`, `AGENTS.md` and `CLAUDE.md` (canon and administration surfaces, never written by the steward).
+- checked, stale stamps not bumped: `docs/DOCUMENTATION_GOVERNANCE.md`, `docs/CORPORATE_STRATEGY.md`, `docs/AUTONOMOUS_GTM_PLAYBOOK.md` and `docs/FLEET_WIRING.md` carry 2026-08-11 stamps; nothing in this range changes what they cover, and production was not read, so the stamps stay.
+- no moves. No document is superseded or duplicated in this range.
+
 ## 2026-10-10
 
 - reconciled at `a370f9d`: `NOW.md`. No non-steward commit since the last run (the only commit in range was the steward's own 2026-10-06 reconcile), so head is unchanged and `as_of` moved to 2026-10-10. Nothing in the code or the other documents moved.
