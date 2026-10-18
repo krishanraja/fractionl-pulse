@@ -640,24 +640,34 @@ async function audit() {
   // than assumed from a comment in the source. Before this, the audit asserted
   // every week that the primary domain was unverified because a note in
   // send-pipeline-alert said so; that note was six weeks out of date.
-  const alertRuns = await rest(
-    'pipeline_runs?source=eq.pipeline-alert&select=started_at,status,metadata&order=started_at.desc&limit=5',
-  ).catch(() => []);
-  const lastAlert = alertRuns[0];
-  if (lastAlert) {
-    const usedFrom = lastAlert.metadata?.from ?? null;
-    if (usedFrom && alertCfg.fallbackFrom && usedFrom.includes(alertCfg.fallbackFrom)) {
+  // pipeline_runs is closed to the public key; the audit reads the narrow
+  // pipeline_run_status view (migration 020). If that view is missing or
+  // unreadable the answer is "unreadable", never "no alerts recorded".
+  let alertRuns = null;
+  try {
+    alertRuns = await rest(
+      'pipeline_run_status?source=eq.pipeline-alert&select=started_at,status,delivered_by&order=started_at.desc&limit=5',
+    );
+  } catch { alertRuns = null; }
+  const lastAlert = alertRuns?.[0];
+  if (alertRuns === null) {
+    add('info', 'alerting', 'The alert path could not be read',
+      'pipeline_run_status is not readable (migration 020 not applied, or the request failed). This is not evidence that no alert fired.',
+      'Apply migration 020, then this check reports the real sender.');
+  } else if (lastAlert) {
+    const d = lastAlert.delivered_by;
+    if (d === 'fallback') {
       add('amber', 'alerting', 'The last alert was delivered by the fallback sender',
-        `${lastAlert.started_at.slice(0, 10)}: sent from ${usedFrom}, which reaches only ${alertCfg.fallbackTo.join(', ') || 'nobody'} — ` +
+        `${lastAlert.started_at.slice(0, 10)}: sent from the fallback address, which reaches only ${alertCfg.fallbackTo.join(', ') || 'nobody'} — ` +
         `not the primary list (${alertCfg.primaryTo.join(', ') || 'none'}).`,
         'The primary sending domain was refused by Resend. Check it at resend.com/domains.');
-    } else if (usedFrom) {
-      add('info', 'alerting', `Alerts are delivering from the primary sender (${usedFrom})`,
+    } else if (d === 'primary') {
+      add('info', 'alerting', 'Alerts are delivering from the primary sender',
         `last alert ${lastAlert.started_at.slice(0, 10)} to ${alertCfg.primaryTo.join(', ') || 'nobody'}.`);
     }
   } else if (alertCfg.fallbackTo.length && !alertCfg.fallbackTo.some((a) => alertCfg.primaryTo.includes(a))) {
     add('info', 'alerting', 'The alert path has never been observed delivering',
-      `No pipeline-alert run is recorded, so which of ${alertCfg.primaryFrom} / ${alertCfg.fallbackFrom} delivers is unproven. ` +
+      `The run table was readable and holds no pipeline-alert run, so which of ${alertCfg.primaryFrom} / ${alertCfg.fallbackFrom} delivers is unproven. ` +
       `The fallback reaches ${alertCfg.fallbackTo.join(', ') || 'nobody'}, who is not on the primary list.`,
       'Unproven is not broken and not working. The next alert records which sender delivered.');
   }
