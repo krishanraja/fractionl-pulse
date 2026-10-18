@@ -1,92 +1,146 @@
-// Weekly-granularity validation of the FWI against FRED initial jobless claims
-// (ICSA), using the FULL public ICSA history rather than only the rows Pulse
-// has collected. docs/DATA_QUALITY_STRATEGY.md §1.
+// Weekly-anchor validation of the FWI. Read-only, dependency-free, no secrets.
+// docs/DATA_QUALITY_STRATEGY.md §1.
 //
-// WHY: validate-anchor.mjs can only see releases Pulse collected itself (ICSA
-// since 2026-08-11, n=6 on 2026-10-01), so its n is capped by when collection
-// began, not by how much official data exists. ICSA is public back to 1967 and
-// the keyless fredgraph.csv endpoint serves it, so the FWI's own daily era is
-// the only limit. Weekly means of the FWI against weekly ICSA give n≈17 at lag 0.
+// WHY THIS EXISTS (alongside validate-anchor.mjs)
+// ------------------------------------------------
+// validate-anchor.mjs correlates against whatever the collector happened to
+// store, which gives n = 6 releases. The anchors themselves are public and
+// keyless, with full history, so the limit on n was our collection, not the
+// world's. This script pulls the weekly official series directly and joins
+// them to the FWI's weekly mean for the daily era (2026-06-01 onward):
+//   - FRED ICSA initial jobless claims (keyless fredgraph.csv)
+//   - Census Business Formation Statistics weekly applications: all (BA),
+//     high-propensity (HBA), planned-wages (WBA)
+// One row per calendar week ending Saturday, so n is independent weeks.
 //
-// METHOD: ICSA is week-ending Saturday. FWI is averaged over the same Sun-Sat
-// window; only complete weeks inside the daily era (>= 2026-06-01) count.
-// Lag k pairs FWI(week t) with ICSA(week t+k), i.e. the FWI leading ICSA by k
-// weeks. Both LEVELS and WEEK-OVER-WEEK CHANGES are reported: levels of two
-// slow series share trends and overstate r, so changes are the harder test.
-// n is reported on every line; the 95% CI is Fisher z. Seven lags x 4 fields x
-// 2 transforms = 56 tests, so a lone CI excluding zero is expected by chance.
+// Levels AND week-over-week changes are reported: with ~20 points that both
+// drift, a levels correlation can be a shared trend. Lags -4..+4 weeks
+// (positive = FWI leads the anchor). Every coefficient prints its n and CI,
+// and the count of comparisons made is printed so a lone significant cell can
+// be judged against chance.
 //
-// Run: node scripts/validate-anchor-weekly.mjs   (read-only, no secrets)
+// Run:  node scripts/validate-anchor-weekly.mjs [--json]
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DAILY_ERA_START = '2026-06-01';
-const MAX_LAG = 6;
-const src = readFileSync(join(ROOT, 'src/lib/supabase.ts'), 'utf8');
-const SB = { url: src.match(/DEFAULT_SUPABASE_URL\s*=\s*'([^']+)'/)[1], key: src.match(/(eyJ[A-Za-z0-9._-]+)/)[1] };
-const FIELDS = { overall: 'overall_score', demand: 'demand_score', supply: 'supply_score', culture: 'momentum_score' };
+const JSON_MODE = process.argv.includes('--json');
 
-const addDays = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
-function pearson(xs, ys) {
-  const n = xs.length; if (n < 4) return { r: null, n };
-  const mx = xs.reduce((a, b) => a + b, 0) / n, my = ys.reduce((a, b) => a + b, 0) / n;
-  let num = 0, dx = 0, dy = 0;
-  for (let i = 0; i < n; i++) { const a = xs[i] - mx, b = ys[i] - my; num += a * b; dx += a * a; dy += b * b; }
-  return dx && dy ? { r: num / Math.sqrt(dx * dy), n } : { r: null, n };
+function sb() {
+  const s = readFileSync(join(ROOT, 'src/lib/supabase.ts'), 'utf8');
+  const url = s.match(/DEFAULT_SUPABASE_URL\s*=\s*'([^']+)'/)[1];
+  const key = s.match(/(eyJ[A-Za-z0-9._-]+)/)[1];
+  return { url, key };
+}
+const SB = sb();
+async function restAll(path) {
+  const out = [];
+  for (let o = 0; ; o += 1000) {
+    const r = await fetch(`${SB.url}/rest/v1/${path}&limit=1000&offset=${o}`, { headers: { apikey: SB.key, Authorization: `Bearer ${SB.key}` } });
+    if (!r.ok) throw new Error(`GET ${path} -> ${r.status}`);
+    const p = await r.json(); out.push(...p); if (p.length < 1000) return out;
+  }
+}
+async function csv(url) {
+  let r;
+  for (let i = 0; i < 4; i++) {
+    r = await fetch(url, { headers: { 'User-Agent': 'pulse-quality/1.0' } });
+    if (r.ok) break;
+    await new Promise((res) => setTimeout(res, 1500 * (i + 1)));
+  }
+  if (!r.ok) throw new Error(`${url} -> ${r.status}`);
+  const [h, ...rows] = (await r.text()).trim().split(/\r?\n/);
+  const cols = h.split(',');
+  return rows.map((l) => Object.fromEntries(l.split(',').map((v, i) => [cols[i], v])));
+}
+
+const DAY = 86400000;
+const sat = (iso) => { const d = new Date(iso + 'T00:00:00Z'); return new Date(+d + ((6 - d.getUTCDay() + 7) % 7) * DAY).toISOString().slice(0, 10); };
+const shift = (iso, weeks) => new Date(+new Date(iso + 'T00:00:00Z') + weeks * 7 * DAY).toISOString().slice(0, 10);
+
+function pearson(x, y) {
+  const n = x.length; if (n < 5) return { r: null, n };
+  const mx = x.reduce((a, b) => a + b) / n, my = y.reduce((a, b) => a + b) / n;
+  let nu = 0, dx = 0, dy = 0;
+  for (let i = 0; i < n; i++) { nu += (x[i] - mx) * (y[i] - my); dx += (x[i] - mx) ** 2; dy += (y[i] - my) ** 2; }
+  return dx && dy ? { r: nu / Math.sqrt(dx * dy), n } : { r: null, n };
 }
 function ci(r, n) {
-  if (r === null || n < 4) return null;
+  if (r === null || n < 5) return null;
   const z = Math.atanh(r), se = 1 / Math.sqrt(n - 3);
   return [Math.tanh(z - 1.96 * se), Math.tanh(z + 1.96 * se)];
 }
-const fmt = (r, n) => { if (r === null) return `n=${n}  r=n/a`; const c = ci(r, n); return `n=${String(n).padStart(2)}  r=${r.toFixed(3).padStart(6)}  CI [${c[0].toFixed(2)}, ${c[1].toFixed(2)}]${c[0] > 0 || c[1] < 0 ? '  *excl 0' : ''}`; };
 
-async function fredCsv(url) {
-  for (let i = 0; i < 4; i++) {
-    try { const r = await fetch(url); const t = await r.text(); if (r.ok && t.startsWith('observation_date')) return t; } catch { /* retry */ }
-    await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
-  }
-  throw new Error('FRED ICSA fetch failed after 4 attempts');
+const fwi = await restAll(`fwi_scores?select=date,overall_score,demand_score,supply_score,momentum_score&date=gte.${DAILY_ERA_START}&order=date.asc`);
+const lastDate = fwi[fwi.length - 1].date;
+const FIELDS = { overall: 'overall_score', demand: 'demand_score', supply: 'supply_score', culture: 'momentum_score' };
+const wk = {};
+for (const row of fwi) (wk[sat(row.date)] ||= []).push(row);
+// Only complete weeks (7 daily rows would be ideal; require >= 5 so a gap
+// week does not enter on one or two days) and not the in-progress week.
+const fwiWeeks = {};
+for (const [w, rows] of Object.entries(wk)) {
+  if (rows.length < 5 || w > lastDate) continue;
+  fwiWeeks[w] = Object.fromEntries(Object.entries(FIELDS).map(([k, f]) => {
+    const v = rows.map((r) => r[f]).filter((x) => x != null);
+    return [k, v.length >= 5 ? v.reduce((a, b) => a + b) / v.length : null];
+  }));
 }
-const fred = (await fredCsv(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=ICSA&cosd=${addDays(DAILY_ERA_START, -14)}`))
-  .trim().split('\n').slice(1).map((l) => l.split(',')).map(([d, v]) => ({ week_end: d, v: Number(v) })).filter((x) => Number.isFinite(x.v));
-const res = await fetch(`${SB.url}/rest/v1/fwi_scores?select=date,overall_score,demand_score,supply_score,momentum_score&date=gte.${DAILY_ERA_START}&order=date.asc&limit=1000`, { headers: { apikey: SB.key, Authorization: `Bearer ${SB.key}` } });
-if (!res.ok) throw new Error(`fwi_scores ${res.status}`);
-const fwi = await res.json();
-const lastDay = fwi.at(-1).date;
 
-// Complete weeks only: Sun..Sat ending at week_end, fully inside the daily era and the FWI history.
-const weeks = fred.filter((w) => addDays(w.week_end, -6) >= DAILY_ERA_START && w.week_end <= lastDay).map((w) => {
-  const start = addDays(w.week_end, -6);
-  const rows = fwi.filter((r) => r.date >= start && r.date <= w.week_end);
-  const o = { week_end: w.week_end, icsa: w.v, days: rows.length };
-  for (const [k, col] of Object.entries(FIELDS)) {
-    const vals = rows.map((r) => r[col]).filter((x) => x !== null && x !== undefined).map(Number);
-    o[k] = vals.length >= 4 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-  }
-  return o;
-});
-// ICSA history before the first complete week is needed for lagged-forward pairing only after it; fine.
-const fredAll = Object.fromEntries(fred.map((w) => [w.week_end, w.v]));
-console.log(`FWI vs FRED ICSA — weekly means, daily era from ${DAILY_ERA_START}, ${weeks.length} complete weeks (${weeks[0].week_end} .. ${weeks.at(-1).week_end})`);
-console.log('Lag k: FWI in week t vs ICSA in week t+k (FWI leads). Negative r = FWI up when claims down.\n');
-for (const transform of ['level', 'change']) {
-  console.log(`== ${transform === 'level' ? 'LEVELS' : 'WEEK-OVER-WEEK CHANGES (detrended; the harder test)'} ==`);
-  for (const k of Object.keys(FIELDS)) {
-    console.log(`  ${k}`);
-    for (let lag = 0; lag <= MAX_LAG; lag++) {
-      const xs = [], ys = [];
-      for (let i = transform === 'change' ? 1 : 0; i < weeks.length; i++) {
-        const a = weeks[i][k], aPrev = transform === 'change' ? weeks[i - 1][k] : 0;
-        const wkLag = addDays(weeks[i].week_end, 7 * lag);
-        const b = fredAll[wkLag];
-        const bPrev = transform === 'change' ? fredAll[addDays(wkLag, -7)] : 0;
-        if (a == null || aPrev == null || b == null || bPrev == null) continue;
-        xs.push(a - aPrev); ys.push(b - bPrev);
+const anchors = {};
+const icsa = await csv('https://fred.stlouisfed.org/graph/fredgraph.csv?id=ICSA&cosd=2026-01-01');
+anchors['FRED ICSA initial claims'] = Object.fromEntries(icsa.map((r) => [r.observation_date || r.DATE, Number(r.ICSA)]).filter(([, v]) => !Number.isNaN(v)));
+const bfs = await csv('https://www.census.gov/econ/bfs/csv/bfs_us_apps_weekly_nsa.csv');
+const dt = await csv('https://www.census.gov/econ/bfs/csv/date_table.csv');
+const endOf = {}; for (const r of dt) { const [m, d, y] = r[Object.keys(r)[3]].split('/'); endOf[`${r.Year}-${r.Week}`] = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`; }
+const bfsSeries = (col) => Object.fromEntries(bfs.filter((r) => r.Year === '2026' && r[col] !== '').map((r) => [endOf[`${r.Year}-${r.Week}`], Number(r[col])]));
+// Year-over-year change removes the strong calendar seasonality in raw NSA applications.
+anchors['Census BFS all applications, YoY %'] = bfsSeries('YY_BA_NSA');
+anchors['Census BFS high-propensity applications, YoY %'] = bfsSeries('YY_HBA_NSA');
+anchors['Census BFS planned-wages applications, YoY %'] = bfsSeries('YY_WBA_NSA');
+
+const out = [];
+let comparisons = 0;
+for (const [label, series] of Object.entries(anchors)) {
+  const cells = [];
+  for (const mode of ['level', 'change']) {
+    for (let lag = -4; lag <= 4; lag++) {
+      for (const pillar of Object.keys(FIELDS)) {
+        const xs = [], ys = [];
+        for (const [w, f] of Object.entries(fwiWeeks)) {
+          if (f[pillar] == null) continue;
+          const aw = shift(w, -lag); // lag>0: FWI at week w vs anchor lag weeks earlier... see header: positive = FWI leads
+          const a = series[aw]; if (a === undefined) continue;
+          if (mode === 'level') { xs.push(a); ys.push(f[pillar]); }
+          else {
+            const a0 = series[shift(aw, -1)], f0 = fwiWeeks[shift(w, -1)]?.[pillar];
+            if (a0 === undefined || f0 == null) continue;
+            xs.push(a - a0); ys.push(f[pillar] - f0);
+          }
+        }
+        const { r, n } = pearson(xs, ys);
+        if (r !== null) { comparisons++; cells.push({ mode, lag, pillar, r, n, ci: ci(r, n) }); }
       }
-      console.log(`    lag ${lag}  ${fmt(...Object.values(pearson(xs, ys)))}`);
     }
   }
-  console.log();
+  out.push({ label, cells });
 }
+
+if (JSON_MODE) { console.log(JSON.stringify({ since: DAILY_ERA_START, weeks: Object.keys(fwiWeeks).length, comparisons, out }, null, 2)); process.exit(0); }
+console.log(`WEEKLY ANCHOR VALIDATION — FWI weeks ${Object.keys(fwiWeeks)[0]} .. ${Object.keys(fwiWeeks).at(-1)} (${Object.keys(fwiWeeks).length} complete weeks)`);
+console.log(`positive lag = anchor value taken lag weeks BEFORE the FWI week (anchor leads FWI); negative = FWI leads anchor\n`);
+for (const { label, cells } of out) {
+  console.log(label);
+  for (const mode of ['level', 'change']) {
+    for (const pillar of Object.keys(FIELDS)) {
+      const c0 = cells.find((c) => c.mode === mode && c.lag === 0 && c.pillar === pillar);
+      const best = cells.filter((c) => c.mode === mode && c.pillar === pillar).sort((a, b) => Math.abs(b.r) - Math.abs(a.r))[0];
+      const f = (c) => c ? `r=${c.r.toFixed(2)} n=${c.n} CI[${c.ci[0].toFixed(2)},${c.ci[1].toFixed(2)}]` : 'n/a';
+      console.log(`  ${mode.padEnd(6)} ${pillar.padEnd(7)} lag0 ${f(c0)}   | strongest ${best ? 'lag ' + best.lag + ' ' + f(best) : 'n/a'}`);
+    }
+  }
+  console.log('');
+}
+console.log(`${comparisons} correlations computed in total (anchors x levels/changes x lags x pillars). At 95%, ~${(comparisons * 0.05).toFixed(0)} would exclude zero by chance alone.`);
