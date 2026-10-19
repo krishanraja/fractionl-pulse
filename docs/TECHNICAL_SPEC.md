@@ -2,7 +2,7 @@
 
 **Status:** Engineering reference for the system as it ships from `main`
 
-**Last reconciled:** 21 September 2026 against `main` at `c319148`. Section 3 (views) and section 4 (LinkedIn proxy guard) were updated 2026-10-18 from the `68967f1` diff only. Section 2's schedule carries its own 2026-09-21 production readback; the production readbacks elsewhere in this document are dated 11 August 2026.
+**Last reconciled:** 21 September 2026 against `main` at `c319148`. Section 3 (views) and section 4 (LinkedIn proxy guard) were updated 2026-10-18 from the `68967f1` diff only; the lazy-route list in Performance was updated 2026-10-19 from the `43948c4` diff. Section 2's schedule carries its own 2026-09-21 production readback; the production readbacks elsewhere in this document are dated 11 August 2026.
 
 _Source of truth for the system as it ships today. 20 tracked inputs, core and supporting edge functions, Supabase and Vercel scheduling, and an agent-native API. Generated from the live codebase; see commit history for last update._
 
@@ -427,7 +427,7 @@ Full schema lives in [`AGENT_INTEGRATION.md`](./AGENT_INTEGRATION.md).
 
 ### Performance
 
-- Index and role pages render through the eager Pulse instrument; Login, Pricing, and NotFound are route-level lazy imports
+- Index and role pages render through the eager Pulse instrument; Login, Pricing, Terms, Privacy, and NotFound are route-level lazy imports
 - Lazy-loaded charts and Methodology drawer
 - The history API exposes up to 12 months of mixed-frequency observations; daily score rows accumulate from June 2026
 - React Query `refetchInterval: 5min` + Realtime invalidation

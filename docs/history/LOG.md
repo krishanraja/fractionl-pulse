@@ -4,6 +4,14 @@ Newest first. Entries are written by the docs steward (see the steward link in
 NOW.md) and by humans doing the same job by hand. Nothing in this file
 describes current behaviour; NOW.md and the state doc do.
 
+## 2026-10-19
+
+- reconciled at `cd71df2`: `NOW.md`. Head moved from `ce8c483` across two non-steward commits (terms, privacy and company footer, PR #53; umbrella wording, PR #54). One bullet added; the umbrella sentence in the Mindmake section was already written by PR #54 and was checked, not changed.
+- reconciled at `cd71df2`: `docs/TECHNICAL_SPEC.md`. Performance section lists Terms and Privacy as lazy routes, read against `src/App.tsx`. Nothing else in the document was re-read; production was not read.
+- checked, no change: `public/product-truth.json` (PR #53 already added `/terms` and `/privacy`), `public/llms.txt`, `public/.well-known/ai-plugin.json`.
+- checked, stale stamps not bumped: `docs/DOCUMENTATION_GOVERNANCE.md`, `docs/CORPORATE_STRATEGY.md`, `docs/AUTONOMOUS_GTM_PLAYBOOK.md`, `docs/FLEET_WIRING.md`; nothing in this range changes what they cover.
+- no moves.
+
 ## 2026-10-18
 
 - reconciled at `ce8c483`: `NOW.md`. Head moved from `05ee6d6` to `ce8c483` across nineteen non-steward commits (three validation and floor-rule ratchet merges, the serpapi_linkedin ratio guard with migration 020, the North Star, the harness-context file, one canon sync and a May resilience branch merged as history). Six "What changed recently" bullets added, one waiting-on-Krish item extended with the peer-relative floor-rule decision.
