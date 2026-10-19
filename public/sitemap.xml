@@ -10,14 +10,20 @@
     /             the prerendered dashboard shell (live FWI baked into head, JSON-LD and noscript)
     /fractional-* the six prerendered per-role demand pages
     /pricing      the SPA pricing route (self-serve API key)
+    /terms        the prerendered terms of use shell
+    /privacy      the prerendered privacy policy shell
+  lastmod here is the date each URL was last touched in this file; the build
+  stamps its own date on every URL.
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://pulse.fractionl.ai/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
-  <url><loc>https://pulse.fractionl.ai/fractional-cfo</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
-  <url><loc>https://pulse.fractionl.ai/fractional-cmo</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
-  <url><loc>https://pulse.fractionl.ai/fractional-cto</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
-  <url><loc>https://pulse.fractionl.ai/fractional-coo</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
-  <url><loc>https://pulse.fractionl.ai/fractional-cro</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
-  <url><loc>https://pulse.fractionl.ai/fractional-ceo</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
-  <url><loc>https://pulse.fractionl.ai/pricing</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://pulse.fractionl.ai/</loc><lastmod>2026-10-19</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://pulse.fractionl.ai/fractional-cfo</loc><lastmod>2026-10-19</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pulse.fractionl.ai/fractional-cmo</loc><lastmod>2026-10-19</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pulse.fractionl.ai/fractional-cto</loc><lastmod>2026-10-19</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pulse.fractionl.ai/fractional-coo</loc><lastmod>2026-10-19</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pulse.fractionl.ai/fractional-cro</loc><lastmod>2026-10-19</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pulse.fractionl.ai/fractional-ceo</loc><lastmod>2026-10-19</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pulse.fractionl.ai/pricing</loc><lastmod>2026-10-19</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://pulse.fractionl.ai/terms</loc><lastmod>2026-10-19</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://pulse.fractionl.ai/privacy</loc><lastmod>2026-10-19</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
 </urlset>

@@ -25,6 +25,7 @@ import { useRoleBreakdown } from '@/hooks/useRoleBreakdown';
 import { FRACTIONAL_ROLES } from '@/hooks/useUserRole';
 import { displayScore, formatDelta } from '@/lib/format';
 import type { FWIData } from '@/lib/types';
+import SiteFooter from '@/components/layout/SiteFooter';
 
 type Band = {
   label: string;
@@ -437,6 +438,8 @@ const PulseInstrument = ({
         </main>
 
         <div className="pulse-desktop-only">{renderAskPanel()}</div>
+
+        <SiteFooter variant="instrument" />
 
         {!overlayOpen && (
           <nav className="pulse-mobile-bottom-nav" aria-label="Mobile primary navigation">

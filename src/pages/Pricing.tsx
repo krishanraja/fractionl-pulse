@@ -5,6 +5,7 @@ import { ArrowLeft, Check, Database, LockKeyhole } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import ApiKeyManager from '@/components/ApiKeyManager';
+import SiteFooter from '@/components/layout/SiteFooter';
 
 type Action = 'public' | 'partner' | 'enterprise';
 
@@ -195,6 +196,8 @@ const Pricing = () => {
           <p>Annual plans do not launch until record-count, partner-independence, and privacy thresholds are met.</p>
         </div>
       </div>
+
+      <SiteFooter />
 
       <ApiKeyManager open={apiOpen} onOpenChange={setApiOpen} />
     </div>

@@ -396,6 +396,7 @@ function rolePage(def, r, data, site) {
     <footer>
       <p>Published by <a href="https://fractionl.ai">Fractionl</a>, a private composite. Not an official, institutional or government index, and not financial advice.</p>
       <p>Sources refresh daily and the composite is interpreted weekly. About 12 months of mixed-frequency history. The current role-demand collectors are US-scoped. Free to cite with attribution to the Fractional Working Index.</p>
+      <p>Pulse is a Mindmaker LLC company. Mindmaker Ltd in the UK. <a href="/terms">Terms</a> &middot; <a href="/privacy">Privacy</a></p>
     </footer>
   </div>`;
 
@@ -449,6 +450,8 @@ export function buildSitemap(distDir, site, roleSlugs) {
     url(`${site}/`, 'daily', '1.0'),
     ...roleSlugs.map((s) => url(`${site}/${s}`, 'daily', '0.8')),
     url(`${site}/pricing`, 'monthly', '0.6'),
+    url(`${site}/terms`, 'yearly', '0.3'),
+    url(`${site}/privacy`, 'yearly', '0.3'),
   ];
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`;
   writeFileSync(join(distDir, 'sitemap.xml'), xml);
