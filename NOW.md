@@ -20,7 +20,7 @@ Pulse is the independent market instrument for fractional leadership: a free, pu
 
 ## Who it is for and why it matters for Mindmake
 
-Pulse is not a Mindmake product and Mindmake does not sell it. Its own audiences and buyer are in `docs/CORPORATE_STRATEGY.md`. For Mindmake it is proof. The room_face buyer (`control-center/docs/ICP.md`: a senior leader at a PE or VC backed media, adtech, publishing or data business, quietly behind on what is coming) runs or funds a data business. An independent market index with 20 inputs, a daily pipeline, published methodology, per-source health, a public API and an MCP server is the kind of asset that business would scope as a quarter's work for a team. One person built it and runs it with AI, in public, with the failures left in.
+Pulse sits under the Mindmaker LLC (United States) and Mindmaker Ltd (United Kingdom) umbrella with the other businesses, published under the Fractionl name; Mindmake does not sell it. Its own audiences and buyer are in `docs/CORPORATE_STRATEGY.md`. For Mindmake it is proof. The room_face buyer (`control-center/docs/ICP.md`: a senior leader at a PE or VC backed media, adtech, publishing or data business, quietly behind on what is coming) runs or funds a data business. An independent market index with 20 inputs, a daily pipeline, published methodology, per-source health, a public API and an MCP server is the kind of asset that business would scope as a quarter's work for a team. One person built it and runs it with AI, in public, with the failures left in.
 
 Angles a writer can use (the registry anonymises this repo; say "a side build", never the name):
 
