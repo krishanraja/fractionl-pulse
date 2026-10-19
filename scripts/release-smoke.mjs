@@ -184,7 +184,7 @@ await check('Ask Pulse streams an evidence-bounded answer', async () => {
 
 if (!SKIP_SITE) {
   await check('public site routes and discovery files', async () => {
-    for (const path of ['/', '/login', '/pricing', '/fractional-cmo', '/product-truth.json', '/llms.txt', '/.well-known/ai-plugin.json', '/sitemap.xml']) {
+    for (const path of ['/', '/login', '/pricing', '/terms', '/privacy', '/fractional-cmo', '/product-truth.json', '/llms.txt', '/.well-known/ai-plugin.json', '/sitemap.xml']) {
       const response = await fetch(`${SITE}${path}`, { redirect: 'follow', signal: AbortSignal.timeout(30000) });
       assert.equal(response.status, 200, `${path} returned ${response.status}`);
     }

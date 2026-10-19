@@ -8,6 +8,8 @@ import Index from "./pages/Index";
 
 const Login = lazy(() => import("./pages/Login"));
 const Pricing = lazy(() => import("./pages/Pricing"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Privacy = lazy(() => import("./pages/Privacy"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -34,6 +36,8 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/pricing" element={<Pricing />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
                 <Route path="/fractional-cmo" element={<Index />} />
                 <Route path="/fractional-cfo" element={<Index />} />
                 <Route path="/fractional-cto" element={<Index />} />

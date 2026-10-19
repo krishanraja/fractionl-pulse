@@ -224,7 +224,9 @@
       "/fractional-cro",
       "/fractional-ceo",
       "/pricing",
-      "/login"
+      "/login",
+      "/terms",
+      "/privacy"
     ],
     "instrument_views": [
       "Index",

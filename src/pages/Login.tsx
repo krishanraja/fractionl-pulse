@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRole, FRACTIONAL_ROLES } from '@/hooks/useUserRole';
 import fractionlLogo from '@/assets/fractionl-logo.png';
 import fractionlIcon from '@/assets/fractionl-icon.png';
+import SiteFooter from '@/components/layout/SiteFooter';
 
 type Mode = 'login' | 'signup' | 'reset' | 'recovery';
 
@@ -83,7 +84,8 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex flex-col">
+    <div className="flex flex-1">
       {/* Left Panel - Form */}
       <div className="flex-1 flex items-center justify-center p-8">
         <motion.div
@@ -356,6 +358,8 @@ const Login = () => {
           </div>
         </motion.div>
       </div>
+    </div>
+    <SiteFooter />
     </div>
   );
 };

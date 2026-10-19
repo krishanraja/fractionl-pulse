@@ -1160,7 +1160,7 @@
 
   .pulse-desktop-rail {
     grid-column: 1;
-    grid-row: 1 / -1;
+    grid-row: 1 / 4;
     z-index: 10;
     display: flex;
     flex-direction: column;
@@ -2375,6 +2375,43 @@
     box-shadow: none;
   }
 
+  /* Company note and legal links: the smallest muted line on the page. */
+  .pulse-site-footer {
+    grid-column: 2 / -1;
+    grid-row: 3;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px 16px;
+    padding: 12px 34px 14px;
+    border-top: 1px solid var(--pulse-rule-soft);
+    color: var(--pulse-ink-soft);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .pulse-site-footer p {
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .pulse-site-footer nav {
+    display: flex;
+    gap: 14px;
+  }
+
+  .pulse-site-footer a {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--pulse-rule);
+    text-underline-offset: 2px;
+  }
+
+  .pulse-site-footer a:hover {
+    color: var(--pulse-ink);
+  }
+
   @media (max-width: 1279px) and (min-width: 1024px) {
     .pulse-product-frame {
       grid-template-columns: 68px minmax(0, 1fr) 330px;
@@ -2547,6 +2584,12 @@
     .pulse-product-main {
       display: block;
       min-height: calc(100svh - 136px);
+    }
+
+    .pulse-site-footer {
+      justify-content: center;
+      padding: 14px 18px 16px;
+      text-align: center;
     }
 
     .pulse-mobile-index,

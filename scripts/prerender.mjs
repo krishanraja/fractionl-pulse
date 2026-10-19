@@ -110,6 +110,7 @@ const noscriptBlock = `
         <p>The FWI is a private composite score (0-100) for the fractional executive market (fractional CFO, CMO, CTO, COO, CRO, and interim CEO), using 20 tracked inputs with mixed availability across demand, supply, culture, and context. The inputs are not all statistically independent. ${escape(methodology)}.</p>
         <p>SEC Form D filing velocity is included as startup-financing context. Pulse has not validated a predictive relationship between those filings and future fractional hiring.</p>
         <p>Free, no-auth API: <a href="${API}">${API}</a>. Weekly brief: <a href="https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief">export-brief</a>. Published by <a href="https://fractionl.ai">Fractionl</a>.</p>
+        <p>Pulse is a Mindmaker LLC company. Mindmaker Ltd in the UK. <a href="/terms">Terms</a> &middot; <a href="/privacy">Privacy</a></p>
       </main>
     </noscript>
 `;
@@ -181,7 +182,23 @@ writeAppRouteShell({
   title: 'Pulse pricing | Public index and benchmark partnerships',
   description: 'Pulse keeps the Fractional Working Index free. Qualified fractional-talent firms can apply for a privacy-safe benchmark pilot, with enterprise cohorts released only after coverage thresholds are met.',
   indexable: true,
-  noscript: '<h1>Pulse pricing</h1><p>The Fractional Working Index and its public API remain free. Qualified fractional-talent firms can apply for a £1,500 founding benchmark pilot. Enterprise cohorts begin at £15,000 per year only after coverage and privacy thresholds are met.</p>',
+  noscript: '<h1>Pulse pricing</h1><p>The Fractional Working Index and its public API remain free. Qualified fractional-talent firms can apply for a £1,500 founding benchmark pilot. Enterprise cohorts begin at £15,000 per year only after coverage and privacy thresholds are met.</p><p>Pulse is a Mindmaker LLC company. Mindmaker Ltd in the UK. <a href="/terms">Terms</a> &middot; <a href="/privacy">Privacy</a></p>',
+});
+
+writeAppRouteShell({
+  path: '/terms',
+  title: 'Terms of use | Pulse by Fractionl',
+  description: 'The terms for using Pulse, the Fractional Working Index, its public API and MCP tools. Pulse is operated by Mindmaker LLC and Mindmaker Ltd.',
+  indexable: true,
+  noscript: '<h1>Terms of use</h1><p>Last updated: 19 October 2026.</p><p>Pulse is operated by Mindmaker LLC, a United States company, and Mindmaker Ltd, a United Kingdom company (together, "Mindmaker", "we", "us"). The index, public API and MCP tools are free to read and cite with attribution. Pulse is not an official index and is not financial, career or rate advice. Contact: <a href="mailto:data@fractionl.ai">data@fractionl.ai</a>.</p><p>Pulse is a Mindmaker LLC company. Mindmaker Ltd in the UK. <a href="/terms">Terms</a> &middot; <a href="/privacy">Privacy</a></p>',
+});
+
+writeAppRouteShell({
+  path: '/privacy',
+  title: 'Privacy policy | Pulse by Fractionl',
+  description: 'What Pulse collects, why, who processes it and how to ask for a copy or deletion. Pulse is operated by Mindmaker LLC and Mindmaker Ltd.',
+  indexable: true,
+  noscript: '<h1>Privacy policy</h1><p>Last updated: 19 October 2026.</p><p>Pulse is operated by Mindmaker LLC, a United States company, and Mindmaker Ltd, a United Kingdom company (together, "Mindmaker", "we", "us"). Mindmaker LLC and Mindmaker Ltd are responsible for the personal information described in this policy. Reading the index needs no account. Contact: <a href="mailto:data@fractionl.ai">data@fractionl.ai</a>.</p><p>Pulse is a Mindmaker LLC company. Mindmaker Ltd in the UK. <a href="/terms">Terms</a> &middot; <a href="/privacy">Privacy</a></p>',
 });
 
 writeAppRouteShell({
