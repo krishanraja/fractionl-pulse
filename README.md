@@ -236,6 +236,7 @@ The audit is read-only. It checks schedule adherence, source health, completenes
 | [MCP tool guide](docs/MCP_TOOL.md) | MCP tools and implementation examples |
 | [Data-sources roadmap](docs/DATA_SOURCES_ROADMAP.md) | Input inventory and future data work |
 | [Weekly pipeline audit](docs/WEEKLY_PIPELINE_AUDIT.md) | Operational audit runbook |
+| [Answer hub](docs/ANSWER_HUB.md) | Question-led answer pages at `/answers`: cadence, sourcing, quality bar, how to add a post |
 
 ## Contact
 

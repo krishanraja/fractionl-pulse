@@ -22,7 +22,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { buildRolePages, buildSitemap } from './prerender-roles.mjs';
+import { buildRolePages, buildSitemap, STYLES } from './prerender-roles.mjs';
+import { buildAnswerHub, sitemapAnswerEntries } from './answers-lib.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const HTML_PATH = join(__dirname, '..', 'dist', 'index.html');
@@ -70,14 +71,27 @@ const datasetLd = {
   name: 'Fractional Working Index (FWI)',
   alternateName: 'FWI',
   description,
-  url: SITE,
-  sameAs: SITE,
+  '@id': `${SITE}/#dataset`,
+  url: `${SITE}/`,
   isAccessibleForFree: true,
-  creator: { '@type': 'Organization', name: 'Fractionl', url: 'https://fractionl.ai' },
-  publisher: { '@type': 'Organization', name: 'Fractionl', url: 'https://fractionl.ai' },
-  license: 'https://pulse.fractionl.ai',
-  measurementTechnique: 'Private composite using 20 tracked inputs with mixed availability across demand (50%), supply (20%), culture (30%), and excluded context. Inputs are not all statistically independent. SEC Form D filing velocity is financing context; its relationship to future fractional demand has not been validated.',
-  variableMeasured: ['Overall FWI', 'Demand', 'Supply', 'Culture'],
+  inLanguage: 'en',
+  creator: { '@id': 'https://fractionl.ai/#organization' },
+  publisher: { '@id': 'https://fractionl.ai/#organization' },
+  // There is no open-data licence; the terms of use grant free reading and
+  // citation with attribution, so they are what a licence field should point at.
+  license: `${SITE}/terms`,
+  usageInfo: `${SITE}/answers/how-to-cite-the-fractional-working-index`,
+  creditText: 'Fractional Working Index (FWI), Pulse by Fractionl',
+  keywords: ['fractional leadership', 'fractional executives', 'fractional CFO', 'fractional CMO', 'fractional CTO', 'fractional COO', 'fractional CRO', 'interim CEO', 'labour market index'],
+  spatialCoverage: { '@type': 'Place', name: 'United States' },
+  measurementTechnique: 'Private composite using 20 tracked inputs with mixed availability across demand (50%), supply (20%), culture (30%), and excluded context. Inputs are not all statistically independent. Recalculated after each successful daily ingest; data completeness published with every reading. SEC Form D filing velocity is financing context; its relationship to future fractional demand has not been validated.',
+  variableMeasured: [
+    { '@type': 'PropertyValue', name: 'Fractional Working Index (overall)', unitText: 'index, 0 to 100', minValue: 0, maxValue: 100, ...(haveLive ? { value: score } : {}) },
+    { '@type': 'PropertyValue', name: 'Demand pillar', description: 'Weight 50%. Job postings naming six roles, plus financing context.', minValue: 0, maxValue: 100 },
+    { '@type': 'PropertyValue', name: 'Supply pillar', description: 'Weight 20%. Public signals of fractional executives offering their services.', minValue: 0, maxValue: 100 },
+    { '@type': 'PropertyValue', name: 'Culture pillar', description: 'Weight 30%. News, search, podcast, forum and reference-page attention.', minValue: 0, maxValue: 100 },
+    { '@type': 'PropertyValue', name: 'Data completeness', description: 'Weighted share of tracked inputs that arrived for the reading. Not a prediction-accuracy metric.', minValue: 0, maxValue: 1 },
+  ],
   ...(asOf ? { dateModified: asOf } : {}),
   distribution: [
     { '@type': 'DataDownload', encodingFormat: 'application/json', contentUrl: API, name: 'Current FWI (JSON, no auth)' },
@@ -89,15 +103,33 @@ const datasetLd = {
 const orgLd = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
+  '@id': 'https://fractionl.ai/#organization',
   name: 'Fractionl',
   url: 'https://fractionl.ai',
+  logo: { '@type': 'ImageObject', url: `${SITE}/android-chrome-512x512.png`, width: 512, height: 512 },
+  email: 'data@fractionl.ai',
   brand: { '@type': 'Brand', name: 'Pulse by Fractionl' },
-  description: 'Fractionl publishes the Fractional Working Index, the weekly market-health index for the fractional executive economy.',
+  parentOrganization: { '@type': 'Organization', name: 'Mindmaker LLC' },
+  description: 'Fractionl publishes Pulse and the Fractional Working Index, a free 0 to 100 composite of fractional leadership market health, recalculated after each successful daily ingest and read through a weekly brief.',
 };
 
+const siteLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  '@id': `${SITE}/#website`,
+  name: 'Pulse by Fractionl',
+  alternateName: 'Fractional Working Index',
+  url: `${SITE}/`,
+  inLanguage: 'en',
+  publisher: { '@id': 'https://fractionl.ai/#organization' },
+  about: { '@id': `${SITE}/#dataset` },
+};
+
+const ld = (x) => JSON.stringify(x).replace(/</g, '\\u003c');
 const jsonLdBlock =
-  `\n    <script type="application/ld+json">${JSON.stringify(datasetLd)}</script>` +
-  `\n    <script type="application/ld+json">${JSON.stringify(orgLd)}</script>\n`;
+  `\n    <script type="application/ld+json">${ld(datasetLd)}</script>` +
+  `\n    <script type="application/ld+json">${ld(orgLd)}</script>` +
+  `\n    <script type="application/ld+json">${ld(siteLd)}</script>\n`;
 
 // ---- noscript content for non-JS crawlers ----
 const noscriptBlock = `
@@ -106,7 +138,7 @@ const noscriptBlock = `
         <h1>Fractional Working Index (FWI)</h1>
         ${haveLive
           ? `<p><strong>${escape(score.toFixed(1))} / 100 (${escape(label)})</strong>${deltaPhrase ? `, ${escape(deltaPhrase)}` : ''}${asOf ? `, as of ${escape(asOf)}` : ''}.</p>`
-          : `<p>A weekly 0-100 composite index of the fractional executive market.</p>`}
+          : `<p>A 0-100 composite index of the fractional executive market, recalculated after each successful daily ingest.</p>`}
         <p>The FWI is a private composite score (0-100) for the fractional executive market (fractional CFO, CMO, CTO, COO, CRO, and interim CEO), using 20 tracked inputs with mixed availability across demand, supply, culture, and context. The inputs are not all statistically independent. ${escape(methodology)}.</p>
         <p>SEC Form D filing velocity is included as startup-financing context. Pulse has not validated a predictive relationship between those filings and future fractional hiring.</p>
         <p>Free, no-auth API: <a href="${API}">${API}</a>. Weekly brief: <a href="https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief">export-brief</a>. Published by <a href="https://fractionl.ai">Fractionl</a>.</p>
@@ -148,10 +180,12 @@ function writeAppRouteShell({ path, title: routeTitle, description: routeDescrip
     .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${escape(routeTitle)}$2`)
     .replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${escape(routeDescription)}$2`)
     .replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${canonical}$2`)
-    .replace(/(<meta property="og:image" content=")[^"]*(")/, `$1${SITE}/og-image.svg$2`)
+    .replace(/(<meta property="og:image" content=")[^"]*(")/, `$1${SITE}/og-image.png$2`)
+    .replace(/(<meta property="og:image:alt" content=")[^"]*(")/, `$1Pulse by Fractionl: the market instrument for fractional leadership$2`)
+    .replace(/(<meta name="twitter:image:alt" content=")[^"]*(")/, `$1Pulse by Fractionl: the market instrument for fractional leadership$2`)
     .replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${escape(routeTitle)}$2`)
     .replace(/(<meta name="twitter:description" content=")[^"]*(")/, `$1${escape(routeDescription)}$2`)
-    .replace(/(<meta name="twitter:image" content=")[^"]*(")/, `$1${SITE}/og-image.svg$2`)
+    .replace(/(<meta name="twitter:image" content=")[^"]*(")/, `$1${SITE}/og-image.png$2`)
     .replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${canonical}" />`)
     .replace(/\s*<script type="application\/ld\+json">[\s\S]*?<\/script>/g, '')
     .replace(/\s*<noscript>\s*<main>[\s\S]*?<\/main>\s*<\/noscript>\s*(?=<\/body>)/, '');
@@ -218,5 +252,9 @@ console.log(
 // ---- Per-role SEO pages + the sitemap that has to match them ----------------
 const DIST = join(__dirname, '..', 'dist');
 const roleSlugs = await buildRolePages(DIST, SITE);
-buildSitemap(DIST, SITE, roleSlugs);
+
+// ---- Answer hub: /answers, /answers/<slug>, feed, llms-full.txt -------------
+// Same static HTML for every visitor; validation failures stop the build.
+const answers = buildAnswerHub({ root: join(__dirname, '..'), distDir: DIST, site: SITE, baseStyles: STYLES });
+buildSitemap(DIST, SITE, roleSlugs, sitemapAnswerEntries(answers, SITE));
 

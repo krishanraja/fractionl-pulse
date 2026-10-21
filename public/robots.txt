@@ -1,16 +1,61 @@
+# Pulse by Fractionl: the Fractional Working Index.
+# The index, its methodology and its answers are public and free to cite with
+# attribution. Every crawler, human visitor and agent receives the same HTML.
+#
+# Machine-readable context for language models and agents:
+#   https://pulse.fractionl.ai/llms.txt
+#   https://pulse.fractionl.ai/llms-full.txt
+#   https://pulse.fractionl.ai/product-truth.json
+#
+# /api/cron/ holds scheduled pipeline triggers; it is not content and is
+# closed to every crawler. /api/og (social card images) stays open.
+
+# AI assistants, answer engines and model-training crawlers: explicitly welcome.
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-User
+User-agent: Claude-SearchBot
+User-agent: anthropic-ai
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Google-Extended
+User-agent: GoogleOther
+User-agent: Applebot
+User-agent: Applebot-Extended
+User-agent: meta-externalagent
+User-agent: meta-externalfetcher
+User-agent: Amazonbot
+User-agent: CCBot
+User-agent: DuckAssistBot
+User-agent: MistralAI-User
+User-agent: cohere-ai
+User-agent: cohere-training-data-crawler
+User-agent: YouBot
+User-agent: PhindBot
+User-agent: Bytespider
+User-agent: Diffbot
+User-agent: AI2Bot
+User-agent: Timpibot
+Allow: /
+Disallow: /api/cron/
+
+# Search engines and link-preview fetchers.
 User-agent: Googlebot
-Allow: /
-
 User-agent: Bingbot
-Allow: /
-
+User-agent: DuckDuckBot
+User-agent: Slurp
+User-agent: YandexBot
 User-agent: Twitterbot
-Allow: /
-
 User-agent: facebookexternalhit
+User-agent: LinkedInBot
+User-agent: Slackbot
 Allow: /
+Disallow: /api/cron/
 
 User-agent: *
 Allow: /
+Disallow: /api/cron/
 
 Sitemap: https://pulse.fractionl.ai/sitemap.xml

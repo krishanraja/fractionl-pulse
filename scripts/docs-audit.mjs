@@ -6,6 +6,7 @@ const documentationFiles = [
   "README.md",
   "docs/AGENT_BRIEFING.md",
   "docs/AGENT_INTEGRATION.md",
+  "docs/ANSWER_HUB.md",
   "docs/AUTONOMOUS_GTM_PLAYBOOK.md",
   "docs/CORPORATE_STRATEGY.md",
   "docs/DATA_SOURCES_ROADMAP.md",
