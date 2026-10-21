@@ -169,7 +169,7 @@ function faqFor(r, def, overall) {
  * all. Tokens mirror src/index.css (warm paper, ink indigo, the five FWI band
  * tones) in both light and dark.
  */
-const STYLES = `
+export const STYLES = `
 :root{--bg:#f9f7f3;--surface:#fff;--fg:#151827;--dim:#5e6378;--line:#e2e3e9;--primary:#242e89;--on-primary:#fff;--radius:14px}
 .b-surging{--band:#0a7a56}.b-growing{--band:#157a3b}.b-stable{--band:#8a6206}.b-cooling{--band:#b04a08}.b-contracting{--band:#c02626}
 @media(prefers-color-scheme:dark){
@@ -308,6 +308,7 @@ function rolePage(def, r, data, site) {
     `<meta name="twitter:title" content="${escape(title)}">`,
     `<meta name="twitter:description" content="${escape(desc)}">`,
     `<meta name="twitter:image" content="${ogImage}">`,
+    `<meta name="twitter:image:alt" content="${escape(def.label)} demand reading from the Fractional Working Index">`,
     '<link rel="icon" type="image/svg+xml" href="/favicon.svg">',
     '<link rel="shortcut icon" href="/favicon.ico">',
     '<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">',
@@ -442,16 +443,19 @@ export async function buildRolePages(distDir, site) {
  * the checked-in copy of the same set; this overwrites it in dist with a fresh
  * lastmod, which the daily redeploy keeps current.
  */
-export function buildSitemap(distDir, site, roleSlugs) {
+export function buildSitemap(distDir, site, roleSlugs, extra = []) {
   const lastmod = new Date().toISOString().slice(0, 10);
-  const url = (loc, changefreq, priority) =>
-    `  <url><loc>${loc}</loc><lastmod>${lastmod}</lastmod><changefreq>${changefreq}</changefreq><priority>${priority}</priority></url>`;
+  const url = (loc, changefreq, priority, mod = lastmod) =>
+    `  <url><loc>${loc}</loc><lastmod>${mod}</lastmod><changefreq>${changefreq}</changefreq><priority>${priority}</priority></url>`;
+  // `extra` entries carry their own lastmod: an answer page's date is the day
+  // its content changed, not the day of the build, so it stays honest.
   const urls = [
     url(`${site}/`, 'daily', '1.0'),
     ...roleSlugs.map((s) => url(`${site}/${s}`, 'daily', '0.8')),
     url(`${site}/pricing`, 'monthly', '0.6'),
     url(`${site}/terms`, 'yearly', '0.3'),
     url(`${site}/privacy`, 'yearly', '0.3'),
+    ...extra.map((e) => url(e.loc, e.changefreq, e.priority, e.lastmod)),
   ];
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`;
   writeFileSync(join(distDir, 'sitemap.xml'), xml);

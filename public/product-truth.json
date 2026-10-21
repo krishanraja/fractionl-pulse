@@ -226,7 +226,8 @@
       "/pricing",
       "/login",
       "/terms",
-      "/privacy"
+      "/privacy",
+      "/answers"
     ],
     "instrument_views": [
       "Index",
@@ -244,7 +245,8 @@
       "The client Pro gate never locks a public surface",
       "Consumer checkout is not a current offer or route",
       "Waitlist and historical account rows do not validate a paid product"
-    ]
+    ],
+    "answer_hub": "Static, prerendered question-and-answer pages at /answers/<slug>, built from content/answers/ in the repository. Not linked from the app navigation; listed in sitemap.xml, llms.txt, llms-full.txt and /answers/feed.xml. Answers never state a live reading; they explain how to read it from the API."
   },
   "production_snapshot": {
     "captured_at": "2026-08-11",
@@ -345,7 +347,34 @@
       "https://pulse.fractionl.ai/fractional-cro",
       "https://pulse.fractionl.ai/fractional-ceo"
     ],
-    "sitemap": "https://pulse.fractionl.ai/sitemap.xml"
+    "sitemap": "https://pulse.fractionl.ai/sitemap.xml",
+    "llms_full_txt": "https://pulse.fractionl.ai/llms-full.txt",
+    "answers_index": "https://pulse.fractionl.ai/answers",
+    "answers_feed": "https://pulse.fractionl.ai/answers/feed.xml"
+  },
+  "citation": {
+    "cite_as": "Fractional Working Index (FWI), Pulse by Fractionl",
+    "url": "https://pulse.fractionl.ai",
+    "required_with_any_number": [
+      "score.overall",
+      "score.label",
+      "meta.asOf"
+    ],
+    "recommended": [
+      "score.delta30d with score.delta30dComparedWith",
+      "meta.dataCompleteness"
+    ],
+    "template": "Fractional Working Index (FWI), Pulse by Fractionl. [score.overall] of 100, [score.label] band, as of [meta.asOf]. Data completeness [meta.dataCompleteness]. https://pulse.fractionl.ai",
+    "terms": "Free to read and cite with attribution. https://pulse.fractionl.ai/terms",
+    "guide": "https://pulse.fractionl.ai/answers/how-to-cite-the-fractional-working-index",
+    "bands": {
+      "Surging": "75 and above",
+      "Growing": "60 to 74",
+      "Stable": "45 to 59",
+      "Cooling": "30 to 44",
+      "Contracting": "below 30"
+    },
+    "rule": "Fetch the live reading before quoting; never reuse a number from memory or an older article."
   },
   "competitive_truth": {
     "named_competitor": "Go Fractional publishes free role, demand, and compensation benchmarks from its own platform and survey data.",

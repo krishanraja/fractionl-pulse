@@ -70,6 +70,7 @@ If production truth cannot be fetched, the agent may prepare internal work from 
 | [`DATA_SOURCES_ROADMAP.md`](DATA_SOURCES_ROADMAP.md) | Data and product operators | Tracked input inventory, current health model, cost, incidents, and roadmap |
 | [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) | Product designers and frontend agents | Pulse-specific information architecture, tokens, interaction, and acceptance contract |
 | [`WEEKLY_PIPELINE_AUDIT.md`](WEEKLY_PIPELINE_AUDIT.md) | Reliability operators | Read-only weekly audit and escalation procedure |
+| [`ANSWER_HUB.md`](ANSWER_HUB.md) | Content authors and agents writing answers | The `/answers` hub: weekly cadence, sourcing rules, quality bar enforced by `npm run answers:check`, and how to add a post |
 | [`FLEET_WIRING.md`](FLEET_WIRING.md) | Mindmaker OS operators | Cross-system attribution contract and pending wiring |
 
 ## Known runtime distinctions

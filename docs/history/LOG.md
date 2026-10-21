@@ -4,6 +4,12 @@ Newest first. Entries are written by the docs steward (see the steward link in
 NOW.md) and by humans doing the same job by hand. Nothing in this file
 describes current behaviour; NOW.md and the state doc do.
 
+## 2026-10-21
+
+- added: `docs/ANSWER_HUB.md`, owner of the `/answers` hub (cadence, sourcing, quality bar, how to add a post), registered in the ownership map in `docs/DOCUMENTATION_GOVERNANCE.md`, the README document map and `scripts/docs-audit.mjs`. Built on branch `claude/admiring-knuth-ls8u9k`; production was not read, so the hub is not recorded as live.
+- updated with the new route, per the reconciliation checklist: `public/product-truth.json` (`/answers` in `public_routes`, `answer_hub`, discovery links, a `citation` block), `public/llms.txt` (citable facts, answers block), `public/.well-known/ai-plugin.json` (`legal_info_url` now `/terms`). `last_reconciled` not bumped: production was not read.
+- no moves.
+
 ## 2026-10-19
 
 - reconciled at `cd71df2`: `NOW.md`. Head moved from `ce8c483` across two non-steward commits (terms, privacy and company footer, PR #53; umbrella wording, PR #54). One bullet added; the umbrella sentence in the Mindmake section was already written by PR #54 and was checked, not changed.

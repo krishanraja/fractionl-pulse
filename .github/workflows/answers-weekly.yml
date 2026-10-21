@@ -1,0 +1,115 @@
+# Weekly brief for the answer hub (docs/ANSWER_HUB.md).
+#
+# Opens one GitHub issue a week, "Answer hub brief: week of <date>", with the
+# publishing checklist and the next question candidates from
+# content/answers-backlog.md. It writes nothing to the site and spends nothing:
+# no model call, no paid API, no secret beyond the default GITHUB_TOKEN. A
+# person (or an agent session they start) writes the post; this only makes sure
+# the week is not skipped silently.
+name: Answer hub weekly brief
+
+on:
+  schedule:
+    # Mondays 08:23 UTC, after the 07:00 pipeline audit, off the top of the hour.
+    - cron: '23 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  brief:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Dependency-free on purpose: the check reads only files in the repo.
+      - name: Check the hub as it stands
+        id: check
+        run: |
+          set +e
+          node scripts/answers-check.mjs > check.txt 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          cat check.txt
+
+      - name: Open the weekly issue
+        uses: actions/github-script@v7
+        env:
+          CHECK_EXIT: ${{ steps.check.outputs.exit_code }}
+        with:
+          script: |
+            const fs = require('node:fs');
+            const path = require('node:path');
+
+            // Monday of the current ISO week, UTC.
+            const now = new Date();
+            const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - ((now.getUTCDay() + 6) % 7)));
+            const week = monday.toISOString().slice(0, 10);
+            const title = `Answer hub brief: week of ${week}`;
+
+            const existing = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner, repo: context.repo.repo, state: 'all', per_page: 100,
+              since: new Date(Date.now() - 14 * 864e5).toISOString(),
+            });
+            if (existing.some((i) => i.title === title)) {
+              core.info(`"${title}" already exists; nothing to do.`);
+              return;
+            }
+
+            const published = fs.readdirSync('content/answers')
+              .filter((f) => f.endsWith('.md'))
+              .map((f) => {
+                const m = fs.readFileSync(path.join('content/answers', f), 'utf8').match(/^title:\s*(.+)$/m);
+                return m ? m[1].trim().toLowerCase() : null;
+              })
+              .filter(Boolean);
+
+            const candidates = fs.readFileSync('content/answers-backlog.md', 'utf8')
+              .split('\n')
+              .map((l) => l.match(/^- \[ \] (.+?)(?:\s*\|\s*grounding:\s*(.+))?$/))
+              .filter(Boolean)
+              .map((m) => ({ q: m[1].trim(), g: (m[2] || '').trim() }))
+              .filter((c) => !published.includes(c.q.toLowerCase()))
+              .slice(0, 5);
+
+            const checkOk = process.env.CHECK_EXIT === '0';
+            const body = [
+              `Weekly brief for the answer hub. Pick **one** question below (or a better one with a source in this repo), write it, and close this issue with the post's URL. If nothing meets the bar this week, close it with the reason. A skipped week is fine; an unrecorded one is not.`,
+              '',
+              `Hub check on \`main\`: ${checkOk ? 'passing' : '**failing**, fix this first (see the workflow log)'}. Published answers: ${published.length}.`,
+              '',
+              '## Question candidates',
+              '',
+              ...(candidates.length
+                ? candidates.map((c) => `- [ ] ${c.q}${c.g ? `\n  - grounding: ${c.g}` : ''}`)
+                : ['- The backlog is empty. Add candidates to `content/answers-backlog.md`.']),
+              '',
+              '## Checklist',
+              '',
+              '- [ ] Add `content/answers/<slug>.md` (copy an existing post; the slug is the file name)',
+              '- [ ] Direct answer of 40 to 60 words in the `answer` field; the question as the `title`',
+              '- [ ] Every fact traceable to this repo or to a linked source under `## Sources` (at least two)',
+              '- [ ] No live figure typed into the post; explain how to read it from the index instead',
+              '- [ ] British English, no em dashes, claim rules in `docs/AGENT_BRIEFING.md` respected',
+              '- [ ] `## Frequently asked questions` with at least two `### ` questions',
+              '- [ ] `datePublished` and `dateModified` are the real dates; bump `dateModified` only for a substantive change',
+              '- [ ] `npm run answers:sync`, then `npm run test:answers`, `npm run answers:check`, `npm run lint`, `npm run build`',
+              '- [ ] Tick the question in `content/answers-backlog.md`',
+              '- [ ] After merge and deploy, open `/answers/<slug>` and `/answers/feed.xml` in production and confirm the post is there',
+              '',
+              'Procedure and quality bar: `docs/ANSWER_HUB.md`. This issue was opened by `.github/workflows/answers-weekly.yml`; no model or paid API was used.',
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              labels: ['answer-hub'],
+              body,
+            });
+            core.info(`Opened "${title}" with ${candidates.length} candidates.`);
