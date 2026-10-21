@@ -1,8 +1,8 @@
 ---
 repo: krishanraja/fractionl-pulse
 product: Pulse by Fractionl
-as_of: 2026-10-19
-head: cd71df2
+as_of: 2026-10-21
+head: 1c6213b
 lifecycle: live
 production_url: https://pulse.fractionl.ai
 state_doc: docs/DOCUMENTATION_GOVERNANCE.md
@@ -31,7 +31,7 @@ Angles a writer can use (the registry anonymises this repo; say "a side build", 
 
 Objection it answers: "One person with AI can prototype, but cannot run a data product." Here is one that has accumulated daily observations since June 2026, with its audit trail in the open.
 
-## Where it is right now (as of 2026-10-19)
+## Where it is right now (as of 2026-10-21)
 
 - **Lifecycle: live**, in the governance doc's own vocabulary: a user can use the public instrument in production now. **Production was read directly on 2026-09-24** (`data_source_health`, `pipeline_runs`, `signals`, `fwi_scores`, `supabase_migrations.schema_migrations`): the FWI reads **50.30 for 2026-09-24 at 0.93 completeness**, and the FWI pipeline carries **20 health rows, 18 healthy**, the two not healthy being `hn` and `gofractional`. That readback settles the "20 in code, 21 in production" question left open on 2026-09-21: production reads 20. `public/product-truth.json` `production_snapshot` and `docs/DATA_SOURCES_ROADMAP.md` section 1 are still stamped 11 August 2026 and remain stale; this file, not those, carries the current reading.
 - **Live (readback 2026-08-11, schedule readback 2026-09-21):** the public FWI with demand, supply and culture components; twelve months of mixed-frequency history; six US-scoped role-demand pages; the weekly brief; Ask the Index; public REST endpoints; four hosted MCP tools; discovery files at `/product-truth.json`, `/llms.txt` and `/.well-known/ai-plugin.json`; optional accounts and free operational API keys.
@@ -47,6 +47,7 @@ Objection it answers: "One person with AI can prototype, but cannot run a data p
 
 ## What changed recently
 
+- 2026-10-21 **Pulse got an answer hub so that what the index measures, its method and how to cite it are machine-legible, without freezing a number** (`c8972f9`, PR #56). Why, in the commit's words: it "moves the North Star line 'the number journalists, firms and AI agents cite'" by publishing question-led answers "that point to the live reading instead of freezing a number". Built: five seed posts under `content/answers/`, grounded only in repo facts and prerendered to static `/answers` pages with RSS, `llms-full.txt` and sitemap entries; a validator (23 `node:test` cases including negative controls) that fails the build on a bad post; a weekly workflow that opens a brief issue from `content/answers-backlog.md` with no model spend; one named AI-crawler group in `robots.txt`; and the truth files updated with the route. A second find in the same commit: secondary routes pointed `og:image` at an SVG, which social platforms do not render, so a 1200x630 PNG replaced it. Same HTML for every visitor, no user-agent logic. Owner doc: `docs/ANSWER_HUB.md`. Production was not read back, so whether `/answers` is live is unverified.
 - 2026-10-19 **Pulse got terms, privacy and a company note on every page, on a ruling** (`43948c4`, PR #53; `cd71df2`, PR #54). Why, in the commit's words: "Ruling (Krish, 2026-10-19): every business site names Mindmaker LLC (USA) and Mindmaker Ltd (UK) in a subtle footer note and in its terms and privacy." A second ruling the same day put Pulse and Circle under that one umbrella. Built: lazy `/terms` and `/privacy` routes, a shared footer carrying the note and legal links, the two paths added to the sitemap, the prerender and the release smoke test, and to `public/product-truth.json`. Not read: production, so whether the pages are live is unverified here.
 
 - 2026-10-18 **Pulse got a North Star, and the quality programme's validation tests were consolidated, not overwritten** (`cd7d155`, `00e4bcf`, merges of PRs #42, #45, #47 and #51). Why: `docs/NORTH_STAR.md` now opens with a horizon Krish set on 18 October 2026, "By June 2027, Pulse is the number journalists, firms and AI agents cite when they ask whether fractional leadership is growing", and the moat metric is verified partner-contributed engagements, not index inputs. `AGENTS.md` makes every session read it first. Three ratchet branches that each added a validation script landed together, and the merge kept both dated methods so each pre-registered retest stays reproducible (`docs/DATA_QUALITY_STRATEGY.md`, "Retest continuity").
@@ -95,7 +96,8 @@ The authority order is the truth hierarchy in `docs/DOCUMENTATION_GOVERNANCE.md`
 8. `docs/WEEKLY_PIPELINE_AUDIT.md` with `.github/workflows/weekly-pipeline-audit.yml` and `scripts/pipeline-audit.mjs`: a versioned runbook with a thin scheduled invoker. The docs steward follows the same pattern: the procedure lives in `krishanraja/ai-harness` (moved from control-center on 2026-10-15, when control-center went private) and `.github/workflows/docs-steward.yml` only calls it.
 9. `docs/AGENT_BRIEFING.md`, `docs/AUTONOMOUS_GTM_PLAYBOOK.md`, `docs/SALES_PLAYBOOK.md`: what an agent may say and do, in that order.
 10. `docs/AGENT_INTEGRATION.md` and `docs/MCP_TOOL.md`: REST and MCP contracts. `docs/DESIGN_SYSTEM.md`: the interface contract. `docs/FLEET_WIRING.md`: attribution wiring to the OS warehouse, pending on the OS side.
-11. `docs/NORTH_STAR.md` and `docs/MONETIZATION_STRATEGY.md`: short views of the same strategy; both name `CORPORATE_STRATEGY.md` as canonical.
+11. `docs/ANSWER_HUB.md`: the `/answers` hub, its cadence, sourcing and quality bar. Built in code 2026-10-21; live status unverified.
+12. `docs/NORTH_STAR.md` and `docs/MONETIZATION_STRATEGY.md`: short views of the same strategy; both name `CORPORATE_STRATEGY.md` as canonical.
 
 ## Do not trust
 

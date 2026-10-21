@@ -4,6 +4,12 @@ Newest first. Entries are written by the docs steward (see the steward link in
 NOW.md) and by humans doing the same job by hand. Nothing in this file
 describes current behaviour; NOW.md and the state doc do.
 
+## 2026-10-21 (steward)
+
+- reconciled at `1c6213b`: `NOW.md`. Head moved from `cd71df2` across two non-steward commits (answer hub, PR #56). One bullet added, `docs/ANSWER_HUB.md` added to Read next. The PR already updated the truth files, the README map and this log; those were read against the commit message only, not production.
+- checked, stale stamps not bumped: `docs/DOCUMENTATION_GOVERNANCE.md`, `docs/TECHNICAL_SPEC.md`, `docs/CORPORATE_STRATEGY.md`, `docs/AUTONOMOUS_GTM_PLAYBOOK.md`, `docs/FLEET_WIRING.md`; bodies not re-read in full.
+- no moves.
+
 ## 2026-10-21
 
 - added: `docs/ANSWER_HUB.md`, owner of the `/answers` hub (cadence, sourcing, quality bar, how to add a post), registered in the ownership map in `docs/DOCUMENTATION_GOVERNANCE.md`, the README document map and `scripts/docs-audit.mjs`. Built on branch `claude/admiring-knuth-ls8u9k`; production was not read, so the hub is not recorded as live.
