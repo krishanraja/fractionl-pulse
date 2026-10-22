@@ -19,6 +19,7 @@
     "quality:json": "node scripts/quality-metrics.mjs --json",
     "validate": "node scripts/validate-anchor.mjs",
     "validate:weekly": "node scripts/validate-anchor-weekly.mjs",
+    "evaluate:sec": "node scripts/evaluate-sec-candidate.mjs",
     "validate:json": "node scripts/validate-anchor.mjs --json",
     "smoke:release": "node scripts/release-smoke.mjs",
     "test:dataforseo": "node --test supabase/functions/_shared/dataforseo.test.ts supabase/functions/_shared/outlier.test.ts",
