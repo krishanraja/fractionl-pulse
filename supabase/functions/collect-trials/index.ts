@@ -246,6 +246,28 @@ serve(async (req) => {
     }
     return new Response(JSON.stringify(out, null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
+  // ?diagnose=relevance: the items behind the text-match trials, so each can be
+  // checked for whether it is about fractional leadership at all. Found
+  // necessary on 2026-10-23: all 7 Guardian "fractional" matches were
+  // unrelated (cricket, F1, fractional jet ownership). Stores nothing; one
+  // Mediastack call and three Brave calls.
+  if (url.searchParams.get('diagnose') === 'relevance') {
+    const out: Record<string, unknown> = {};
+    const M = Deno.env.get('MEDIASTACK_API_KEY') || '';
+    try {
+      const j = await (await fetch(`http://api.mediastack.com/v1/news?access_key=${M}&keywords=fractional&languages=en&limit=25`)).json() as { pagination?: { total?: number }; data?: Array<{ title: string; source: string; published_at: string }>; error?: { message?: string } };
+      out.mediastack = j.error ? j.error.message : { total: j.pagination?.total, titles: (j.data || []).map((a) => `${a.published_at.slice(0, 10)} [${a.source}] ${a.title}`) };
+    } catch (e) { out.mediastack = (e as Error).message; }
+    const titles = async (path: string, q: string, fresh: string, n: number) => {
+      await new Promise((r) => setTimeout(r, 1200));
+      const j = await getJson(`https://api.search.brave.com/res/v1/${path}?q=${encodeURIComponent(q)}&count=${n}&freshness=${fresh}${path === 'web/search' ? '&result_filter=web' : ''}`, { headers: { 'X-Subscription-Token': BRAVE, Accept: 'application/json' } }, 2) as { results?: Array<{ title: string; url: string }>; web?: { results?: Array<{ title: string; url: string }> } };
+      return (j.results ?? j.web?.results ?? []).map((r) => `${r.title} | ${r.url}`);
+    };
+    out.brave_news = await titles('news/search', BRAVE_ROLE_TERMS.join(' OR '), 'pw', 50).catch((e) => (e as Error).message);
+    out.brave_web_cfo = await titles('web/search', '"fractional CFO"', 'pw', 20).catch((e) => (e as Error).message);
+    out.reddit_cfo = await titles('web/search', 'site:reddit.com "fractional CFO"', 'pm', 20).catch((e) => (e as Error).message);
+    return new Response(JSON.stringify(out, null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
   if (url.searchParams.get('diagnose') === 'repairs') {
     return new Response(JSON.stringify(await diagnoseRepairs(), null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
