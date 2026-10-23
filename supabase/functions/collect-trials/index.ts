@@ -271,6 +271,27 @@ serve(async (req) => {
     } catch (e) { out.podchaser = (e as Error).message; }
     return new Response(JSON.stringify(out, null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
+  // ?diagnose=podchaser: repair attempt for trial_podchaser_flow, which failed
+  // gate check 0 (about 3 of the 50 newest "fractional executive" matches are
+  // about fractional leadership; Podchaser's search is fuzzy). Counts only new
+  // podcasts whose title or description names fractional executive work.
+  if (url.searchParams.get('diagnose') === 'podchaser') {
+    const tok = (await getJson('https://api.podchaser.com/graphql', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: `mutation { requestAccessToken(input:{grant_type: CLIENT_CREDENTIALS, client_id:"${PODCHASER_ID}", client_secret:"${PODCHASER_SECRET}"}) { access_token } }` }) }, 1) as { data?: { requestAccessToken?: { access_token?: string } } }).data?.requestAccessToken?.access_token;
+    const pattern = /\bfractional\s+(c[a-z]o|chief|executive|exec|leader|leadership|cfo|cmo|cto|coo|cro|ceo)/i;
+    const out: Record<string, unknown> = {};
+    for (const term of ['fractional executive', 'fractional CFO', 'fractional CMO', 'fractional CTO']) {
+      const j = await getJson('https://api.podchaser.com/graphql', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
+        body: JSON.stringify({ query: `{ podcasts(searchTerm: ${JSON.stringify(term)}, first: 100, sort: { sortBy: DATE_OF_FIRST_EPISODE, direction: DESCENDING }) { paginatorInfo { total } data { title description startDate } } }` }) }, 1) as
+        { data?: { podcasts?: { paginatorInfo?: { total?: number }; data?: Array<{ title: string; description?: string; startDate?: string }> } }; errors?: Array<{ message: string }> };
+      if (j.errors) { out[term] = j.errors.map((e) => e.message); continue; }
+      const items = j.data?.podcasts?.data || [];
+      const relevant = items.filter((p) => pattern.test(`${p.title} ${p.description || ''}`));
+      out[term] = { total: j.data?.podcasts?.paginatorInfo?.total, sampled: items.length, relevant: relevant.length,
+        relevant_titles: relevant.map((p) => `${(p.startDate || '').slice(0, 10)} ${p.title}`), oldest_sampled: items.at(-1)?.startDate?.slice(0, 10) };
+    }
+    return new Response(JSON.stringify(out, null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
   if (url.searchParams.get('diagnose') === 'repairs') {
     return new Response(JSON.stringify(await diagnoseRepairs(), null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
