@@ -107,6 +107,18 @@ for (const t of TRIALS) {
     if (r != null && Math.abs(r) > Math.abs(worst.r)) worst = { r, n, against: src };
   }
 
+  // Information only, not a gate check: the same comparison on 7-day changes.
+  // Two series that both trend over the window correlate in levels without
+  // sharing information; changes remove the shared trend. The gate stays as
+  // agreed (levels) until Krish rules otherwise.
+  const weekly = (ser) => Object.fromEntries(Object.keys(ser).filter((d) => ser[addDays(d, -7)] !== undefined).map((d) => [d, ser[d] - ser[addDays(d, -7)]]));
+  let worstChange = { r: 0, n: 0, against: null };
+  for (const src of Object.keys(V2_SOURCES)) {
+    if (src === t.replaces) continue;
+    const { r, n } = pearson(weekly(mine), weekly(seriesOf(src)));
+    if (r != null && Math.abs(r) > Math.abs(worstChange.r)) worstChange = { r, n, against: src };
+  }
+
   let impact = null;
   if (dates.length) {
     const withIt = v2Series([...baseRows, ...trialRows], (S) => { S[t.source] = t.pillar; if (t.replaces) delete S[t.replaces]; });
@@ -131,6 +143,7 @@ for (const t of TRIALS) {
     days: dates.length, live_days: live, first: dates[0] ?? null, last: dates.at(-1) ?? null,
     frozen_categories: frozen, at_cap_rows: atCap,
     max_r: worst.against ? { r: Math.round(worst.r * 100) / 100, n: worst.n, against: worst.against } : null,
+    max_r_weekly_change: worstChange.against ? { r: Math.round(worstChange.r * 100) / 100, n: worstChange.n, against: worstChange.against } : null,
     impact, gate, ready_for_ruling: Object.entries(gate).filter(([k]) => !k.startsWith('6')).every(([, v]) => v === true) });
 }
 
@@ -144,6 +157,7 @@ for (const r of results) {
   console.log(`  gate: ${Object.entries(r.gate).map(([k, v]) => `${k} ${mark(v)}`).join(' · ')}`);
   if (r.frozen_categories.length || r.at_cap_rows) console.log(`  frozen: ${r.frozen_categories.join(', ') || 'none'}; rows at cap: ${r.at_cap_rows}`);
   if (r.max_r) console.log(`  highest |r| against a current input: ${r.max_r.r} vs ${r.max_r.against} (n = ${r.max_r.n})`);
+  if (r.max_r_weekly_change) console.log(`  same on 7-day changes (information, not the gate): ${r.max_r_weekly_change.r} vs ${r.max_r_weekly_change.against} (n = ${r.max_r_weekly_change.n})`);
   if (r.impact) console.log(`  impact over the last 28 days: mean shift ${r.impact.mean_shift >= 0 ? '+' : ''}${r.impact.mean_shift}, max ${r.impact.max_abs_shift}; sd of daily change ${r.impact.sd_daily_change_before} -> ${r.impact.sd_daily_change_after}`);
   console.log(`  ${r.ready_for_ruling ? 'READY for a ruling' : 'not ready'}\n`);
 }

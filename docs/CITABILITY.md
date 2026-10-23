@@ -116,6 +116,18 @@ Krish's concern on 2026-10-23, in his words: "I am worried we are now gutting th
 | Companies House officer appointments (UK) | Supply, UK | The first second-geography input; structured, dated appointment records | Yes | Free key needed; UK only, so a separate UK reading, not the US composite |
 | Verified partner engagement records | All three | The only fractional-specific supply and demand data, and the moat in `docs/NORTH_STAR.md` | From each partner's own dated records | Depends on the partner programme in `docs/CORPORATE_STRATEGY.md` |
 
+**The trial lane, built 2026-10-23** (Ruling, Krish, 2026-10-23). Candidates are collected by `supabase/functions/collect-trials` at 06:30 UTC daily and stored as `signal_type = 'candidate'`, which neither method reads, so a trial cannot move a published number. `npm run trial` checks each one against the gate above and measures its impact with the same method module the pipeline runs. First read, 2026-10-23, after a 60-day backfill from each trial's dated archive (Google Jobs cannot be backfilled):
+
+| Trial | Days | Highest level r (gate) | On 7-day changes (information) | Impact, last 28 days | Gate |
+|---|---|---|---|---|---|
+| Podchaser new podcasts per week (added to culture) | 53 | 0.45 vs Census NAICS 54, n = 53 | 0.63 vs HN, n = 31 | +0.2 mean, max 0.9 | **Passes 1 to 5; ready for a ruling** |
+| GDELT news volume (added to culture) | 23 | -0.36, n = 23 | -0.14, n = 12 | -0.3 mean, max 3.5 | Fails 1: GDELT's timeline has a gap from 14 Sep to 20 Oct, and it counts only 3 to 7 articles a week |
+| Wikipedia, interim and fractional executive articles only (replacing the current list) | 60 | 0.81 vs NewsAPI, n = 51 | 0.34, n = 53 | -5.0 mean, max 7.5 | Fails 3 on levels |
+| Hacker News stories and comments for the roles (replacing current HN) | 60 | 0.84 vs SEC Form D, n = 53 | 0.58, n = 40 | +1.4 mean, max 4.8 | Fails 3 on levels |
+| Google Jobs at depth 100 (replacing depth 10) | 0 | | | | Collection starts with the 2026-10-24 05:00 UTC preparation |
+
+The two level failures look like shared trends rather than shared information: Hacker News mentions rose from 9 to 25 a month while Form D filings rose steadily, and on 7-day changes neither trial comes near 0.8. Whether check 3 should be read on changes instead of levels is Krish's decision; the gate stays on levels until he rules.
+
 **Dates.** The first review is the 20 November checkpoint, after three weeks of v2 data. Podchaser-as-flow and GDELT are measured against the gate by then, and any that pass are put to Krish for a seam on **Monday 23 November 2026**. The state-level BFS cut and the broader Hacker News and Wikipedia terms follow at the next monthly seam, **Monday 21 December 2026**. Companies House and partner data are 2027 work, and their dates come from the partner programme, not from this file.
 
 ## Re-score log

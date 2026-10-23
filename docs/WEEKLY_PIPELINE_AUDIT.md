@@ -63,6 +63,10 @@ The script covers, without a fixed source list anywhere in it:
 | Alert path | Reads the real sender and recipients out of `send-pipeline-alert`, and reports the exact Gmail search to run |
 | Surface | Public API 200 + fresh `asOf` + completeness matching the DB; every sitemap URL resolves with its own title; pre-rendered number matches live data |
 
+### The trial lane
+
+`npm run trial` reports every candidate input in the trial lane (`supabase/functions/collect-trials`, stored as `signal_type = 'candidate'`, never scored) against the six-check entry gate in `docs/CITABILITY.md`, with its measured impact. A trial that reads READY goes to Krish for a ruling at the next monthly seam; nothing promotes itself. Trial sources (`trial_*`) are excluded from the reconciliation above by design.
+
 ## 2. Judge what the script cannot
 
 The script establishes facts. These need a person:
