@@ -26,8 +26,8 @@ export interface TrialDef {
 export const TRIALS: TrialDef[] = [
   { source: 'trial_google_jobs', pillar: 'demand', replaces: 'serpapi_jobs', backfill: 'none', textMatch: true,
     what: 'Google Jobs results for six roles at depth 100. Production asks for 10, and CFO, CMO, COO and CTO read exactly 10 every day to 2026-10-23.' },
-  { source: 'trial_podchaser_flow', pillar: 'culture', backfill: 'stored', textMatch: true,
-    what: 'New podcasts matching "fractional executive" per 7 days: the change in Podchaser\'s total, which as a stock sat at the normalizer ceiling.' },
+  { source: 'trial_podchaser_relevant', pillar: 'culture', backfill: 'archive', textMatch: true,
+    what: 'New podcasts in the last 90 days whose title or description names fractional executive work, from the 100 newest Podchaser matches for each of four role terms. Replaces trial_podchaser_flow, whose fuzzy search made about 3 of 50 matches relevant.' },
   { source: 'trial_wikipedia', pillar: 'culture', replaces: 'wikipedia_pageviews', backfill: 'archive', textMatch: false,
     what: 'Wikipedia daily views of articles about interim and fractional executive work only, without the generic C-suite articles or "Fractional ownership".' },
   { source: 'trial_hn_wide', pillar: 'culture', replaces: 'hn', backfill: 'archive', textMatch: true, singleSite: true,
@@ -35,7 +35,9 @@ export const TRIALS: TrialDef[] = [
   // Repairs of inputs retired at the 2026-10-26 seam (Krish, 2026-10-23: test
   // the simple fix before calling a source unfixable). Each re-enters only
   // through the gate. Diagnosis, collect-trials ?diagnose=repairs, 2026-10-23.
-  { source: 'trial_trends', pillar: 'culture', backfill: 'stored', textMatch: true,
+  // Not sampled for check 0: search interest in the exact role phrases
+  // ('fractional CMO', 'fractional CFO', ...) has no matched items to review.
+  { source: 'trial_trends', pillar: 'culture', backfill: 'stored', textMatch: false,
     what: 'Google Trends search interest scored against its own trailing 28 days (50 + 10z). Raw moved between 2.6 and 5.3 while the retired normalizer floored it at 5.' },
   { source: 'trial_brave_news', pillar: 'culture', backfill: 'none', textMatch: true,
     what: 'Distinct sites publishing on the role terms in Brave News over the past week. Counting results let one SEO publisher supply 16 of 22 on 2026-10-23 (Ruling, Krish, 2026-10-23: count distinct sites).' },
@@ -59,7 +61,13 @@ export const TRIALS: TrialDef[] = [
 // days unrelated (cricket, F1, fractional jet ownership) and its "interim CEO"
 // matches mentions of named executives; trial_mediastack, about 1 in 21
 // "fractional" matches on topic. The original inputs' retirement was right.
-export const DROPPED_TRIALS = ['trial_gdelt', 'trial_guardian', 'trial_mediastack'];
+// trial_podchaser_flow failed gate check 0 the same day: Podchaser's search is
+// fuzzy, so its weekly total counted mostly unrelated new podcasts ("Sex, Death
+// & Olive Oil", "AI and Autism"); replaced by trial_podchaser_relevant.
+export const DROPPED_TRIALS = ['trial_gdelt', 'trial_guardian', 'trial_mediastack', 'trial_podchaser_flow'];
+
+export const PODCHASER_TERMS = ['fractional executive', 'fractional CFO', 'fractional CMO', 'fractional CTO'];
+export const FRACTIONAL_WORK = /\bfractional\s+(c[a-z]os?|chief|executives?|execs?|leaders?|leadership)\b/i;
 
 export const TRIAL_SOURCES = TRIALS.map((t) => t.source);
 export const isTrial = (source: string) => source.startsWith('trial_');
@@ -72,7 +80,7 @@ export const logScale = (count: number, full: number) =>
 
 export const SCALE_FULL = {
   trial_google_jobs: 200,     // same anchor as production job counts (200 postings = 100)
-  trial_podchaser_flow: 200,  // new matching podcasts per week; ~25-60 observed
+  trial_podchaser_relevant: 50, // relevant new podcasts per 90 days; ~4-5 a month observed
   trial_wikipedia: 2000,      // mean daily views
   trial_hn_wide: 500,         // stories + comments per 30 days
   trial_brave_news: 50,       // distinct sites per week
@@ -93,17 +101,6 @@ export function trailingZScore(value: number, trailing: number[]): number | null
   const sd = Math.sqrt(t.reduce((a, b) => a + (b - m) ** 2, 0) / t.length);
   if (!sd) return null;
   return Math.max(0, Math.min(100, Math.round(50 + 10 * ((value - m) / sd))));
-}
-
-// A weekly flow from a cumulative total is only a reading when the total moved
-// forward by a plausible amount. Podchaser's total fell by 588 and then rose by
-// 475 within two weeks in July 2026: index rebuilds, not podcasts.
-export function plausibleFlow(flow: number, priorFlows: number[]): boolean {
-  if (!Number.isFinite(flow) || flow < 0) return false;
-  if (priorFlows.length < 4) return true;
-  const s = [...priorFlows].sort((a, b) => a - b);
-  const med = s[Math.floor(s.length / 2)];
-  return med <= 0 ? flow < 50 : flow <= 3 * med;
 }
 
 export const WIKI_TRIAL_PAGES = ['Interim_management', 'Fractional_executive', 'Fractional_CFO', 'Interim_executive'];

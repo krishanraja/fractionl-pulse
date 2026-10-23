@@ -18,8 +18,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { dataForSeoGet, parseGoogleJobs } from '../_shared/dataforseo.ts';
 import { addDays } from '../_shared/fwi-method.ts';
 import {
-  BRAVE_ROLE_TERMS, GUARDIAN_TRIAL_QUERY, HN_TRIAL_PHRASES, SCALE_FULL, TRIAL_SOURCES, WIKI_TRIAL_PAGES,
-  logScale, plausibleFlow, trailingZScore,
+  BRAVE_ROLE_TERMS, FRACTIONAL_WORK, GUARDIAN_TRIAL_QUERY, HN_TRIAL_PHRASES, PODCHASER_TERMS, SCALE_FULL, TRIAL_SOURCES, WIKI_TRIAL_PAGES,
+  logScale, trailingZScore,
 } from '../_shared/trials.ts';
 
 const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' };
@@ -62,42 +62,22 @@ async function googleJobs(date: string): Promise<Row[]> {
   return rows;
 }
 
-// ---- trial_podchaser_flow: change in the matching-podcast total over 7 days
-async function podchaserTotal(): Promise<number> {
-  const tok = (await getJson('https://api.podchaser.com/graphql', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query: `mutation { requestAccessToken(input:{grant_type: CLIENT_CREDENTIALS, client_id:"${PODCHASER_ID}", client_secret:"${PODCHASER_SECRET}"}) { access_token } }` }),
-  }, 1) as { data?: { requestAccessToken?: { access_token?: string } } }).data?.requestAccessToken?.access_token;
-  if (!tok) throw new Error('Podchaser token refused');
-  const j = await getJson('https://api.podchaser.com/graphql', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
-    body: JSON.stringify({ query: '{ podcasts(searchTerm: "fractional executive", first: 1) { paginatorInfo { total } } }' }),
-  }, 2) as { data?: { podcasts?: { paginatorInfo?: { total?: number } } } };
-  const total = Number(j.data?.podcasts?.paginatorInfo?.total);
-  if (!Number.isFinite(total) || total <= 0) throw new Error('Podchaser returned no total');
-  return total;
-}
-
 // Every stored total: the retired podchaser input until the seam, then this trial's own.
-async function storedTotals(): Promise<Record<string, number>> {
-  const out: Record<string, number> = {};
-  const { data: a } = await supabase.from('signals').select('date, raw_value').eq('source', 'podchaser').gte('date', '2026-06-01');
-  for (const r of a || []) if (Number(r.raw_value) > 0) out[r.date] = Number(r.raw_value);
-  const { data: b } = await supabase.from('signals').select('date, metadata').eq('source', 'trial_podchaser_flow');
-  for (const r of b || []) { const t = Number((r.metadata as { total?: number })?.total); if (t > 0) out[r.date] = t; }
-  return out;
-}
-
-function flowRow(date: string, totals: Record<string, number>, backfilled: boolean): Row | null {
-  const now = totals[date], before = totals[addDays(date, -7)];
-  if (now == null || before == null) return null;
-  const flow = now - before;
-  const prior = [14, 21, 28, 35, 42, 49].map((k) => {
-    const a = totals[addDays(date, -k + 7)], b = totals[addDays(date, -k)];
-    return a != null && b != null ? a - b : null;
-  }).filter((x): x is number => x != null);
-  if (!plausibleFlow(flow, prior)) return null;
-  return row(date, 'trial_podchaser_flow', 'flow', flow, logScale(flow, SCALE_FULL.trial_podchaser_flow), { total: now, total_7d_ago: before, backfilled });
+// ---- trial_podchaser_relevant: new podcasts actually about fractional work
+async function relevantPodcasts(): Promise<Array<{ title: string; start: string }>> {
+  const tok = (await getJson('https://api.podchaser.com/graphql', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: `mutation { requestAccessToken(input:{grant_type: CLIENT_CREDENTIALS, client_id:"${PODCHASER_ID}", client_secret:"${PODCHASER_SECRET}"}) { access_token } }` }) }, 1) as { data?: { requestAccessToken?: { access_token?: string } } }).data?.requestAccessToken?.access_token;
+  if (!tok) throw new Error('Podchaser token refused');
+  const seen = new Map<string, string>();
+  for (const term of PODCHASER_TERMS) {
+    const j = await getJson('https://api.podchaser.com/graphql', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
+      body: JSON.stringify({ query: `{ podcasts(searchTerm: ${JSON.stringify(term)}, first: 100, sort: { sortBy: DATE_OF_FIRST_EPISODE, direction: DESCENDING }) { data { title description startDate } } }` }) }, 2) as
+      { data?: { podcasts?: { data?: Array<{ title: string; description?: string; startDate?: string }> } } };
+    for (const p of j.data?.podcasts?.data || []) {
+      if (p.startDate && FRACTIONAL_WORK.test(`${p.title} ${p.description || ''}`)) seen.set(p.title, p.startDate.slice(0, 10));
+    }
+  }
+  return [...seen].map(([title, start]) => ({ title, start }));
 }
 
 // ---- trial_wikipedia: mean daily views over the 7 days ending each date
@@ -312,10 +292,13 @@ serve(async (req) => {
   };
 
   if (!backfilled) await attempt('trial_google_jobs', () => googleJobs(today));
-  await attempt('trial_podchaser_flow', async () => {
-    const totals = await storedTotals();
-    if (!backfilled) totals[today] = await podchaserTotal();
-    return dates.map((d) => flowRow(d, totals, backfilled)).filter((r): r is Row => r != null);
+  await attempt('trial_podchaser_relevant', async () => {
+    const shows = await relevantPodcasts();
+    return dates.map((d) => {
+      const n = shows.filter((p) => p.start > addDays(d, -90) && p.start <= d).length;
+      return row(d, 'trial_podchaser_relevant', 'relevant_new_90d', n, logScale(n, SCALE_FULL.trial_podchaser_relevant),
+        { backfilled, note: backfilled ? 'backfilled from each show\'s first-episode date; a show indexed after it started is counted from its start date' : undefined });
+    });
   });
   await attempt('trial_wikipedia', async () => {
     const w = await wikiDaily(from, to);

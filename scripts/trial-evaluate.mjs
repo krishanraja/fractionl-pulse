@@ -5,6 +5,10 @@
 // using the same method module the pipeline runs (supabase/functions/_shared/
 // fwi-method.ts), so the impact printed is the impact a ruling would have.
 //
+//   0 measures the thing for a text match: a dated review in
+//                        docs/trial-relevance.json, >= 80% relevant, no
+//                        publisher over half unless single-site by design,
+//                        no older than 60 days (Ruling, Krish, 2026-10-23)
 //   1 dated provenance   >= 28 days stored (live or backfilled from a dated archive)
 //   2 it moves           every category moved in the last 28 days, none at a cap
 //   3 adds information   |r| < 0.8 against every current v2 input, on 7-day
@@ -47,6 +51,17 @@ function pearson(a, b) {
 }
 
 const latest = (await restAll('fwi_scores?select=date&order=date.desc'))[0].date;
+const RELEVANCE = JSON.parse(readFileSync(join(ROOT, 'docs/trial-relevance.json'), 'utf8')).reviews;
+function relevanceCheck(t) {
+  if (!t.textMatch) return { pass: true, note: 'not a text match' };
+  const r = RELEVANCE.filter((x) => x.source === t.source).sort((a, b) => b.date.localeCompare(a.date))[0];
+  if (!r) return { pass: false, note: 'no relevance review recorded' };
+  const age = (Date.parse(latest) - Date.parse(r.date)) / 86400000;
+  const share = r.relevant / r.sampled;
+  const publisherOk = t.singleSite || r.publisher_rule_met_by_design || r.top_publisher_share <= 0.5;
+  const pass = age <= 60 && share >= 0.8 && publisherOk;
+  return { pass, note: `${r.relevant}/${r.sampled} relevant on ${r.date}${publisherOk ? '' : `, ${Math.round(r.top_publisher_share * 100)}% from ${r.top_publisher}`}${age > 60 ? ', review older than 60 days' : ''}` };
+}
 const since = addDays(latest, -70);
 const signals = await restAll(`signals?select=date,source,signal_type,category,raw_value,normalized_value,metadata&date=gte.${since}`);
 const trialRows = signals.filter((r) => r.source.startsWith('trial_'));
@@ -133,7 +148,9 @@ for (const t of TRIALS) {
     };
   }
 
+  const rel = relevanceCheck(t);
   const gate = {
+    '0 measures the thing': rel.pass,
     '1 dated provenance': dates.length >= 28,
     '2 it moves': recent.length > 0 && frozen.length === 0 && atCap === 0,
     '3 adds information': worstChange.against == null ? null : Math.abs(worstChange.r) < 0.8,
@@ -143,7 +160,7 @@ for (const t of TRIALS) {
   };
   results.push({ source: t.source, pillar: t.pillar, replaces: t.replaces ?? null, what: t.what,
     days: dates.length, live_days: live, first: dates[0] ?? null, last: dates.at(-1) ?? null,
-    frozen_categories: frozen, at_cap_rows: atCap,
+    frozen_categories: frozen, at_cap_rows: atCap, relevance: rel.note,
     max_r: worst.against ? { r: Math.round(worst.r * 100) / 100, n: worst.n, against: worst.against } : null,
     max_r_weekly_change: worstChange.against ? { r: Math.round(worstChange.r * 100) / 100, n: worstChange.n, against: worstChange.against } : null,
     impact, gate, ready_for_ruling: Object.entries(gate).filter(([k]) => !k.startsWith('6')).every(([, v]) => v === true) });
@@ -157,6 +174,7 @@ for (const r of results) {
   console.log(`  ${r.what}`);
   console.log(`  days ${r.days} (${r.live_days} collected live)${r.first ? `, ${r.first} .. ${r.last}` : ''}`);
   console.log(`  gate: ${Object.entries(r.gate).map(([k, v]) => `${k} ${mark(v)}`).join(' · ')}`);
+  console.log(`  relevance: ${r.relevance}`);
   if (r.frozen_categories.length || r.at_cap_rows) console.log(`  frozen: ${r.frozen_categories.join(', ') || 'none'}; rows at cap: ${r.at_cap_rows}`);
   if (r.max_r_weekly_change) console.log(`  highest |r| on 7-day changes (check 3): ${r.max_r_weekly_change.r} vs ${r.max_r_weekly_change.against} (n = ${r.max_r_weekly_change.n})`);
   if (r.max_r) console.log(`  same on levels (information): ${r.max_r.r} vs ${r.max_r.against} (n = ${r.max_r.n})`);

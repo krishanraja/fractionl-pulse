@@ -1,0 +1,19 @@
+{
+  "_about": "Gate check 0 (Ruling, Krish, 2026-10-23): for a text-match trial, a dated sample of up to 50 matched items is reviewed; at least 80% must be about fractional or interim executive work, and no single publisher may supply more than half (waived where the query is confined to one site by design). Samples come from supabase/functions/collect-trials ?diagnose=relevance, ?diagnose=guardian and ?diagnose=podchaser. A review older than 60 days no longer passes. Reviewed items are listed in the commit that records each review.",
+  "reviews": [
+    { "source": "trial_brave_web", "date": "2026-10-23", "sampled": 49, "relevant": 48, "top_publisher": "leadersadapt.com", "top_publisher_share": 0.18,
+      "notes": "All four role terms, past week. Vendor, rate-guide and job-listing pages about fractional roles; one borderline item is a company profile for a firm named Fractional CTO." },
+    { "source": "trial_brave_news", "date": "2026-10-23", "sampled": 22, "relevant": 22, "top_publisher": "leadersadapt.com", "top_publisher_share": 0.73,
+      "notes": "On topic, but one SEO publisher supplied 16 of 22 results; the trial therefore counts distinct sites, so the publisher share no longer drives the reading.", "publisher_rule_met_by_design": true },
+    { "source": "trial_reddit", "date": "2026-10-23", "sampled": 2, "relevant": 2, "top_publisher": "reddit.com", "top_publisher_share": 1.0,
+      "notes": "Two threads (bookkeeping, tax strategy) where users discuss hiring fractional CFOs. Small sample: re-review at 28 days." },
+    { "source": "trial_hn_wide", "date": "2026-10-23", "sampled": 15, "relevant": 15, "top_publisher": "news.ycombinator.com", "top_publisher_share": 1.0,
+      "notes": "An Ask HN thread on fractional CFOs and engineers offering fractional CTO work in the monthly Who wants to be hired thread, which is a supply signal. Expect a monthly spike when that thread opens." },
+    { "source": "trial_podchaser_relevant", "date": "2026-10-23", "sampled": 46, "relevant": 46, "top_publisher": "podchaser.com", "top_publisher_share": 1.0,
+      "notes": "Every show kept by the title-and-description filter is about fractional executive work (The Fractional CTO Podcast, Fractional Leaders, Next Level CFO). The unfiltered search, used by the dropped trial_podchaser_flow, had about 3 relevant in 50." },
+    { "source": "trial_guardian", "date": "2026-10-23", "sampled": 25, "relevant": 0, "top_publisher": "theguardian.com", "top_publisher_share": 1.0,
+      "notes": "FAILED, trial dropped. All 7 'fractional' matches unrelated (cricket, F1, white paintings, fractional jet ownership); 'interim CEO' matches were mentions of named executives." },
+    { "source": "trial_mediastack", "date": "2026-10-23", "sampled": 21, "relevant": 1, "top_publisher": "various", "top_publisher_share": 0.14,
+      "notes": "FAILED, trial dropped. The keyword matched 'fraction' (cricket, quantum physics, 'a fraction of the price'); one press release on a fractional executive assistant." }
+  ]
+}

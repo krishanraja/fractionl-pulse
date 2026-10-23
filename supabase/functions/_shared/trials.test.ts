@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { V2_SOURCES } from './fwi-method.ts';
-import { TRIALS, logScale, plausibleFlow } from './trials.ts';
+import { FRACTIONAL_WORK, TRIALS, logScale } from './trials.ts';
 
 test('no trial is a composite input or a held-out anchor', () => {
   const anchors = ['bls', 'fred', 'census_acs', 'sec_exec_transitions'];
@@ -20,12 +20,9 @@ test('log scale: 0 is 0, the anchor is 100, and it never exceeds the bounds', ()
   assert.ok(logScale(10, 200) > logScale(9, 200), 'a cap at 10 would show here as movement stopping, not as a fixed value');
 });
 
-test('a weekly flow must move forward by a plausible amount', () => {
-  const prior = [35, 36, 38, 46, 54, 50];
-  assert.equal(plausibleFlow(51, prior), true);
-  assert.equal(plausibleFlow(-588, prior), false, 'July 2026 index rebuild');
-  assert.equal(plausibleFlow(475, prior), false, 'the rebound after it');
-  assert.equal(plausibleFlow(0, prior), true);
+test('the Podchaser relevance filter keeps fractional-work shows and drops the fuzzy matches (2026-10-23 sample)', () => {
+  for (const t of ['The Fractional CTO Podcast', 'Fractional Leaders', 'Diary of a fractional executive', 'Own the P&L: a fractional CFO on margins']) assert.ok(FRACTIONAL_WORK.test(t), t);
+  for (const t of ['Sex, Death & Olive Oil', 'AI and Autism', 'The Fractional Dad', 'fractional ownership of jets']) assert.equal(FRACTIONAL_WORK.test(t), false, t);
 });
 
 import { trailingZScore } from './trials.ts';
