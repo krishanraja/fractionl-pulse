@@ -55,7 +55,7 @@ AI agents can use the hosted MCP server instead, whose `get_fractional_working_i
 
 ## Corrections
 
-If a reading looks wrong, the per-source health and completeness published next to the number usually explain why. Questions and corrections go to data@fractionl.ai.
+If a reading looks wrong, the per-source health and completeness published next to the number usually explain why. Questions and corrections go to hello@krishraja.com.
 
 ## Sources
 

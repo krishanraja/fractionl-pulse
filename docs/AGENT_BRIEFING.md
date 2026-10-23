@@ -113,7 +113,7 @@ An agent may research public information, score prospects, prepare briefs, draft
 ## Primary call to action
 
 - Public user: **Read the market** at `https://pulse.fractionl.ai`
-- Qualified firm: **Apply to become a Benchmark Partner** at `data@fractionl.ai`
+- Qualified firm: **Apply to become a Benchmark Partner** at `hello@krishraja.com`
 
 Canonical commercial strategy: [CORPORATE_STRATEGY.md](CORPORATE_STRATEGY.md)
 

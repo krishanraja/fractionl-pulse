@@ -4,7 +4,7 @@ slug: changelog
 description: Every change to what the Fractional Working Index means, with its effective date and measured impact. Published readings are not restated.
 dateModified: 2026-10-23
 ---
-Every change to what the Fractional Working Index measures or how it is computed is listed here with its effective date and, where it was measured, its impact. The rule since 23 October 2026: **a change takes effect from a dated seam and never restates a published reading.** Two entries from June 2026, below, predate that rule and did change published history; they are disclosed rather than hidden. Method: [how the index is made](/methodology). Corrections: [data@fractionl.ai](mailto:data@fractionl.ai).
+Every change to what the Fractional Working Index measures or how it is computed is listed here with its effective date and, where it was measured, its impact. The rule since 23 October 2026: **a change takes effect from a dated seam and never restates a published reading.** Two entries from June 2026, below, predate that rule and did change published history; they are disclosed rather than hidden. Method: [how the index is made](/methodology). Corrections: [hello@krishraja.com](mailto:hello@krishraja.com).
 
 ## 26 October 2026: method v2 (the seam)
 

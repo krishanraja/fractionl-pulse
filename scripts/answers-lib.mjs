@@ -430,7 +430,7 @@ function head({ title, description, canonical, site, ogType, ogAlt, extraMeta = 
 
 const FOOTER = `<footer>
       <p>Published by <a href="https://fractionl.ai">Fractionl</a>. The Fractional Working Index is a private composite, not an official, institutional or government index, and not financial, career or rate advice.</p>
-      <p>Free to cite with attribution to the Fractional Working Index (FWI), Pulse by Fractionl. Questions or corrections: <a href="mailto:data@fractionl.ai">data@fractionl.ai</a>.</p>
+      <p>Free to cite with attribution to the Fractional Working Index (FWI), Pulse by Fractionl. Questions or corrections: <a href="mailto:hello@krishraja.com">hello@krishraja.com</a>.</p>
       <p>Pulse is a Mindmaker LLC company. Mindmaker Ltd in the UK. <a href="/terms">Terms</a> &middot; <a href="/privacy">Privacy</a></p>
     </footer>`;
 

@@ -115,7 +115,7 @@ const orgLd = {
   name: 'Fractionl',
   url: 'https://fractionl.ai',
   logo: { '@type': 'ImageObject', url: `${SITE}/android-chrome-512x512.png`, width: 512, height: 512 },
-  email: 'data@fractionl.ai',
+  email: 'hello@krishraja.com',
   brand: { '@type': 'Brand', name: 'Pulse by Fractionl' },
   parentOrganization: { '@type': 'Organization', name: 'Mindmaker LLC' },
   description: 'Fractionl publishes Pulse and the Fractional Working Index, a free 0 to 100 composite of fractional leadership market health, recalculated after each successful daily ingest and read through a weekly brief.',
@@ -232,7 +232,7 @@ writeAppRouteShell({
   title: 'Terms of use | Pulse by Fractionl',
   description: 'The terms for using Pulse, the Fractional Working Index, its public API and MCP tools. Pulse is operated by Mindmaker LLC and Mindmaker Ltd.',
   indexable: true,
-  noscript: '<h1>Terms of use</h1><p>Last updated: 19 October 2026.</p><p>Pulse is operated by Mindmaker LLC, a United States company, and Mindmaker Ltd, a United Kingdom company (together, "Mindmaker", "we", "us"). The index, public API and MCP tools are free to read and cite with attribution. Pulse is not an official index and is not financial, career or rate advice. Contact: <a href="mailto:data@fractionl.ai">data@fractionl.ai</a>.</p><p>Pulse is a Mindmaker LLC company. Mindmaker Ltd in the UK. <a href="/terms">Terms</a> &middot; <a href="/privacy">Privacy</a></p>',
+  noscript: '<h1>Terms of use</h1><p>Last updated: 19 October 2026.</p><p>Pulse is operated by Mindmaker LLC, a United States company, and Mindmaker Ltd, a United Kingdom company (together, "Mindmaker", "we", "us"). The index, public API and MCP tools are free to read and cite with attribution. Pulse is not an official index and is not financial, career or rate advice. Contact: <a href="mailto:hello@krishraja.com">hello@krishraja.com</a>.</p><p>Pulse is a Mindmaker LLC company. Mindmaker Ltd in the UK. <a href="/terms">Terms</a> &middot; <a href="/privacy">Privacy</a></p>',
 });
 
 writeAppRouteShell({
@@ -240,7 +240,7 @@ writeAppRouteShell({
   title: 'Privacy policy | Pulse by Fractionl',
   description: 'What Pulse collects, why, who processes it and how to ask for a copy or deletion. Pulse is operated by Mindmaker LLC and Mindmaker Ltd.',
   indexable: true,
-  noscript: '<h1>Privacy policy</h1><p>Last updated: 19 October 2026.</p><p>Pulse is operated by Mindmaker LLC, a United States company, and Mindmaker Ltd, a United Kingdom company (together, "Mindmaker", "we", "us"). Mindmaker LLC and Mindmaker Ltd are responsible for the personal information described in this policy. Reading the index needs no account. Contact: <a href="mailto:data@fractionl.ai">data@fractionl.ai</a>.</p><p>Pulse is a Mindmaker LLC company. Mindmaker Ltd in the UK. <a href="/terms">Terms</a> &middot; <a href="/privacy">Privacy</a></p>',
+  noscript: '<h1>Privacy policy</h1><p>Last updated: 19 October 2026.</p><p>Pulse is operated by Mindmaker LLC, a United States company, and Mindmaker Ltd, a United Kingdom company (together, "Mindmaker", "we", "us"). Mindmaker LLC and Mindmaker Ltd are responsible for the personal information described in this policy. Reading the index needs no account. Contact: <a href="mailto:hello@krishraja.com">hello@krishraja.com</a>.</p><p>Pulse is a Mindmaker LLC company. Mindmaker Ltd in the UK. <a href="/terms">Terms</a> &middot; <a href="/privacy">Privacy</a></p>',
 });
 
 writeAppRouteShell({

@@ -358,5 +358,5 @@ See [`MCP_TOOL.md`](./MCP_TOOL.md) for the full tool definition, Claude/OpenAI i
 
 ## Contact
 
-- **Benchmark Partner applications / API keys / press:** data@fractionl.ai
+- **Benchmark Partner applications / API keys / press:** hello@krishraja.com
 - **Live dashboard:** https://pulse.fractionl.ai

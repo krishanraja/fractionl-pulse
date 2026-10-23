@@ -199,7 +199,9 @@ if (!SKIP_SITE) {
     for (const [path, title] of [['/methodology', /How the Fractional Working Index is made/], ['/changelog', /Fractional Working Index changelog/]]) {
       const page = await (await fetch(`${SITE}${path}`, { signal: AbortSignal.timeout(30000) })).text();
       assert.match(page.match(/<title>([^<]*)<\/title>/)?.[1] ?? '', title, `${path} served another page`);
-      assert.match(page, /data@fractionl\.ai/, `${path} has no corrections address`);
+      assert.match(page, /hello@krishraja\.com/, `${path} has no corrections address`);
+      // fractionl.ai stopped receiving mail on 2026-10-23 (Workspace shut down).
+      assert.doesNotMatch(page, /(data|research|krish)@fractionl\.ai/, `${path} still points readers at a dead fractionl.ai mailbox`);
     }
     const truth = await (await fetch(`${SITE}/product-truth.json`, { signal: AbortSignal.timeout(30000) })).text();
     assert.doesNotMatch(truth.replace(/10\.7 published|quote 10\.7/g, ''), /10\.7 effective/, 'the corrected 10.7 claim is back');

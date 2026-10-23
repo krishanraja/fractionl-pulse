@@ -22,7 +22,7 @@ How to re-score: run the commands in each row's evidence column against producti
 | 9 | **Stable citation URL, suggested citation and machine access** | A permanent URL for a dated reading, suggested citation text, and an API, MCP and `llms.txt` an agent can read without a key. |
 | 10 | **A named owner and a contact** | A named, accountable owner and a working contact address for corrections, on the methodology page. |
 
-## Current score: 6.5 / 10 (2026-10-23, after the day's fixes)
+## Current score: 7 / 10 (2026-10-23, after the day's fixes)
 
 | # | Now | Evidence a stranger can check | What moves it |
 |---|---|---|---|
@@ -35,9 +35,9 @@ How to re-score: run the commands in each row's evidence column against producti
 | 7 Methodology page | 1 | `https://pulse.fractionl.ai/methodology`, server-rendered, own title | |
 | 8 Changelog | 1 | `https://pulse.fractionl.ai/changelog`; the 2026-10-26 entry gets its fixed link amount at the first v2 run | |
 | 9 Citation and machine access | 1 | `meta.citation`, `llms.txt`, MCP, `/fwi-api/history` | |
-| 10 Owner and contact | 0.5 | Krish Raja and `data@fractionl.ai` on `/methodology` | Krish confirms `data@fractionl.ai` reaches a person |
+| 10 Owner and contact | 1 | Krish Raja and `hello@krishraja.com` on `/methodology`, the API (`meta.owner`), `llms.txt` and `product-truth.json`; it is Krish's standing public address. `npm run smoke:release` fails if a page points at a dead `fractionl.ai` mailbox | |
 
-Expected on 2026-10-26 once the first v2 reading is read back: 9.5, and 10 when the mailbox is confirmed.
+Expected on 2026-10-26 once the first v2 reading is read back: 10.
 
 ## First score on 2026-10-23: 3.5 / 10
 
@@ -85,7 +85,7 @@ Every methodology decision this sprint needed, ruled in one batch. Each is appli
 3. **A supply strategy, not a suspension.** Krish rejected suspending the supply pillar ("we need a supply strategy; we don't just give up on stuff like that"). Supply from the seam: Census Business Formation Statistics applications in professional services (NAICS 54, monthly, seasonally adjusted), BLS incorporated self-employed (FRED `LNU02048984`, monthly), each normalized against its own trailing 36 months and holding its latest release until the next, plus the LinkedIn proxy as one vote on a 14-day median. The official series are backfilled from their release record as a separately labelled series, never written into published history.
 4. **Chain-linked, whole number with a band.** A fixed additive offset, measured over the 28 published days before the seam, keeps the new series continuous with the old level; the offset and the before-and-after are published on the changelog. Every surface shows a whole number with its band.
 5. **Publish** a server-rendered `/methodology` and `/changelog`, the validation result with its n, and the correction of "10.7 effective independent inputs" to the measured 4.4 on every surface.
-6. **Named owner:** Krish Raja, corrections to `data@fractionl.ai`.
+6. **Named owner:** Krish Raja, corrections to `data@fractionl.ai`. Superseded the same day: Krish shut down the fractionl.ai Google Workspace, so that address no longer receives; every inbound contact moved to `hello@krishraja.com`, his standing address for public-facing work.
 7. **`sec_exec_transitions` leaves probation as a permanent held-out anchor**, backfilled from EDGAR full-text search, never fed into the composite.
 8. **Retire `serpapi_trends` at the same seam** (later the same day). The audit gate added in this sprint found its vote fixed at the normalizer floor of 5 since 2026-08-14. Krish's condition: a plan to rebuild the evidence base, below.
 9. **Deploy now; apply the health-row migration (`021`) after the first v2 run.**
@@ -123,4 +123,5 @@ Krish's concern on 2026-10-23, in his words: "I am worried we are now gutting th
 | Date | Score | Commit | What moved |
 |---|---|---|---|
 | 2026-10-23 | 3.5 | `e4d5572` | First score. |
-| 2026-10-23 | 6.5 | this commit | Live on production and read back: `/methodology` and `/changelog` (7, 8); validation with n on the methodology page, `llms.txt` and `product-truth.json` (6); `contributors` in `/fwi-api/current` lists the inputs that made the reading, held-out ones marked (5); owner named, corrections to `data@fractionl.ai` (10, half: the mailbox has not been shown to receive). Method v2 is deployed behind the 2026-10-26 seam but has not published a reading, so 2, 3 and 4 still score 0 on live evidence. `npm run smoke:release` 18/18. |
+| 2026-10-23 | 6.5 | `1dd4d1e` | Live on production and read back: `/methodology` and `/changelog` (7, 8); validation with n on the methodology page, `llms.txt` and `product-truth.json` (6); `contributors` in `/fwi-api/current` lists the inputs that made the reading, held-out ones marked (5); owner named, corrections to `hello@krishraja.com` (10, half: the mailbox has not been shown to receive). Method v2 is deployed behind the 2026-10-26 seam but has not published a reading, so 2, 3 and 4 still score 0 on live evidence. `npm run smoke:release` 18/18. |
+| 2026-10-23 | 7 | this commit | Point 10 to 1: `data@fractionl.ai` stopped receiving when Krish shut the fractionl.ai Workspace; every public contact now reads `hello@krishraja.com`. Migration `020` applied, so the audit reads the run log. |

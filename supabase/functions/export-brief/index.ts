@@ -187,7 +187,7 @@ All signals are normalized to a 0-100 scale. An anomaly guard rejects data point
 
 ---
 
-*Generated automatically by Pulse by Fractionl. Data licensing: data@fractionl.ai*
+*Generated automatically by Pulse by Fractionl. Data licensing: hello@krishraja.com*
 `;
 
     const format = new URL(req.url).searchParams.get('format') || 'markdown';

@@ -13,6 +13,6 @@
     "note": "No formal OpenAPI document is published yet. Public REST reads and the hosted MCP server require no authentication. Optional x-api-key support provides operational rate controls and is not the paid product."
   },
   "logo_url": "https://pulse.fractionl.ai/android-chrome-512x512.png",
-  "contact_email": "data@fractionl.ai",
+  "contact_email": "hello@krishraja.com",
   "legal_info_url": "https://pulse.fractionl.ai/terms"
 }

@@ -112,7 +112,7 @@ async function backfillSecEdgar(weekEnd: string): Promise<{
     const timeout = setTimeout(() => controller.abort(), 15000);
     const response = await fetch(url, {
       signal: controller.signal,
-      headers: { 'User-Agent': 'FWI-Pulse/1.0 research@fractionl.ai' }
+      headers: { 'User-Agent': 'FWI-Pulse/1.0 hello@krishraja.com' }
     });
     clearTimeout(timeout);
 

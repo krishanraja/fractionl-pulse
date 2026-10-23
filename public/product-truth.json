@@ -18,7 +18,7 @@
     "publisher": "Fractionl",
     "publisher_url": "https://fractionl.ai",
     "product_url": "https://pulse.fractionl.ai",
-    "contact": "data@fractionl.ai"
+    "contact": "hello@krishraja.com"
   },
   "canonical_strategy": "docs/CORPORATE_STRATEGY.md",
   "machine_contract_role": "Machine-readable mirror of the approved commercial and product truth. It does not override production readback or the canonical corporate strategy.",
@@ -112,7 +112,7 @@
     "problem": "The fractional leadership market still runs on anecdotes.",
     "public_cta": "Read the market",
     "partner_cta": "Apply to become a Benchmark Partner",
-    "partner_contact": "mailto:data@fractionl.ai?subject=Pulse%20Benchmark%20Partner"
+    "partner_contact": "mailto:hello@krishraja.com?subject=Pulse%20Benchmark%20Partner"
   },
   "coverage": {
     "roles": [
@@ -424,7 +424,7 @@
     "owner": {
       "name": "Krish Raja",
       "organisation": "Fractionl",
-      "corrections": "data@fractionl.ai"
+      "corrections": "hello@krishraja.com"
     },
     "current_method": "fwi-v2-2026-10-26",
     "seam": "2026-10-26",

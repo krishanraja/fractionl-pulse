@@ -93,7 +93,7 @@ const Pricing = () => {
     const subject = action === 'partner'
       ? 'Pulse Benchmark Partner'
       : 'Pulse enterprise benchmark fit';
-    window.location.href = `mailto:data@fractionl.ai?subject=${encodeURIComponent(subject)}`;
+    window.location.href = `mailto:hello@krishraja.com?subject=${encodeURIComponent(subject)}`;
   };
 
   const openApiKeyManager = () => {

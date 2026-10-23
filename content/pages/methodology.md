@@ -6,7 +6,7 @@ dateModified: 2026-10-23
 ---
 The Fractional Working Index (FWI) is a private composite from 0 to 100 that reads whether demand for fractional C-suite leadership in the United States is expanding or contracting. It is published daily by Fractionl as Pulse. It is not an official statistic, not a forecast, and it has **not been validated** against any external measure (see "Validation" below). This page describes the method as the code runs it, and every change to it is dated on the [changelog](/changelog).
 
-**Owner:** Krish Raja, Fractionl. **Corrections:** [data@fractionl.ai](mailto:data@fractionl.ai). **Live reading:** [pulse.fractionl.ai](/) and the [current reading as JSON](https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current).
+**Owner:** Krish Raja, Fractionl. **Corrections:** [hello@krishraja.com](mailto:hello@krishraja.com). **Live reading:** [pulse.fractionl.ai](/) and the [current reading as JSON](https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current).
 
 ## How to cite it
 

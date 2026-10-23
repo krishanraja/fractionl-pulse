@@ -3,7 +3,10 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') || '';
 // Delivery to krish@fractionl.ai alone was never verified (no alert has ever
 // been seen in an inbox), so default to a second, known-read mailbox as well.
-const ALERT_EMAILS = (Deno.env.get('ALERT_EMAILS') || 'krish@fractionl.ai,krishanraja@gmail.com')
+// krish@fractionl.ai was removed 2026-10-23: the fractionl.ai Google Workspace
+// was shut down, so the address no longer receives. Sending from fractionl.ai
+// still works (the Resend DKIM and SPF records below are separate from it).
+const ALERT_EMAILS = (Deno.env.get('ALERT_EMAILS') || 'hello@krishraja.com,krishanraja@gmail.com')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);

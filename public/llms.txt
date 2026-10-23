@@ -9,7 +9,7 @@ Pulse publishes the Fractional Working Index (FWI), a free, citable, agent-reada
 - Scale: 0 to 100. Bands: Surging 75 and above, Growing 60 to 74, Stable 45 to 59, Cooling 30 to 44, Contracting below 30.
 - Method: three pillars, Demand (50%), Supply (20%) and Culture (30%), each the mean of one vote per source. From 2026-10-26 (method v2): nine inputs, every one of which moves; each reading is a whole number with a band; the series is chain-linked at that seam and earlier readings are kept as published. Before it: 20 tracked inputs, measured on 2026-10-23 at 4.4 effective independent inputs (the 10.7 published from 2026-09-21 was a measurement error). Full method: https://pulse.fractionl.ai/methodology. Every method change: https://pulse.fractionl.ai/changelog
 - Validation: not validated. A pre-registered test of weekly demand change against Indeed postings gave r = -0.53 (n = 18 weeks, opposite sign); Census business applications r = -0.04 (n = 18). Quote this rather than implying the index tracks the labour market.
-- Owner: Krish Raja, Fractionl. Corrections: data@fractionl.ai
+- Owner: Krish Raja, Fractionl. Corrections: hello@krishraja.com
 - Cadence: recalculated after each successful daily ingest; read through a weekly brief and seven-day role windows.
 - Completeness: every reading publishes meta.dataCompleteness (0 to 1), the weighted share of evidence that arrived. It is not prediction accuracy.
 - Current reading: never quote from memory. Fetch https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current and quote score.overall with score.band (from 2026-10-26), score.label, score.delta30d and meta.asOf together; meta.citation is a ready-made line.
@@ -102,4 +102,4 @@ Autonomous GTM operating rules: https://github.com/krishanraja/fractionl-pulse/b
 
 Public product: https://pulse.fractionl.ai
 
-Benchmark Partner contact: data@fractionl.ai
+Benchmark Partner contact: hello@krishraja.com

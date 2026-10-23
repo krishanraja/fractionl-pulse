@@ -275,7 +275,7 @@ Cache in line with the response headers. The score is recalculated after success
 
 The anonymous public read, including the hosted MCP server, stays free. Rate accounting applies only to REST calls that send an `x-api-key`: keyed responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining`, over-limit returns HTTP 429, and an unknown or revoked key returns HTTP 401.
 
-A signed-in user self-serves a free API key (1,000 requests/day) at `pulse.fractionl.ai/pricing`. The key is an operational control, not a paid generic-data tier. Qualified fractional-talent firms can contact `data@fractionl.ai` about the Founding Benchmark Partner validation offer.
+A signed-in user self-serves a free API key (1,000 requests/day) at `pulse.fractionl.ai/pricing`. The key is an operational control, not a paid generic-data tier. Qualified fractional-talent firms can contact `hello@krishraja.com` about the Founding Benchmark Partner validation offer.
 
 ---
 

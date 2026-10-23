@@ -40,7 +40,7 @@ async function main() {
       const startDate = new Date(endDate);
       startDate.setDate(startDate.getDate() - 90);
       const url = `https://efts.sec.gov/LATEST/search-index?forms=D&dateRange=custom&startdt=${startDate.toISOString().slice(0, 10)}&enddt=${endDate.toISOString().slice(0, 10)}&q=%22software%22+OR+%22technology%22+OR+%22SaaS%22`;
-      const resp = await fetch(url, { headers: { 'User-Agent': 'FWI-Pulse/1.0 research@fractionl.ai' } });
+      const resp = await fetch(url, { headers: { 'User-Agent': 'FWI-Pulse/1.0 hello@krishraja.com' } });
       if (resp.ok) {
         const data = await resp.json();
         const count = data.hits?.total?.value || 0;

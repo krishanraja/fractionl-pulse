@@ -123,7 +123,7 @@ Do not reactivate the retired consumer Pro checkout. The current commercial path
 - Idempotent payment-event ingestion keyed by provider event id
 - No annual membership checkout before its dataset release gate is met
 
-The Fractionl AI Stripe account may be reused only after the partner product, tax treatment, invoice flow, and entitlement boundaries are approved. Billing contact: data@fractionl.ai.
+The Fractionl AI Stripe account may be reused only after the partner product, tax treatment, invoice flow, and entitlement boundaries are approved. Billing contact: hello@krishraja.com.
 
 ---
 

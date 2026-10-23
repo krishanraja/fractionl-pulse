@@ -36,7 +36,7 @@ function nextWeeklyUpdate(): string {
 }
 
 const SITE = 'https://pulse.fractionl.ai';
-const OWNER = { name: 'Krish Raja', organisation: 'Fractionl', corrections: 'data@fractionl.ai' };
+const OWNER = { name: 'Krish Raja', organisation: 'Fractionl', corrections: 'hello@krishraja.com' };
 
 // Readable names for every input, so a reader sees which inputs made a reading.
 const SOURCE_NAMES: Record<string, string> = {

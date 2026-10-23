@@ -242,4 +242,4 @@ The audit is read-only. It checks schedule adherence, source health, completenes
 
 - Product: [pulse.fractionl.ai](https://pulse.fractionl.ai)
 - Fractionl: [fractionl.ai](https://fractionl.ai)
-- Benchmark Partner applications: [data@fractionl.ai](mailto:data@fractionl.ai?subject=Pulse%20Benchmark%20Partner)
+- Benchmark Partner applications: [hello@krishraja.com](mailto:hello@krishraja.com?subject=Pulse%20Benchmark%20Partner)

@@ -395,7 +395,7 @@ async function collectAdzunaSignals(date: string): Promise<SignalResult[]> {
     try {
       const url = `https://api.adzuna.com/v1/api/jobs/us/search/1?app_id=${ADZUNA_APP_ID}&app_key=${ADZUNA_APP_KEY}&what_phrase=${encodeURIComponent(role.phrase)}&results_per_page=1`;
       const response = await fetchWithRetry(url, {
-        headers: { 'User-Agent': 'FWI-Pulse/1.0 data@fractionl.ai' }
+        headers: { 'User-Agent': 'FWI-Pulse/1.0 hello@krishraja.com' }
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
@@ -512,7 +512,7 @@ async function collectSecEdgarSignal(date: string): Promise<SignalResult> {
     startDate.setDate(startDate.getDate() - 90);
     const url = `https://efts.sec.gov/LATEST/search-index?forms=D&dateRange=custom&startdt=${startDate.toISOString().slice(0, 10)}&enddt=${endDate.toISOString().slice(0, 10)}&q=%22software%22+OR+%22technology%22+OR+%22SaaS%22`;
     const response = await fetchWithRetry(url, {
-      headers: { 'User-Agent': 'FWI-Pulse/1.0 research@fractionl.ai' }
+      headers: { 'User-Agent': 'FWI-Pulse/1.0 hello@krishraja.com' }
     }, 3, 15000);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
@@ -1236,7 +1236,7 @@ async function collectSecExecTransitions(_date: string): Promise<SignalResult> {
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
   // SEC asks for a contact address in the User-Agent and rate-limits hard; the
   // requests are sequential and spaced for that reason, not by accident.
-  const ua = 'FWI-Pulse/1.0 data@fractionl.ai';
+  const ua = 'FWI-Pulse/1.0 hello@krishraja.com';
   try {
     const counts: Record<string, number> = {};
     for (const term of terms) {
