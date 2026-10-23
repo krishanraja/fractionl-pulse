@@ -9,6 +9,8 @@ import {
   recentTermAverage,
 } from '../_shared/dataforseo.ts';
 import { isRatioOutlier } from '../_shared/outlier.ts';
+import { METHOD_V2_EFFECTIVE, RETIRED_AT_V2, officialScore, yoy } from '../_shared/fwi-method.ts';
+import { RELEASE_DAY, fetchOfficialSupply } from '../_shared/official-supply.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -108,9 +110,36 @@ const BRAVE_WEB_SEARCH_TERMS = [
 // it silently changes the published number before anything has validated it;
 // give it none and the weekly audit reports it as an unreconciled source every
 // week until someone gets tired of the noise and does the wrong thing.
-const PROBATIONARY_SOURCES = ['sec_exec_transitions'];
+const PROBATIONARY_SOURCES: string[] = [];
 
+// Held-out anchors: collected and stored permanently, never in the composite and
+// never in the published input count, so they can test the index without being
+// part of it. sec_exec_transitions left probation for this list on a ruling
+// (Krish, 2026-10-23): it is the one hard record of the event the index is about.
+const HELD_OUT_SOURCES = ['sec_exec_transitions'];
+
+// Completeness weights from the 2026-10-26 seam (FWI method v2, Ruling, Krish,
+// 2026-10-23). The nine inputs that never moved are gone; the two official
+// supply series take the retired supply share, so supply keeps 0.17. Mirrors
+// COMPLETENESS_WEIGHTS_V2 in calculate-fwi/v2.ts. Runs dated before the seam use
+// SOURCE_CONFIDENCE_WEIGHTS_V1 below, so nothing published before it changes.
 const SOURCE_CONFIDENCE_WEIGHTS: Record<string, number> = {
+  adzuna: 0.12,
+  serpapi_jobs: 0.07,
+  sec_edgar: 0.09,
+  newsapi: 0.04,
+  hn: 0.01,
+  serpapi_linkedin: 0.06,
+  census_bfs_pbs: 0.06,
+  bls_incorporated: 0.05,
+  fred: 0.01,
+  census_acs: 0.01,
+  bls: 0.04,
+  wikipedia_pageviews: 0.06,
+  openalex: 0.02,
+};
+
+const SOURCE_CONFIDENCE_WEIGHTS_V1: Record<string, number> = {
   adzuna: 0.12,
   serpapi_jobs: 0.07,
   serpapi_trends: 0.05,
@@ -344,9 +373,12 @@ function normalizePrestigeMedia(count: number): number {
   return Math.min(100, 75 + safe);
 }
 
-function calculateWeightedConfidence(successfulSources: string[]): number {
-  const total = Object.values(SOURCE_CONFIDENCE_WEIGHTS).reduce((a, b) => a + b, 0);
-  const achieved = successfulSources.reduce((sum, src) => sum + (SOURCE_CONFIDENCE_WEIGHTS[src] || 0), 0);
+const weightsFor = (date: string) => (date >= METHOD_V2_EFFECTIVE ? SOURCE_CONFIDENCE_WEIGHTS : SOURCE_CONFIDENCE_WEIGHTS_V1);
+
+function calculateWeightedConfidence(successfulSources: string[], date: string): number {
+  const w = weightsFor(date);
+  const total = Object.values(w).reduce((a, b) => a + b, 0);
+  const achieved = successfulSources.reduce((sum, src) => sum + (w[src] || 0), 0);
   return Math.round((achieved / total) * 100) / 100;
 }
 
@@ -958,7 +990,10 @@ async function collectDataForSeoLinkedInSupply(_date: string): Promise<SignalRes
       );
       const count = parseOrganicCount(tasks[0]);
       const category = role.split(' ')[1]?.toLowerCase() || 'other';
-      if (isRatioOutlier(count, priorByRole[category] || [])) {
+      // Committed 2026-10-13 but never deployed (production ran v65 of
+      // 2026-09-24 until 2026-10-23). Switched on with method v2 at the seam,
+      // so the v1 days still to be published are computed as before.
+      if (_date >= METHOD_V2_EFFECTIVE && isRatioOutlier(count, priorByRole[category] || [])) {
         console.warn(`[DataForSEO LinkedIn] "${role}": ${count} is >10x off its 14-day level; treated as missing`);
         results.push({
           source: 'serpapi_linkedin', signal_type: 'supply', category,
@@ -1371,6 +1406,36 @@ async function collectBLSSignals(_date: string): Promise<SignalResult[]> {
   return results;
 }
 
+// Official supply series for FWI v2 (Ruling, Krish, 2026-10-23). Each is the
+// latest monthly release known on `date`, scored against its own trailing 36
+// months (50 + 10z). Stored as 'context' before the seam so the v1 composite,
+// which averages every supply row, is untouched; 'supply' from the seam.
+async function collectOfficialSupply(date: string): Promise<SignalResult[]> {
+  const signalType = date >= METHOD_V2_EFFECTIVE ? 'supply' : 'context';
+  try {
+    const off = await fetchOfficialSupply();
+    const out: SignalResult[] = [];
+    const c = officialScore(off.census_bfs_pbs, date, RELEASE_DAY.census_bfs_pbs);
+    out.push(c
+      ? { source: 'census_bfs_pbs', signal_type: signalType, category: 'naics54_applications', raw_value: c.value, normalized_value: c.score, success: true,
+          metadata: { series: 'Census BFS business applications, NAICS 54, seasonally adjusted', period: c.period, z_vs_trailing_36: c.z, via: off.via.census_bfs_pbs } }
+      : { source: 'census_bfs_pbs', signal_type: signalType, category: 'naics54_applications', raw_value: 0, normalized_value: 50, success: false, error: 'fewer than 13 released months or zero variance' });
+    const b = officialScore(yoy(off.bls_incorporated), date, RELEASE_DAY.bls_incorporated);
+    out.push(b
+      ? { source: 'bls_incorporated', signal_type: signalType, category: 'incorporated_self_employed_yoy', raw_value: Math.round(b.value * 100) / 100, normalized_value: b.score, success: true,
+          metadata: { series: 'BLS CPS incorporated self-employed (LNU02048984), year-over-year %', period: b.period, z_vs_trailing_36: b.z, via: off.via.bls_incorporated } }
+      : { source: 'bls_incorporated', signal_type: signalType, category: 'incorporated_self_employed_yoy', raw_value: 0, normalized_value: 50, success: false, error: 'fewer than 13 released months or zero variance' });
+    for (const r of out) console.log(`[Official supply] ${r.source}: ${r.success ? `${r.raw_value} -> ${r.normalized_value}` : r.error}`);
+    return out;
+  } catch (error) {
+    console.error('[Official supply] Failed:', error.message);
+    return ['census_bfs_pbs', 'bls_incorporated'].map((source) => ({
+      source, signal_type: signalType, category: source === 'census_bfs_pbs' ? 'naics54_applications' : 'incorporated_self_employed_yoy',
+      raw_value: 0, normalized_value: 50, success: false, error: error.message,
+    }));
+  }
+}
+
 async function collectWikipediaPageviews(date: string): Promise<SignalResult> {
   console.log('[Wikipedia Pageviews] Collecting interest signals from Wikimedia API...');
   try {
@@ -1559,6 +1624,12 @@ serve(async (req) => {
     // pg_cron caller timeout, so the run always completes and the pipeline_runs row always closes.
     const PER_COLLECTOR_MS = 55000;
     const t = <T>(p: Promise<T>, fb: T, label: string) => withTimeout(p, PER_COLLECTOR_MS, fb, label);
+    // From the seam the nine retired inputs are not collected at all: they
+    // carried no information and cost Brave and Apify spend (Ruling, Krish,
+    // 2026-10-23). Their historical rows stay; published days are not restated.
+    const retiredNow = today >= METHOD_V2_EFFECTIVE;
+    const unlessRetired = <T>(src: string, run: () => Promise<T>, none: T): Promise<T> =>
+      retiredNow && (RETIRED_AT_V2 as readonly string[]).includes(src) ? Promise.resolve(none) : run();
     const [
       adzunaResults,
       dataForSeoJobsResults,
@@ -1580,29 +1651,31 @@ serve(async (req) => {
       censusResult,
       blsResults,
       wikipediaPageviewsResult,
-      openAlexResult
+      openAlexResult,
+      officialSupplyResults
     ] = await Promise.all([
       t(collectAdzunaSignals(today), [] as SignalResult[], 'adzuna'),
       t(collectDataForSeoJobsSignals(today), [] as SignalResult[], 'serpapi_jobs'),
       t(collectSecEdgarSignal(today), failedSignal('sec_edgar', 'demand', 'vc_pipeline'), 'sec_edgar'),
-      t(collectDataForSeoTrendsSignal(today), failedSignal('serpapi_trends', 'momentum', 'search_interest'), 'serpapi_trends'),
+      unlessRetired('serpapi_trends', () => t(collectDataForSeoTrendsSignal(today), failedSignal('serpapi_trends', 'momentum', 'search_interest'), 'serpapi_trends'), null),
       t(collectNewsApiSignal(today), failedSignal('newsapi', 'momentum', 'media_coverage'), 'newsapi'),
-      t(collectMediastackSignal(today), failedSignal('mediastack', 'momentum', 'media_coverage'), 'mediastack'),
-      t(collectGuardianSignal(today), failedSignal('guardian', 'momentum', 'prestige_media'), 'guardian'),
-      t(collectPodchaserSignal(today), failedSignal('podchaser', 'momentum', 'audio_culture'), 'podchaser'),
-      t(collectRedditSignal(today), failedSignal('reddit', 'momentum', 'community_discourse'), 'reddit'),
+      unlessRetired('mediastack', () => t(collectMediastackSignal(today), failedSignal('mediastack', 'momentum', 'media_coverage'), 'mediastack'), null),
+      unlessRetired('guardian', () => t(collectGuardianSignal(today), failedSignal('guardian', 'momentum', 'prestige_media'), 'guardian'), null),
+      unlessRetired('podchaser', () => t(collectPodchaserSignal(today), failedSignal('podchaser', 'momentum', 'audio_culture'), 'podchaser'), null),
+      unlessRetired('reddit', () => t(collectRedditSignal(today), failedSignal('reddit', 'momentum', 'community_discourse'), 'reddit'), null),
       t(collectHNSignal(today), failedSignal('hn', 'momentum', 'community_discourse'), 'hn'),
-      t(collectBraveNewsSignal(today), failedSignal('brave_news', 'momentum', 'media_coverage'), 'brave_news'),
-      t(collectBraveWebMentionsSignal(today), failedSignal('brave_web', 'momentum', 'web_discourse'), 'brave_web'),
+      unlessRetired('brave_news', () => t(collectBraveNewsSignal(today), failedSignal('brave_news', 'momentum', 'media_coverage'), 'brave_news'), null),
+      unlessRetired('brave_web', () => t(collectBraveWebMentionsSignal(today), failedSignal('brave_web', 'momentum', 'web_discourse'), 'brave_web'), null),
       t(collectDataForSeoLinkedInSupply(today), [] as SignalResult[], 'serpapi_linkedin'),
-      t(collectBraveTalentSupply(today), [] as SignalResult[], 'brave_talent'),
-      t(collectGoFractionalSupply(today), failedSignal('gofractional', 'supply', 'marketplace'), 'gofractional'),
+      unlessRetired('brave_talent', () => t(collectBraveTalentSupply(today), [] as SignalResult[], 'brave_talent'), [] as SignalResult[]),
+      unlessRetired('gofractional', () => t(collectGoFractionalSupply(today), failedSignal('gofractional', 'supply', 'marketplace'), 'gofractional'), null),
       t(collectSecExecTransitions(today), failedSignal('sec_exec_transitions', 'context', 'exec_transitions'), 'sec_exec_transitions'),
       t(collectFredContext(today), [] as SignalResult[], 'fred'),
       t(collectCensusACS(today), failedSignal('census_acs', 'context', 'self_employment'), 'census_acs'),
       t(collectBLSSignals(today), [] as SignalResult[], 'bls'),
       t(collectWikipediaPageviews(today), failedSignal('wikipedia_pageviews', 'momentum', 'wiki_interest'), 'wikipedia_pageviews'),
-      t(collectOpenAlex(today), failedSignal('openalex', 'context', 'research_interest'), 'openalex')
+      t(collectOpenAlex(today), failedSignal('openalex', 'context', 'research_interest'), 'openalex'),
+      t(collectOfficialSupply(today), [] as SignalResult[], 'official_supply')
     ]);
 
     const allSignals: SignalResult[] = [
@@ -1626,8 +1699,9 @@ serve(async (req) => {
       censusResult,
       ...blsResults,
       wikipediaPageviewsResult,
-      openAlexResult
-    ];
+      openAlexResult,
+      ...officialSupplyResults
+    ].filter((x): x is SignalResult => x != null);
 
     const successfulSignals = allSignals.filter(s => s.success);
     const failedSignals = allSignals.filter(s => !s.success);
@@ -1697,7 +1771,7 @@ serve(async (req) => {
     if (upsertError) throw upsertError;
 
     const successfulSources = [...new Set(successfulSignals.map(s => s.source))];
-    const confidence = calculateWeightedConfidence(successfulSources);
+    const confidence = calculateWeightedConfidence(successfulSources, today);
 
     if (runData?.id) {
       await supabase.from('pipeline_runs').update({
@@ -1725,7 +1799,7 @@ serve(async (req) => {
     const now = new Date().toISOString();
     const healthyRows: Array<Record<string, unknown>> = [];
     const failedRows: Array<Record<string, unknown>> = [];
-    for (const src of Object.keys(SOURCE_CONFIDENCE_WEIGHTS)) {
+    for (const src of Object.keys(weightsFor(today))) {
       const srcSignals = allSignals.filter(s => s.source === src);
       if (srcSignals.length === 0) continue;
       const errors = srcSignals.filter(s => !s.success);

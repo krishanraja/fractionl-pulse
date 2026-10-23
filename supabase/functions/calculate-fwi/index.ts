@@ -1,5 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { METHOD_V2_EFFECTIVE } from '../_shared/fwi-method.ts';
+import { calculateV2 } from './v2.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -69,7 +71,30 @@ const getFWILabel = (score: number) => {
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
-  const targetDate = new URL(req.url).searchParams.get('date') || new Date().toISOString().slice(0, 10);
+  const params = new URL(req.url).searchParams;
+  const targetDate = params.get('date') || new Date().toISOString().slice(0, 10);
+
+  // Method v2 from the 2026-10-26 seam (Ruling, Krish, 2026-10-23). Earlier
+  // dates keep the v1 code below unchanged, so no published day is restated.
+  // ?dry_run=1&method=v2 previews v2 on any date and writes nothing.
+  const dryRun = params.get('dry_run') === '1';
+  if (targetDate >= METHOD_V2_EFFECTIVE || (dryRun && params.get('method') === 'v2')) {
+    try {
+      const { status, body } = await calculateV2(supabase, targetDate, { dryRun });
+      return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    } catch (error) {
+      const message = (error as Error).message;
+      console.error('[FWI v2] Calculation failed:', message);
+      return new Response(JSON.stringify({ error: message, date: targetDate, method: 'v2' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+  }
+  if (dryRun) {
+    return new Response(JSON.stringify({ error: 'dry_run is only supported for method v2', date: targetDate }), {
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 
   try {
     // Fetch all signals for the target date

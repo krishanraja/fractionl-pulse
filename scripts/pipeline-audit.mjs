@@ -91,9 +91,17 @@ function parseWeights() {
 // and a weekly finding nobody can act on is how real findings stop being read.
 function parseProbationary() {
   const src = read('supabase/functions/ingest-signals/index.ts');
-  const m = src.match(/PROBATIONARY_SOURCES\s*=\s*\[([\s\S]*?)\]/);
+  const m = src.match(/PROBATIONARY_SOURCES[^=]*=\s*\[([\s\S]*?)\]/);
   if (!m) return [];
   return [...m[1].matchAll(/'([a-z0-9_]+)'/g)].map((x) => x[1]);
+}
+
+// Held-out anchors (collected permanently, never in the composite) and the
+// inputs retired at the 2026-10-26 seam (still delivering in the 30-day window
+// until it rolls past the seam). Neither is drift.
+function parseListIn(file, name) {
+  const m = read(file).match(new RegExp(`${name}[^=]*=\\s*\\[([\\s\\S]*?)\\]`));
+  return m ? [...m[1].matchAll(/'([a-z0-9_]+)'/g)].map((x) => x[1]) : [];
 }
 
 function parseThresholds() {
@@ -235,6 +243,8 @@ async function audit() {
   const vendors = parseVendorMap(weights);
   SB = parseSupabase();
   PROBATIONARY = parseProbationary();
+  const HELD_OUT = parseListIn('supabase/functions/ingest-signals/index.ts', 'HELD_OUT_SOURCES');
+  const RETIRED_AT_SEAM = parseListIn('supabase/functions/_shared/fwi-method.ts', 'RETIRED_AT_V2');
 
   const intended = Object.keys(weights);
   const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
@@ -251,7 +261,7 @@ async function audit() {
     // that has not applied it yet returns 400 and falls back to the full table.
     restAll("data_source_health?select=source,pipeline,status,last_success,last_checked,error_count,metadata&pipeline=eq.fwi&order=source.asc")
       .catch(() => restAll('data_source_health?select=source,status,last_success,last_checked,error_count,metadata&order=source.asc')),
-    restAll(`signals?select=source,date,created_at&date=gte.${since60}&order=date.asc`),
+    restAll(`signals?select=source,date,created_at,signal_type,category,normalized_value&date=gte.${since60}&order=date.asc`),
     restAll('fwi_scores?select=date,confidence,overall_score,supply_score,metadata&order=date.asc'),
   ]);
 
@@ -267,8 +277,29 @@ async function audit() {
 
   // --- A. Source universe reconciliation ---------------------------------
   const intendedNotDelivering = intended.filter((s) => !delivering.includes(s));
-  const deliveringNotIntended = delivering.filter((s) => !intended.includes(s) && !PROBATIONARY.includes(s));
+  const deliveringNotIntended = delivering.filter((s) => !intended.includes(s) && !PROBATIONARY.includes(s) && !HELD_OUT.includes(s) && !RETIRED_AT_SEAM.includes(s));
   const onTrial = delivering.filter((s) => PROBATIONARY.includes(s));
+
+  // --- A2. Inputs that cannot move -----------------------------------------
+  // Added 2026-10-23: eight weighted inputs read one value for months (four
+  // stored the collector's page size, two stored 0, two sat at the normalizer
+  // ceiling) and every check above passed, because each delivered every day.
+  // A weighted input whose normalized value did not change once in 28 days is
+  // not evidence, whatever its health row says (docs/CITABILITY.md point 2).
+  const since28 = shift(TODAY, -28);
+  const valuesBy = {};
+  for (const r of signals) {
+    if (r.date < since28 || r.signal_type === 'context' || !intended.includes(r.source)) continue;
+    ((valuesBy[r.source] ||= {})[r.category] ||= new Set()).add(String(r.normalized_value));
+  }
+  const frozen = Object.entries(valuesBy)
+    .filter(([, cats]) => Object.values(cats).every((v) => v.size === 1))
+    .map(([src, cats]) => `${src} (${Object.entries(cats).map(([c, v]) => `${c}=${[...v][0]}`).join(', ')})`);
+  if (frozen.length) {
+    add('amber', 'integrity', `${frozen.length} weighted input(s) did not move in 28 days`,
+      `${frozen.join('; ')}. A reading that cannot move sets the composite's level without carrying information.`,
+      'Check the raw value against the collector: a page size, a 0 or a normalizer floor or ceiling is a constant, not a market reading. Fix it, or propose its retirement with its measured impact (npm run seam:impact).');
+  }
   const orphanHealth = monitored.filter((s) => !intended.includes(s) && !delivering.includes(s));
 
   if (onTrial.length) {
