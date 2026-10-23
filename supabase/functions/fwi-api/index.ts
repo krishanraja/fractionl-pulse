@@ -43,6 +43,9 @@ const SOURCE_NAMES: Record<string, string> = {
   adzuna: 'Adzuna US job postings naming six fractional roles',
   serpapi_jobs: 'Google Jobs results for six fractional roles (DataForSEO)',
   sec_edgar: 'SEC Form D technology filings, 90 days (financing context)',
+  bls: 'BLS JOLTS openings and labour statistics (held out)', fred: 'FRED initial jobless claims (held out)',
+  census_acs: 'Census ACS self-employment (held out)', openalex: 'OpenAlex research mentions (held out)',
+  sec_exec_transitions: 'SEC 8-K interim CFO and CEO appointments (held out)',
   serpapi_linkedin: 'Google result count for LinkedIn profiles naming four fractional roles (DataForSEO), 14-day median',
   census_bfs_pbs: 'Census business applications, professional services (NAICS 54), seasonally adjusted',
   bls_incorporated: 'BLS incorporated self-employed, year-over-year change',
@@ -54,6 +57,9 @@ const SOURCE_NAMES: Record<string, string> = {
   brave_talent: 'LinkedIn profile results via Brave', guardian: 'The Guardian articles', mediastack: 'Mediastack articles',
   podchaser: 'Podchaser podcasts', gofractional: 'GoFractional published network size',
 };
+
+// Before the seam these arrived with the reading but were held out of the score.
+const V1_NOT_SCORED = ['bls', 'fred', 'census_acs', 'openalex', 'sec_exec_transitions', 'census_bfs_pbs', 'bls_incorporated'];
 
 type Vote = { source: string; pillar: string; value: number; as_of: string; carried: boolean };
 interface MethodRecord { id: string; effective: string; link_offset: number; link_window: { first: string; last: string; n: number } }
@@ -175,7 +181,7 @@ async function handleCurrentFWI(): Promise<Response> {
     // value, the day it was observed, and whether it was carried forward.
     contributors: v2
       ? votes.map((v) => ({ source: v.source, name: SOURCE_NAMES[v.source] || v.source, pillar: v.pillar, value: v.value, asOf: v.as_of, carried: v.carried }))
-      : (md.sources || []).map((src) => ({ source: src, name: SOURCE_NAMES[src] || src })),
+      : (md.sources || []).map((src) => ({ source: src, name: SOURCE_NAMES[src] || src, scored: !V1_NOT_SCORED.includes(src) })),
     topMovers: (movers || []).map(m => ({
       role: m.skill,
       signalType: m.signal_type,
