@@ -504,6 +504,25 @@ async function collectDataForSeoJobsSignals(date: string): Promise<SignalResult[
   return results;
 }
 
+// SEC's fair-access rules: a User-Agent naming the organisation and a contact
+// address, and at most 10 requests a second. Over the threshold it answers 403,
+// which fetchWithRetry rightly treats as final for every other host. Form D
+// went missing on 5 of the 30 days to 2026-10-23, 4 of them recorded as HTTP
+// 403, while the 8-K collector hit the same host in parallel. So: one shared
+// User-Agent in the form SEC asks for, and up to three spaced retries on 403
+// from SEC alone.
+const SEC_USER_AGENT = 'Fractionl Pulse hello@krishraja.com';
+async function fetchSec(url: string): Promise<Response> {
+  let res = await fetchWithRetry(url, { headers: { 'User-Agent': SEC_USER_AGENT, 'Accept': 'application/json' } }, 2, 15000);
+  for (const wait of [3000, 8000, 15000]) {
+    if (res.status !== 403) return res;
+    console.warn(`[SEC] 403 from ${new URL(url).hostname}; waiting ${wait}ms before retrying`);
+    await new Promise((r) => setTimeout(r, wait));
+    res = await fetchWithRetry(url, { headers: { 'User-Agent': SEC_USER_AGENT, 'Accept': 'application/json' } }, 0, 15000);
+  }
+  return res;
+}
+
 async function collectSecEdgarSignal(date: string): Promise<SignalResult> {
   console.log('[SEC EDGAR] Collecting Form D filings...');
   try {
@@ -511,9 +530,7 @@ async function collectSecEdgarSignal(date: string): Promise<SignalResult> {
     const startDate = new Date(endDate);
     startDate.setDate(startDate.getDate() - 90);
     const url = `https://efts.sec.gov/LATEST/search-index?forms=D&dateRange=custom&startdt=${startDate.toISOString().slice(0, 10)}&enddt=${endDate.toISOString().slice(0, 10)}&q=%22software%22+OR+%22technology%22+OR+%22SaaS%22`;
-    const response = await fetchWithRetry(url, {
-      headers: { 'User-Agent': 'FWI-Pulse/1.0 hello@krishraja.com' }
-    }, 3, 15000);
+    const response = await fetchSec(url);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     const count = safeNumber(data.hits?.total?.value, 0);
@@ -1236,13 +1253,12 @@ async function collectSecExecTransitions(_date: string): Promise<SignalResult> {
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
   // SEC asks for a contact address in the User-Agent and rate-limits hard; the
   // requests are sequential and spaced for that reason, not by accident.
-  const ua = 'FWI-Pulse/1.0 hello@krishraja.com';
   try {
     const counts: Record<string, number> = {};
     for (const term of terms) {
       const url = `https://efts.sec.gov/LATEST/search-index?q=${encodeURIComponent(`"${term}"`)}`
         + `&forms=8-K&dateRange=custom&startdt=${fmt(start)}&enddt=${fmt(end)}`;
-      const res = await fetchWithRetry(url, { headers: { 'User-Agent': ua } }, 2, 10000);
+      const res = await fetchSec(url);
       if (!res.ok) throw new Error(`SEC full-text search HTTP ${res.status}`);
       const body = await res.json();
       const total = Number(body?.hits?.total?.value);
