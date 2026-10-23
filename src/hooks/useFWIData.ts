@@ -207,6 +207,10 @@ async function fetchFWIData(): Promise<FWIResult> {
     },
     today: {
       overall: Math.round(latest.overall_score * 10) / 10,
+      range: (() => {
+        const b = (latest.metadata as { band?: { low?: number; high?: number } } | null)?.band;
+        return typeof b?.low === 'number' && typeof b?.high === 'number' ? { low: b.low, high: b.high } : null;
+      })(),
       delta30d,
       demand: {
         score: Math.round(latest.demand_score * 10) / 10,

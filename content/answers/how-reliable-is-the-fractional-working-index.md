@@ -1,10 +1,10 @@
 ---
 title: How reliable is the Fractional Working Index?
 slug: how-reliable-is-the-fractional-working-index
-description: What backs a Fractional Working Index reading: completeness, source health, how independent its 20 inputs are, its guards, and what has not been validated.
-answer: Treat it as a transparent, directional instrument rather than an official statistic. Every reading publishes its data completeness and per-source health, a September 2026 measurement found its 20 tracked inputs worth 10.7 independent ones, and simulated history is labelled. It has not yet been validated against official statistics and makes no forecasting claim.
+description: What backs a Fractional Working Index reading: its band, completeness, how much independent evidence it rests on, its guards, and its failed validation.
+answer: Treat it as a transparent, directional instrument, not an official statistic. From 26 October 2026 every reading is a whole number with a band, built from nine inputs that all move. Its inputs measured 4.4 effective independent signals, and the index has not been validated: a pre-registered test against Indeed postings failed.
 datePublished: 2026-10-21
-dateModified: 2026-10-21
+dateModified: 2026-10-23
 related: what-is-the-fractional-working-index, how-to-cite-the-fractional-working-index, is-fractional-leadership-growing-2026
 keywords: Fractional Working Index methodology, FWI reliability, data completeness, fractional market data quality
 ---
@@ -14,23 +14,26 @@ keywords: Fractional Working Index methodology, FWI reliability, data completene
 - **Per-source health.** The dashboard's sources and methods view publishes the health of each input next to the number rather than in a footnote.
 - **Provenance in history.** Rows returned by `GET /fwi-api/history` carry a data-quality field. Thirty-eight days of early supply history are labelled as a simulated estimate rather than passed off as measured.
 
-## How independent are the 20 inputs?
+## How much independent evidence is there?
 
-Twenty tracked inputs are not twenty independent signals: several news and search series can move together. Pulse measures this rather than assuming it. Its quality programme computes the **effective number of independent inputs** from the correlation matrix of the inputs (the participation ratio of its eigenvalues, where 20 fully independent inputs score 20 and 20 identical ones score 1).
+Pulse measures this rather than assuming it, as the **effective number of independent inputs**: the participation ratio of the inputs' correlation matrix, where 20 fully independent inputs score 20 and 20 identical ones score 1.
 
-The first measurement, on 21 September 2026 across 113 days and the 16 sources with enough overlapping data, came to **10.7 effective inputs of 20 tracked**, and no pair of inputs correlated at 0.8 or above. The working hypothesis written down beforehand was about five. The measurement disproved it, and the record keeps the wrong guess rather than editing it out.
+The figure published from 21 September 2026, **10.7 effective inputs of 20 tracked**, was wrong. On 23 October 2026 the calculation was found to count an input whose value never moves as perfectly independent, and eight of the 20 inputs had not moved once since June: four stored a search provider's page size, two stored zero, two sat at the top of their scale. Measured correctly, the figure is **4.4**. The hypothesis written down before the first measurement, about five, was right.
+
+The nine inputs that never moved, including a search-interest series stuck at its floor, were retired from the reading of 26 October 2026. Removing them changes the information in the index by nothing, because they carried none; it removes a false appearance of breadth. Two official supply series that do move were added at the same seam. Earlier readings are kept as published, and the [changelog](https://pulse.fractionl.ai/changelog) dates the change.
 
 ## Guards against bad data
 
-- **Anomaly guard.** A new reading more than three standard deviations from its own eight-week history is rejected rather than written into the index.
-- **Ratio guard on volatile counts.** A supply proxy built on a search engine's estimated result count can swing between about 50 and over 40,000 for the same role. A guard added to the pipeline code in October 2026 treats a reading more than ten times away from its own 14-day median as missing rather than publishing it as a collapse in supply. Earlier history is not restated.
+- **Anomaly guard.** A new reading more than three standard deviations from its source's recent readings is rejected rather than written into the index.
+- **One vote per source, missing sources carried.** From 26 October 2026 each source gets one vote in its pillar, and a source missing for a day holds its last vote for up to seven days, so a provider outage no longer moves the number.
+- **Median on volatile counts.** A supply proxy built on a search engine's estimated result count can swing between about 50 and over 100,000 for the same role. From 26 October 2026 it votes the median of its last 14 days, and a reading more than ten times from that median is treated as missing.
 - **Health from persisted rows.** Since September 2026 a source counts as healthy only when its readings were actually stored, not merely because the collector reported success.
 - **Retiring inputs that add nothing.** In September 2026 a supply input whose search terms sat at a reporting floor, and so measured no real variation, was retired and its weight redistributed within its pillar.
 
 ## What has not been established
 
-- **External validation.** The index has not yet been validated against an official measure of the demand it tracks. Official series (BLS job openings for professional and business services, FRED initial jobless claims and Census self-employment) are collected outside the composite precisely so it can be tested against them. Early tests are too short to support a claim either way, and none is made.
-- **An error band.** Completeness says how much evidence arrived, not how far the number could have moved with a different subset. Treat small moves with care.
+- **External validation.** The index is not validated. A single test written down before the data was pulled, weekly change in the demand pillar against Indeed's postings index for the matching functions, came out at r = -0.53 over 18 weeks, the opposite sign to the hypothesis. Against Census business applications the correlation is about zero (r = -0.04, n = 18). A positive link with weekly jobless claims (r = 0.65, n = 19) was found by scanning 288 correlations and is not claimed. Every test and its n are on the [methodology page](https://pulse.fractionl.ai/methodology).
+- **What the band is and is not.** From 26 October 2026 the band beside each reading is the range the number lands in when its sources are resampled. It says how much the reading depends on which sources voted, not how far it is from the true state of the market.
 - **Forecasting.** It has not been backtested and makes no predictive-accuracy claim. SEC Form D filings are included as financing context, not as a validated leading indicator.
 
 ## How to use it responsibly

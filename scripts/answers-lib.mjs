@@ -719,3 +719,94 @@ export function replaceAnswersBlock(text, block) {
   if (!re.test(text)) throw new Error('llms.txt has no <!-- answers:start --> ... <!-- answers:end --> block');
   return text.replace(re, block);
 }
+
+// ---------------------------------------------------------------------------
+// Standing pages: /methodology and /changelog (docs/CITABILITY.md points 7, 8).
+// Same static-HTML rule as the answers: built from content/pages/<slug>.md at
+// build time, identical for every visitor. They describe the method, so they
+// change only with it; dateModified is the day the content last changed.
+// ---------------------------------------------------------------------------
+
+export const PAGES_DIR_REL = 'content/pages';
+
+export function loadPages(root) {
+  const dir = join(root, PAGES_DIR_REL);
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((f) => f.endsWith('.md'))
+    .sort()
+    .map((f) => {
+      const { meta, body } = parseFrontMatter(readFileSync(join(dir, f), 'utf8'));
+      for (const k of ['title', 'slug', 'description', 'dateModified']) {
+        if (!meta?.[k]) throw new Error(`${PAGES_DIR_REL}/${f}: front matter is missing ${k}`);
+      }
+      if (`${meta.slug}.md` !== f) throw new Error(`${PAGES_DIR_REL}/${f}: slug ${meta.slug} does not match the file name`);
+      return { meta, body };
+    });
+}
+
+function standingPage(p, site, baseStyles) {
+  const m = p.meta;
+  const canonical = `${site}/${m.slug}`;
+  const ld = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'TechArticle',
+      '@id': `${canonical}#article`,
+      headline: m.title,
+      description: m.description,
+      url: canonical,
+      dateModified: m.dateModified,
+      inLanguage: 'en-GB',
+      isAccessibleForFree: true,
+      author: { '@type': 'Person', name: 'Krish Raja', worksFor: { '@type': 'Organization', name: 'Fractionl', url: 'https://fractionl.ai' } },
+      publisher: PUBLISHER,
+      about: { '@type': 'Dataset', name: 'Fractional Working Index (FWI)', url: `${site}/` },
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Pulse', item: `${site}/` },
+        { '@type': 'ListItem', position: 2, name: m.title, item: canonical },
+      ],
+    },
+  ];
+  const h = head({
+    title: `${m.title} | Pulse by Fractionl`,
+    description: m.description,
+    canonical,
+    site,
+    ogType: 'article',
+    ogAlt: 'Pulse by Fractionl: the market instrument for fractional leadership',
+    extraMeta: [`<meta property="article:modified_time" content="${m.dateModified}">`],
+    ld,
+    styles: `${baseStyles}\n${ANSWER_STYLES}`,
+  });
+  const body = `<div class="wrap">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Pulse</a> &rsaquo; <a href="/methodology">Methodology</a> &middot; <a href="/changelog">Changelog</a></nav>
+    <article>
+    <h1>${escapeHtml(m.title)}</h1>
+    <p class="byline">By Krish Raja, Fractionl &middot; Updated <time datetime="${m.dateModified}">${fmtDate(m.dateModified)}</time></p>
+    ${renderMarkdown(p.body)}
+    </article>
+    <div class="onward">
+      <a class="solid" href="/">Open the Fractional Working Index</a>
+      <a href="/methodology">Methodology</a>
+      <a href="/changelog">Changelog</a>
+      <a href="/answers">Answers</a>
+    </div>
+    ${FOOTER}
+  </div>`;
+  return `<!doctype html><html lang="en-GB"><head>${h}</head><body>${body}</body></html>`;
+}
+
+export function buildStandingPages({ root, distDir, site, baseStyles }) {
+  const pages = loadPages(root);
+  for (const p of pages) {
+    mkdirSync(join(distDir, p.meta.slug), { recursive: true });
+    writeFileSync(join(distDir, p.meta.slug, 'index.html'), standingPage(p, site, baseStyles));
+  }
+  console.log(`prerender: wrote standing pages (${pages.map((p) => `/${p.meta.slug}`).join(', ')})`);
+  return pages.map((p) => ({ loc: `${site}/${p.meta.slug}`, lastmod: p.meta.dateModified, changefreq: 'monthly', priority: '0.8' }));
+}

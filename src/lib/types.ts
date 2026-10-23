@@ -32,6 +32,10 @@ export interface MonthlyData {
 
 export interface TodayData {
   overall: number;
+  /** From the 2026-10-26 seam (method v2): the band published with the reading,
+   *  the interquartile range under resampling of each pillar's source votes.
+   *  null for earlier readings, which were published without one. */
+  range?: { low: number; high: number } | null;
   delta30d: number;
   /** delta30d is null when there is no meaningful reading ~30 days ago to compare
    *  against, so the UI shows "new" instead of a from-zero artifact (e.g. +54.6

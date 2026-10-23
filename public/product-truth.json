@@ -1,6 +1,6 @@
 {
   "schema_version": "1.2",
-  "content_version": "2026-08-11",
+  "content_version": "2026-10-23",
   "last_reconciled": {
     "date": "2026-08-11",
     "against": [
@@ -50,7 +50,7 @@
       "segment": "Specialist fractional-executive marketplace, staffing or placement firm, or multi-company talent collective",
       "geography": "United States and United Kingdom",
       "firmographics": [
-        "Approximately 5-50 staff or \u00a31m-\u00a330m annual revenue as a targeting heuristic, not a hard qualification gate",
+        "Approximately 5-50 staff or £1m-£30m annual revenue as a targeting heuristic, not a hard qualification gate",
         "At least 50 fractional or interim leadership engagements per year",
         "Places several C-suite functions",
         "Uses an ATS, CRM, marketplace, or structured engagement database",
@@ -132,11 +132,28 @@
     "tracked_inputs": 20,
     "cadence": "DataForSEO Google Jobs tasks are prepared daily at 05:00 UTC. Vercel schedules the main ingest at 06:00 UTC daily and a Monday backstop at 06:00 UTC. Supabase also retains a Monday ingest backstop. The composite is recalculated after each successful ingest; the brief and role windows use a weekly context.",
     "history": "The public API exposes up to 12 months of mixed-frequency observations. Daily score rows accumulate from June 2026; full three-pillar coverage does not exist for the entire period.",
-    "publisher_status": "A private composite published by Fractionl, not an official or government index"
+    "publisher_status": "A private composite published by Fractionl, not an official or government index",
+    "tracked_inputs_note": "20 until 2026-10-25 (method v1). From 2026-10-26 (method v2) the composite uses 9 inputs, every one of which moves; 8 of the 20 never moved and a 9th sat at its normalizer floor, so they were retired at that seam.",
+    "composite_inputs_from_2026_10_26": [
+      "adzuna",
+      "serpapi_jobs",
+      "sec_edgar",
+      "serpapi_linkedin",
+      "census_bfs_pbs",
+      "bls_incorporated",
+      "newsapi",
+      "hn",
+      "wikipedia_pageviews"
+    ],
+    "effective_independent_inputs": {
+      "value": 4.4,
+      "measured": "2026-10-23",
+      "note": "Participation ratio of the input correlation matrix, constants excluded. Supersedes the 10.7 published from 2026-09-21, which counted inputs that never moved as independent."
+    }
   },
   "offers": {
     "public_instrument": {
-      "price": "\u00a30",
+      "price": "£0",
       "status": "live",
       "human_paywall": false,
       "includes": [
@@ -148,7 +165,7 @@
       ]
     },
     "founding_benchmark_partner": {
-      "price": "\u00a31,500 for 90 days",
+      "price": "£1,500 for 90 days",
       "status": "application-only validation offer, maximum ten organisations",
       "price_status": "hypothesis, not transaction-validated",
       "eligibility": "Primary-ICP fit plus privacy, schema, and data-sharing review",
@@ -160,7 +177,7 @@
       ]
     },
     "benchmark_membership": {
-      "price": "\u00a36,000 per year",
+      "price": "£6,000 per year",
       "status": "conditional, not generally available",
       "release_gate": "At least ten active partners, 500 verified trailing-12-month engagements, approved suppression rules, and safe cohorts",
       "price_status": "hypothesis, not transaction-validated",
@@ -173,7 +190,7 @@
       "ui_visibility": "Defined as a conditional strategy tier. It is not displayed as a live tier on the current pricing page."
     },
     "enterprise_portfolio": {
-      "price": "From \u00a315,000 per year",
+      "price": "From £15,000 per year",
       "status": "conditional, not generally available",
       "release_gate": "At least 1,500 verified engagements and sufficient independent-partner coverage for requested cohorts",
       "price_status": "hypothesis, not transaction-validated",
@@ -357,6 +374,7 @@
     "url": "https://pulse.fractionl.ai",
     "required_with_any_number": [
       "score.overall",
+      "score.band (from 2026-10-26)",
       "score.label",
       "meta.asOf"
     ],
@@ -364,9 +382,9 @@
       "score.delta30d with score.delta30dComparedWith",
       "meta.dataCompleteness"
     ],
-    "template": "Fractional Working Index (FWI), Pulse by Fractionl. [score.overall] of 100, [score.label] band, as of [meta.asOf]. Data completeness [meta.dataCompleteness]. https://pulse.fractionl.ai",
+    "template": "Fractional Working Index (FWI), Pulse by Fractionl. [score.overall] of 100 (range [score.band.low] to [score.band.high]), [score.label], as of [meta.asOf]. Data completeness [meta.dataCompleteness]. https://pulse.fractionl.ai",
     "terms": "Free to read and cite with attribution. https://pulse.fractionl.ai/terms",
-    "guide": "https://pulse.fractionl.ai/answers/how-to-cite-the-fractional-working-index",
+    "guide": "https://pulse.fractionl.ai/methodology#how-to-cite-it",
     "bands": {
       "Surging": "75 and above",
       "Growing": "60 to 74",
@@ -374,7 +392,8 @@
       "Cooling": "30 to 44",
       "Contracting": "below 30"
     },
-    "rule": "Fetch the live reading before quoting; never reuse a number from memory or an older article."
+    "rule": "Fetch the live reading before quoting; never reuse a number from memory or an older article.",
+    "ready_made": "meta.citation in /fwi-api/current (from 2026-10-26)"
   },
   "competitive_truth": {
     "named_competitor": "Go Fractional publishes free role, demand, and compensation benchmarks from its own platform and survey data.",
@@ -384,7 +403,7 @@
     "Do not describe adtech, advertising buyers, publishers, media, journalists, individual executives, or AI agents as the primary paying ICP.",
     "Do not pitch a consumer Pro plan or a generic metered API as the business model.",
     "Do not call conditional benchmark plans live or generally available.",
-    "Do not call \u00a31,500, \u00a36,000, or \u00a315,000 pricing validated until customers pay.",
+    "Do not call £1,500, £6,000, or £15,000 pricing validated until customers pay.",
     "Do not claim Pulse is the first, only, official, institutional, or government fractional index.",
     "Do not say no competitor exists. Go Fractional publishes free demand and compensation benchmarks.",
     "Do not claim years of uniform historical data.",
@@ -395,6 +414,60 @@
     "Do not claim the Form D signal predicts demand until that relationship is validated.",
     "Do not use em dashes in user-facing copy.",
     "Do not describe the legacy consumer subscription, Stripe, checkout, or waitlist infrastructure as a current Pulse offer.",
-    "Do not claim the Supabase daily ingest or deploy-hook crons are active. The production schedule must be read back before describing it."
-  ]
+    "Do not claim the Supabase daily ingest or deploy-hook crons are active. The production schedule must be read back before describing it.",
+    "Do not say the index is validated against official statistics or tracks the labour market; as of 2026-10-23 it is not validated (see methodology.external_validation).",
+    "Do not quote 10.7 effective independent inputs; it was a measurement error, corrected to 4.4 on 2026-10-23."
+  ],
+  "methodology": {
+    "url": "https://pulse.fractionl.ai/methodology",
+    "changelog": "https://pulse.fractionl.ai/changelog",
+    "owner": {
+      "name": "Krish Raja",
+      "organisation": "Fractionl",
+      "corrections": "data@fractionl.ai"
+    },
+    "current_method": "fwi-v2-2026-10-26",
+    "seam": "2026-10-26",
+    "precision": "From 2026-10-26 every reading is a whole number with a band (interquartile range of 500 seeded draws resampling each pillar's source votes). Earlier readings are kept as published, to one decimal.",
+    "restatement_rule": "A method change takes effect from a dated seam and never restates a published reading. The series is chain-linked at 2026-10-26 with a fixed additive offset recorded on the changelog. Two June 2026 history edits predate this rule and are disclosed on the changelog.",
+    "external_validation": {
+      "status": "not validated",
+      "as_of": "2026-10-23",
+      "tests": [
+        {
+          "anchor": "Indeed Hiring Lab postings (Accounting, Marketing, Software Development, Management)",
+          "test": "weekly change in demand pillar, lag 0, pre-registered",
+          "r": -0.53,
+          "n": 18,
+          "ci95": [
+            -0.8,
+            -0.09
+          ],
+          "result": "failed, opposite sign"
+        },
+        {
+          "anchor": "Census BFS high-propensity business applications, year over year",
+          "test": "overall level, lag 0",
+          "r": -0.04,
+          "n": 18,
+          "ci95": [
+            -0.5,
+            0.43
+          ],
+          "result": "no relationship"
+        },
+        {
+          "anchor": "FRED initial jobless claims",
+          "test": "weekly change in overall, lag 0, found by scanning 288 correlations",
+          "r": 0.65,
+          "n": 19,
+          "ci95": [
+            0.28,
+            0.85
+          ],
+          "result": "exploratory, not claimed; out-of-sample retest from 2026-10-10"
+        }
+      ]
+    }
+  }
 }

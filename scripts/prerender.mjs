@@ -23,7 +23,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { buildRolePages, buildSitemap, STYLES } from './prerender-roles.mjs';
-import { buildAnswerHub, sitemapAnswerEntries } from './answers-lib.mjs';
+import { buildAnswerHub, buildStandingPages, sitemapAnswerEntries } from './answers-lib.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const HTML_PATH = join(__dirname, '..', 'dist', 'index.html');
@@ -51,17 +51,25 @@ const delta = data?.score?.delta30d;
 const asOf = data?.meta?.asOf;
 const methodology = data?.meta?.methodology || 'FWI = (Demand x 0.5) + (Supply x 0.2) + (Culture x 0.3)';
 const haveLive = typeof score === 'number' && typeof label === 'string';
+// From the 2026-10-26 seam (method v2) a reading is a whole number with a band;
+// earlier readings keep the one-decimal form they were published in.
+const band = data?.score?.band;
+const v2 = data?.meta?.version === '2.0';
+const scoreText = haveLive ? (band ? `${score} (${band.low} to ${band.high})` : score.toFixed(1)) : '';
+const inputsPhrase = v2
+  ? 'nine inputs across demand, supply and culture, every one of which moves, with five official and market series held out to test it'
+  : '20 tracked inputs across demand, supply, culture, and context';
 
 const deltaPhrase = typeof delta === 'number'
-  ? `${delta >= 0 ? 'up' : 'down'} ${Math.abs(delta).toFixed(1)} points over 30 days`
+  ? `${delta >= 0 ? 'up' : 'down'} ${v2 ? Math.round(Math.abs(delta)) : Math.abs(delta).toFixed(1)} points over 30 days`
   : '';
 
 const title = haveLive
-  ? `Fractional Working Index: ${score.toFixed(1)} (${label}) | Pulse by Fractionl`
+  ? `Fractional Working Index: ${band ? `${scoreText}, ${label}` : `${scoreText} (${label})`} | Pulse by Fractionl`
   : 'Pulse by Fractionl | The Fractional Working Index';
 
 const description = haveLive
-  ? `The fractional executive market is at ${score.toFixed(1)} of 100 (${label})${deltaPhrase ? `, ${deltaPhrase}` : ''}. A private composite using 20 tracked inputs across demand, supply, culture, and context. SEC Form D filings provide financing context, not a validated forecast.`
+  ? `The fractional executive market is at ${scoreText} of 100 (${label})${deltaPhrase ? `, ${deltaPhrase}` : ''}. A private composite using ${inputsPhrase}. Not validated against an official measure; method at ${SITE}/methodology.`
   : 'A private 0-100 composite index of the fractional executive market, using 20 tracked inputs across demand, supply, culture, and context.';
 
 // ---- schema.org JSON-LD ----
@@ -80,11 +88,11 @@ const datasetLd = {
   // There is no open-data licence; the terms of use grant free reading and
   // citation with attribution, so they are what a licence field should point at.
   license: `${SITE}/terms`,
-  usageInfo: `${SITE}/answers/how-to-cite-the-fractional-working-index`,
+  usageInfo: `${SITE}/methodology#how-to-cite-it`,
   creditText: 'Fractional Working Index (FWI), Pulse by Fractionl',
   keywords: ['fractional leadership', 'fractional executives', 'fractional CFO', 'fractional CMO', 'fractional CTO', 'fractional COO', 'fractional CRO', 'interim CEO', 'labour market index'],
   spatialCoverage: { '@type': 'Place', name: 'United States' },
-  measurementTechnique: 'Private composite using 20 tracked inputs with mixed availability across demand (50%), supply (20%), culture (30%), and excluded context. Inputs are not all statistically independent. Recalculated after each successful daily ingest; data completeness published with every reading. SEC Form D filing velocity is financing context; its relationship to future fractional demand has not been validated.',
+  measurementTechnique: `Private composite using ${inputsPhrase}, weighted demand 50%, supply 20%, culture 30%. Recalculated after each successful daily ingest; completeness${v2 ? ' and a band' : ''} published with every reading. Not validated against any held-out official or market measure as of 2026-10-23; tests and their n are at ${SITE}/methodology. Every method change is dated at ${SITE}/changelog.`,
   variableMeasured: [
     { '@type': 'PropertyValue', name: 'Fractional Working Index (overall)', unitText: 'index, 0 to 100', minValue: 0, maxValue: 100, ...(haveLive ? { value: score } : {}) },
     { '@type': 'PropertyValue', name: 'Demand pillar', description: 'Weight 50%. Job postings naming six roles, plus financing context.', minValue: 0, maxValue: 100 },
@@ -137,9 +145,9 @@ const noscriptBlock = `
       <main>
         <h1>Fractional Working Index (FWI)</h1>
         ${haveLive
-          ? `<p><strong>${escape(score.toFixed(1))} / 100 (${escape(label)})</strong>${deltaPhrase ? `, ${escape(deltaPhrase)}` : ''}${asOf ? `, as of ${escape(asOf)}` : ''}.</p>`
+          ? `<p><strong>${escape(scoreText)} / 100 (${escape(label)})</strong>${deltaPhrase ? `, ${escape(deltaPhrase)}` : ''}${asOf ? `, as of ${escape(asOf)}` : ''}.</p>`
           : `<p>A 0-100 composite index of the fractional executive market, recalculated after each successful daily ingest.</p>`}
-        <p>The FWI is a private composite score (0-100) for the fractional executive market (fractional CFO, CMO, CTO, COO, CRO, and interim CEO), using 20 tracked inputs with mixed availability across demand, supply, culture, and context. The inputs are not all statistically independent. ${escape(methodology)}.</p>
+        <p>The FWI is a private composite score (0-100) for the fractional executive market (fractional CFO, CMO, CTO, COO, CRO, and interim CEO), using ${escape(inputsPhrase)}. ${escape(methodology)}. It has not been validated against an official measure. <a href="/methodology">How it is made</a> &middot; <a href="/changelog">Changelog</a>.</p>
         <p>SEC Form D filing velocity is included as startup-financing context. Pulse has not validated a predictive relationship between those filings and future fractional hiring.</p>
         <p>Free, no-auth API: <a href="${API}">${API}</a>. Weekly brief: <a href="https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/export-brief">export-brief</a>. Published by <a href="https://fractionl.ai">Fractionl</a>.</p>
         <p>Pulse is a Mindmaker LLC company. Mindmaker Ltd in the UK. <a href="/terms">Terms</a> &middot; <a href="/privacy">Privacy</a></p>
@@ -245,7 +253,7 @@ writeAppRouteShell({
 
 console.log(
   haveLive
-    ? `prerender: injected live FWI ${score.toFixed(1)} (${label}) + Dataset JSON-LD + noscript into dist/index.html`
+    ? `prerender: injected live FWI ${scoreText} (${label}) + Dataset JSON-LD + noscript into dist/index.html`
     : 'prerender: API unreachable at build time, injected static JSON-LD + noscript (no live number) into dist/index.html',
 );
 
@@ -256,5 +264,6 @@ const roleSlugs = await buildRolePages(DIST, SITE);
 // ---- Answer hub: /answers, /answers/<slug>, feed, llms-full.txt -------------
 // Same static HTML for every visitor; validation failures stop the build.
 const answers = buildAnswerHub({ root: join(__dirname, '..'), distDir: DIST, site: SITE, baseStyles: STYLES });
-buildSitemap(DIST, SITE, roleSlugs, sitemapAnswerEntries(answers, SITE));
+const standing = buildStandingPages({ root: join(__dirname, '..'), distDir: DIST, site: SITE, baseStyles: STYLES });
+buildSitemap(DIST, SITE, roleSlugs, [...standing, ...sitemapAnswerEntries(answers, SITE)]);
 

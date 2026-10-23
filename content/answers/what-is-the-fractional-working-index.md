@@ -2,9 +2,9 @@
 title: What is the Fractional Working Index?
 slug: what-is-the-fractional-working-index
 description: The Fractional Working Index (FWI) explained: what it measures, its three pillars and weights, its five bands, how often it updates and its limits.
-answer: The Fractional Working Index (FWI) is a free 0 to 100 composite of fractional leadership market health, published by Fractionl as Pulse. It blends 20 tracked inputs across demand (50%), supply (20%) and culture (30%), is recalculated after each successful daily ingest, and publishes its data completeness beside every reading.
+answer: The Fractional Working Index (FWI) is a free 0 to 100 composite of fractional leadership market health, published by Fractionl as Pulse. It weights demand 50%, supply 20% and culture 30%, is recalculated after each daily ingest, and from 26 October 2026 publishes each reading as a whole number with its band.
 datePublished: 2026-10-21
-dateModified: 2026-10-21
+dateModified: 2026-10-23
 related: how-reliable-is-the-fractional-working-index, how-to-cite-the-fractional-working-index
 keywords: Fractional Working Index, FWI, fractional leadership index, fractional executive market
 ---

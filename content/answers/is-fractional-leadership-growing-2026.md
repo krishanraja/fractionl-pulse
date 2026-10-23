@@ -4,7 +4,7 @@ slug: is-fractional-leadership-growing-2026
 description: What the published evidence says about fractional and interim C-suite growth in 2026, and how to read whether demand is expanding right now.
 answer: Published provider data points to growth: Heidrick & Struggles reports interim C-suite demand up 151% since 2021 and 14% year over year on its own platform. Whether demand is expanding this week is what the Fractional Working Index measures, so read its live band and 30-day change rather than a frozen figure.
 datePublished: 2026-10-21
-dateModified: 2026-10-21
+dateModified: 2026-10-23
 related: what-is-the-fractional-working-index, which-fractional-c-suite-roles-are-in-demand, how-to-cite-the-fractional-working-index
 keywords: fractional leadership growth, fractional executives 2026, interim C-suite demand, fractional CFO demand
 ---
@@ -44,7 +44,7 @@ A fair one-line reading is the band, the direction of the 30-day change and the 
 
 ## What the index can and cannot tell you
 
-The FWI blends 20 tracked inputs into three pillars: demand (50%), supply (20%) and culture (30%). Demand is mainly job postings that name six roles: fractional CFO, CMO, CTO, COO, CRO and interim CEO. The score is recalculated after each successful daily ingest and read through a weekly brief and seven-day role windows.
+The FWI blends its inputs into three pillars: demand (50%), supply (20%) and culture (30%); from 26 October 2026 there are nine inputs, every one of which moves, and each reading carries a band. Demand is mainly job postings that name six roles: fractional CFO, CMO, CTO, COO, CRO and interim CEO. The score is recalculated after each successful daily ingest and read through a weekly brief and seven-day role windows.
 
 It cannot see fractional work won by referral rather than by a posting, and a large share of engagements never reach a job board. The role-demand collectors are US-scoped, so it is not a UK benchmark. It is a private composite, not an official statistic, and it is not a forecast.
 

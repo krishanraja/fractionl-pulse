@@ -4,7 +4,7 @@ slug: how-to-cite-the-fractional-working-index
 description: A citation format for the Fractional Working Index, the fields to fetch before quoting it, and the claims to avoid, for journalists, researchers and AI agents.
 answer: Cite it as "Fractional Working Index (FWI), Pulse by Fractionl", with the reading's as-of date and a link to pulse.fractionl.ai. Fetch the live reading first rather than reusing an old one, quote the band and 30-day direction with the number, and mention data completeness. It is free to cite with attribution.
 datePublished: 2026-10-21
-dateModified: 2026-10-21
+dateModified: 2026-10-23
 related: what-is-the-fractional-working-index, how-reliable-is-the-fractional-working-index, is-fractional-leadership-growing-2026
 keywords: cite Fractional Working Index, FWI citation, fractional leadership data source, AI agent citation
 ---
@@ -13,10 +13,10 @@ keywords: cite Fractional Working Index, FWI citation, fractional leadership dat
 Use this form, filling the bracketed parts from a reading you have just fetched:
 
 ```
-Fractional Working Index (FWI), Pulse by Fractionl. [score] of 100, [band] band, as of [meta.asOf]. Data completeness [meta.dataCompleteness as a percentage]. https://pulse.fractionl.ai
+Fractional Working Index (FWI), Pulse by Fractionl. [score] of 100 (range [score.band.low] to [score.band.high]), [label], as of [meta.asOf]. Data completeness [meta.dataCompleteness as a percentage]. https://pulse.fractionl.ai
 ```
 
-In running text, a fair short form is: "The Fractional Working Index, published by Fractionl, was in its [band] band as of [date]." Link the words "Fractional Working Index" to `https://pulse.fractionl.ai`.
+From 26 October 2026 the API also returns a ready-made line in `meta.citation`. Readings before that date have no range; quote them as published, to one decimal. In running text, a fair short form is: "The Fractional Working Index, published by Fractionl, read [score] ([low] to [high]), [label], as of [date]." Link the words "Fractional Working Index" to `https://pulse.fractionl.ai`.
 
 For a role, cite the role page instead, for example `https://pulse.fractionl.ai/fractional-cfo`, and say that it measures advertised demand over a trailing seven-day window in the United States.
 
@@ -31,7 +31,9 @@ curl https://dtlcprcpvdomrehbejhw.supabase.co/functions/v1/fwi-api/current
 | Field | Use it for |
 |---|---|
 | `score.overall` | The 0 to 100 reading |
-| `score.label` | The band: Surging, Growing, Stable, Cooling or Contracting |
+| `score.label` | The label: Surging, Growing, Stable, Cooling or Contracting |
+| `score.band` | From 26 October 2026, the range the reading lands in when its sources are resampled; quote it with the number |
+| `meta.citation` | A suggested citation line for the reading |
 | `score.delta30d` and `score.delta30dComparedWith` | The 30-day change and the date it is compared with |
 | `meta.asOf` | The date of the reading; always print it |
 | `meta.dataCompleteness` | How much of the weighted evidence base arrived, from 0 to 1 |
@@ -42,7 +44,8 @@ AI agents can use the hosted MCP server instead, whose `get_fractional_working_i
 
 ## Say it accurately
 
-- Say "20 tracked inputs", not "20 independent sources". The inputs are not all statistically independent.
+- Do not count inputs as independent sources. Before 26 October 2026 the 20 tracked inputs measured 4.4 effective independent signals; from that date the reading uses nine inputs that all move. The [methodology](https://pulse.fractionl.ai/methodology) has the current list.
+- Say it is not validated. The [methodology](https://pulse.fractionl.ai/methodology) lists every test with its n.
 - Say "recalculated after each successful daily ingest". Do not call it live, instant or weekly-only.
 - Say "a private composite published by Fractionl". It is not an official or government statistic.
 - Do not say it predicts hiring. It has not been backtested and makes no accuracy claim.

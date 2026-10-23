@@ -221,7 +221,14 @@ const PulseInstrument = ({
       </section>
 
       <section className="pulse-score-band" aria-label={isLoading ? 'Loading the current Fractional Working Index reading' : `Fractional Working Index ${score}, ${band.label}`}>
-        <div className="pulse-score-number">{isLoading ? '--' : score}</div>
+        <div className="pulse-score-figure">
+          <div className="pulse-score-number">{isLoading ? '--' : score}</div>
+          {!isLoading && data.today.range && (
+            <a className="pulse-score-range" href="/methodology#what-a-reading-is" aria-label={`Band ${data.today.range.low} to ${data.today.range.high}: how much the reading depends on which sources voted`}>
+              Band {data.today.range.low} to {data.today.range.high}
+            </a>
+          )}
+        </div>
         <div className="pulse-score-state">
           <div className={`pulse-band-label ${band.className}`}><span />{band.label}</div>
           {isLoading ? (
@@ -298,6 +305,9 @@ const PulseInstrument = ({
       <section className="pulse-mobile-score" aria-label={isLoading ? 'Loading the current Fractional Working Index reading' : `Fractional Working Index ${score}, ${band.label}`}>
         <span>Fractional Working Index</span>
         <strong>{isLoading ? '--' : score}</strong>
+        {!isLoading && data.today.range && (
+          <a className="pulse-score-range" href="/methodology#what-a-reading-is">Band {data.today.range.low} to {data.today.range.high}</a>
+        )}
         <div className={`pulse-mobile-band ${band.className}`}>{band.label}<i /></div>
         <p>{isLoading ? 'Retrieving latest evidence' : `${deltaIsPositive && !deltaIsFlat ? '+' : ''}${formatDelta(delta)} / 30 days`}</p>
         <div className="pulse-mobile-coverage"><span>{isLoading ? 'Checking data coverage' : `${coverage}% data coverage`}</span><span>{isLoading ? 'Live sources' : data.asOf}</span></div>

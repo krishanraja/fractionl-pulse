@@ -42,7 +42,7 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
     <section className="pulse-method-lead" aria-labelledby="method-overview-heading">
       <span>In plain English</span>
       <h3 id="method-overview-heading">One score for current market conditions</h3>
-      <p>Pulse combines 21 data inputs into a score from 0 to 100. The score shows current conditions for fractional executives in the US market. It is a measured snapshot, not a forecast.</p>
+      <p>Pulse combines job postings, business-formation and self-employment statistics, and market attention into a score from 0 to 100 for fractional executives in the US market. It is a measured snapshot, not a forecast, and it has not been validated against an official measure. From 26 October 2026 each reading is a whole number with a band. <a href="/methodology">Full methodology</a> &middot; <a href="/changelog">Changelog</a></p>
     </section>
 
     <section className="pulse-method-section" aria-labelledby="method-measures-heading">
@@ -57,11 +57,11 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
         </article>
         <article>
           <div><span>Executive availability</span><strong>{(weights.supply * 100).toFixed(0)}%</strong></div>
-          <p>Signals showing how many executives are available or looking to move into fractional work.</p>
+          <p>Signals of people setting up on their own: professional-services business applications, incorporated self-employment, and LinkedIn profiles naming fractional roles.</p>
         </article>
         <article>
           <div><span>Market interest</span><strong>{(weights.culture * 100).toFixed(0)}%</strong></div>
-          <p>Search, news, podcast, community, and research activity around fractional leadership.</p>
+          <p>News, Hacker News and Wikipedia attention around fractional leadership.</p>
         </article>
       </div>
     </section>
@@ -91,9 +91,10 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
         <details>
           <summary>Sources and weightings <ChevronDown aria-hidden="true" /></summary>
           <div>
-            <p><strong>Hiring demand:</strong> Adzuna and Google Jobs postings. SEC Form D filings provide startup-financing context, but Pulse has not validated them as a predictor of future fractional hiring.</p>
-            <p><strong>Executive availability:</strong> LinkedIn profile proxies from two providers, GoFractional marketplace listings, and searches about becoming a fractional executive.</p>
-            <p><strong>Market interest:</strong> Google Trends, NewsAPI, Mediastack, Brave News, Brave web search, The Guardian, Podchaser, Reddit, Hacker News, Wikipedia, OpenAlex, FRED, BLS, and Census data.</p>
+            <p><strong>Hiring demand:</strong> Adzuna and Google Jobs postings for six roles. SEC Form D filings provide startup-financing context, but Pulse has not validated them as a predictor of future fractional hiring.</p>
+            <p><strong>Executive availability (from 26 October 2026):</strong> Census business applications in professional services, BLS incorporated self-employed, and a LinkedIn profile count (its 14-day median).</p>
+            <p><strong>Market interest (from 26 October 2026):</strong> NewsAPI, Hacker News and Wikipedia.</p>
+            <p>Nine earlier inputs were retired on 26 October 2026 because their values never moved; readings before that date are kept as published. Official labour statistics (BLS, FRED, Census) and SEC interim-executive filings are held out of the score so they can test it.</p>
           </div>
         </details>
         <details>
@@ -112,15 +113,15 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
         <details>
           <summary>Data quality checks and limitations <ChevronDown aria-hidden="true" /></summary>
           <div>
-            <p>Pulse rejects a signal more than three standard deviations from its eight-week average so an API error cannot distort the index.</p>
-            <p>Data coverage shows the weighted availability, quality, and uniqueness of the current inputs. It does not show prediction accuracy.</p>
+            <p>Pulse rejects a signal more than three standard deviations from that source's recent readings, so an API error cannot distort the index. Each source gets one vote in its pillar; a source missing for a day holds its last vote for up to seven days.</p>
+            <p>The band beside the score shows how much the reading depends on which sources voted. Data coverage shows the weighted share of inputs that arrived. Neither shows prediction accuracy.</p>
             <p>Role comparisons use current hiring demand. Other movement compares the latest reading with the previous observed reading.</p>
           </div>
         </details>
         <details>
           <summary>Update schedule and missing data <ChevronDown aria-hidden="true" /></summary>
           <div>
-            <p>The pipeline runs every morning at 6am UTC, with a weekly Monday baseline. A source outage can lower data coverage or delay a reading.</p>
+            <p>The pipeline runs every morning at 6am UTC, with a backstop run at 8am if the first fails. A source outage can lower data coverage or delay a reading.</p>
             <p>Historical coverage may include clearly identified backfilled estimates. The current headline score does not invent a missing component.</p>
           </div>
         </details>
@@ -131,6 +132,9 @@ const MethodologyContent = ({ weights }: { weights: MethodologyDrawerProps['weig
 
 const MethodologyFooter = () => (
   <footer className="pulse-method-footer">
+    <a href="/methodology">
+      Read the full methodology
+    </a>
     <a href={`${SUPABASE_FUNCTIONS_URL}/fwi-api/current`} target="_blank" rel="noreferrer">
       View the current raw data
       <ExternalLink aria-hidden="true" />

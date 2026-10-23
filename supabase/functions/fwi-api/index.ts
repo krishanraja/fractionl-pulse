@@ -35,6 +35,29 @@ function nextWeeklyUpdate(): string {
   return next.toISOString();
 }
 
+const SITE = 'https://pulse.fractionl.ai';
+const OWNER = { name: 'Krish Raja', organisation: 'Fractionl', corrections: 'data@fractionl.ai' };
+
+// Readable names for every input, so a reader sees which inputs made a reading.
+const SOURCE_NAMES: Record<string, string> = {
+  adzuna: 'Adzuna US job postings naming six fractional roles',
+  serpapi_jobs: 'Google Jobs results for six fractional roles (DataForSEO)',
+  sec_edgar: 'SEC Form D technology filings, 90 days (financing context)',
+  serpapi_linkedin: 'Google result count for LinkedIn profiles naming four fractional roles (DataForSEO), 14-day median',
+  census_bfs_pbs: 'Census business applications, professional services (NAICS 54), seasonally adjusted',
+  bls_incorporated: 'BLS incorporated self-employed, year-over-year change',
+  newsapi: 'NewsAPI article count, 28 days',
+  hn: 'Hacker News stories mentioning "fractional", 30 days',
+  wikipedia_pageviews: 'Wikipedia pageviews, six articles',
+  serpapi_trends: 'Google Trends search interest (DataForSEO)',
+  brave_news: 'Brave News results', brave_web: 'Brave web results', reddit: 'Reddit results via Brave',
+  brave_talent: 'LinkedIn profile results via Brave', guardian: 'The Guardian articles', mediastack: 'Mediastack articles',
+  podchaser: 'Podchaser podcasts', gofractional: 'GoFractional published network size',
+};
+
+type Vote = { source: string; pillar: string; value: number; as_of: string; carried: boolean };
+interface MethodRecord { id: string; effective: string; link_offset: number; link_window: { first: string; last: string; n: number } }
+
 // GET /fwi-api/current - no auth required
 async function handleCurrentFWI(): Promise<Response> {
   const { data: latest, error } = await supabase
@@ -84,14 +107,32 @@ async function handleCurrentFWI(): Promise<Response> {
 
   const weights = latest.weights || { demand: 0.5, supply: 0.2, culture: 0.3 };
 
+  // Method v2 readings (from the 2026-10-26 seam) carry their method record,
+  // band and votes; earlier readings are served exactly as published.
+  const md = (latest.metadata || {}) as { method?: MethodRecord; band?: { low: number; high: number }; votes?: Vote[]; sources?: string[] };
+  const v2 = md.method?.id?.startsWith('fwi-v2') ?? false;
+  const band = v2 && md.band ? { low: md.band.low, high: md.band.high, kind: 'interquartile range of 500 seeded draws resampling each pillar\'s source votes; not a confidence interval on the market' } : null;
+  const votes: Vote[] = v2 ? (md.votes || []) : [];
+  const named = (pillar: string) => votes.filter((v) => v.pillar === pillar).map((v) => SOURCE_NAMES[v.source] || v.source);
+  const display = band ? `${latest.overall_score} (${band.low} to ${band.high})` : String(latest.overall_score);
+  const fmtDate = new Date(`${latest.date}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+
   const response = {
     meta: {
       index: 'Fractional Working Index (FWI)',
       description: 'Composite score measuring the health and momentum of the fractional executive market across demand, supply, and culture signals.',
       publisher: 'Fractionl',
-      version: '1.0',
+      owner: OWNER,
+      version: v2 ? '2.0' : '1.0',
+      method: v2 ? md.method : null,
+      methodologyUrl: `${SITE}/methodology`,
+      changelogUrl: `${SITE}/changelog`,
+      validation: { status: 'not validated', detail: 'No held-out measure tested so far supports the index; results with their n are on the methodology page.', url: `${SITE}/methodology#validation` },
+      citation: `Fractional Working Index (FWI), Pulse by Fractionl: ${display} on ${fmtDate}. ${SITE}`,
       asOf: latest.date,
-      methodology: `FWI = (Demand × ${weights.demand}) + (Supply × ${weights.supply}) + (Culture × ${weights.culture})`,
+      methodology: v2
+        ? `FWI = (Demand × ${weights.demand}) + (Supply × ${weights.supply}) + (Culture × ${weights.culture}) + ${md.method!.link_offset} (link fixed at the ${md.method!.effective} seam), rounded to a whole number`
+        : `FWI = (Demand × ${weights.demand}) + (Supply × ${weights.supply}) + (Culture × ${weights.culture})`,
       scale: '0-100: <30 Contracting · 30-44 Cooling · 45-59 Stable · 60-74 Growing · 75+ Surging',
       dataSource: latest.confidence >= 0.75 ? 'live' : 'partial',
       dataCompleteness: latest.confidence,
@@ -100,6 +141,8 @@ async function handleCurrentFWI(): Promise<Response> {
     },
     score: {
       overall: latest.overall_score,
+      band,
+      display,
       label: labelData.label,
       emoji: labelData.emoji,
       delta30d,
@@ -108,14 +151,14 @@ async function handleCurrentFWI(): Promise<Response> {
         demand: {
           score: latest.demand_score,
           weight: weights.demand,
-          sources: ['Adzuna fractional job postings', 'DataForSEO Google Jobs cross-check', 'SEC Form D VC filings (90-day)'],
+          sources: v2 ? named('demand') : ['Adzuna fractional job postings', 'DataForSEO Google Jobs cross-check', 'SEC Form D VC filings (90-day)'],
         },
         supply: {
           score: latest.supply_score,
           weight: weights.supply,
           sources: weights.supply === 0
             ? []
-            : ['DataForSEO LinkedIn supply proxy', 'Brave LinkedIn talent proxy', 'GoFractional marketplace listings'],
+            : v2 ? named('supply') : ['DataForSEO LinkedIn supply proxy', 'Brave LinkedIn talent proxy', 'GoFractional marketplace listings'],
           status: weights.supply === 0 ? 'excluded' : 'live',
           note: weights.supply === 0
             ? 'No supply data available this week, weight redistributed to demand and culture'
@@ -124,10 +167,15 @@ async function handleCurrentFWI(): Promise<Response> {
         culture: {
           score: latest.momentum_score,
           weight: weights.culture,
-          sources: ['Search interest trends (DataForSEO)', 'NewsAPI + Mediastack + Brave News media coverage', 'Guardian prestige media', 'Podchaser podcast mentions', 'Reddit + HN community discourse', 'Brave Web discourse monitoring', 'Wikipedia article interest'],
+          sources: v2 ? named('culture') : ['Search interest trends (DataForSEO)', 'NewsAPI + Mediastack + Brave News media coverage', 'Guardian prestige media', 'Podchaser podcast mentions', 'Reddit + HN community discourse', 'Brave Web discourse monitoring', 'Wikipedia article interest'],
         },
       },
     },
+    // The inputs that actually made this reading. For v2, each vote with its
+    // value, the day it was observed, and whether it was carried forward.
+    contributors: v2
+      ? votes.map((v) => ({ source: v.source, name: SOURCE_NAMES[v.source] || v.source, pillar: v.pillar, value: v.value, asOf: v.as_of, carried: v.carried }))
+      : (md.sources || []).map((src) => ({ source: src, name: SOURCE_NAMES[src] || src })),
     topMovers: (movers || []).map(m => ({
       role: m.skill,
       signalType: m.signal_type,
@@ -143,15 +191,15 @@ async function handleCurrentFWI(): Promise<Response> {
       },
       supply: {
         description: 'Availability and growth of fractional executive talent pool from multiple sources',
-        sources: [
+        sources: v2 ? named('supply') : [
           'DataForSEO LinkedIn profile index (site:linkedin.com/in proxy)',
           'Brave LinkedIn talent proxy (provider-independent backstop)',
           'GoFractional marketplace listings (via Apify scraper)',
         ],
       },
       culture: {
-        description: 'Market awareness and momentum signals from 10+ sources',
-        sources: [
+        description: v2 ? 'Market attention: news, Hacker News and Wikipedia' : 'Market awareness and momentum signals from 10+ sources',
+        sources: v2 ? named('culture') : [
           'Search interest trends (DataForSEO)',
           'NewsAPI article volume (28-day)',
           'Mediastack news cross-check',
@@ -182,6 +230,7 @@ async function handleCurrentFWI(): Promise<Response> {
       'Content-Type': 'application/json',
       'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
       'X-FWI-Score': String(latest.overall_score),
+      ...(band ? { 'X-FWI-Band': `${band.low}-${band.high}` } : {}),
       'X-FWI-Label': labelData.label,
     },
   });
@@ -208,6 +257,8 @@ async function handleHistory(months: number): Promise<Response> {
       from: since.toISOString().slice(0, 10),
       to: new Date().toISOString().slice(0, 10),
       dataPoints: scores?.length || 0,
+      seams: `${SITE}/changelog`,
+      note: 'Readings before 2026-10-26 are method v1, one decimal, no band; from 2026-10-26 method v2, whole numbers with a band, chain-linked. No reading is restated.',
     },
     history: (scores || []).map(s => ({
       date: s.date,
@@ -217,6 +268,8 @@ async function handleHistory(months: number): Promise<Response> {
       culture: s.momentum_score,
       label: FWI_LABELS[getFWILabel(s.overall_score)]?.label,
       confidence: s.confidence,
+      band: s.metadata?.band ? { low: s.metadata.band.low, high: s.metadata.band.high } : null,
+      method: s.metadata?.method?.id ?? 'fwi-v1',
       dataQuality: s.metadata?.data_quality ?? null,
     })),
   }), {

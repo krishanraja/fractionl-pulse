@@ -1371,6 +1371,17 @@
     line-height: 0.82;
   }
 
+  .pulse-score-range {
+    display: inline-block;
+    margin-top: 12px;
+    font-family: var(--pulse-font-ui);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    color: var(--pulse-ink-soft);
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+  }
+
   .pulse-score-state {
     display: flex;
     min-height: 112px;
