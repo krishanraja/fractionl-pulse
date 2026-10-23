@@ -237,6 +237,30 @@ The dated script preserves the earlier method for reproducing that result;
 merging the two measurements does not turn either exploratory result into
 a validated claim.
 
+**Pre-registered 2026-10-23, written and committed before the data was
+pulled: a fourth anchor, Indeed Hiring Lab job postings.** Indeed publishes a
+daily, keyless job-postings index by occupational category from February 2020
+(`github.com/hiring-lab/job_postings_tracker`, `US/job_postings_by_sector_US.csv`,
+`total postings`). It is the only free anchor at the FWI's own frequency, and
+it measures advertised demand for the functions the six FWI roles lead. The
+anchor is the unweighted mean of four categories chosen for their role
+mapping, fixed now: Accounting (CFO), Marketing (CMO), Software Development
+(CTO), Management (COO, CEO). Held out of the composite permanently.
+
+- **Single primary test:** weekly (Saturday-ending, daily era, complete weeks
+  only) week-on-week change in the FWI **demand pillar** against week-on-week
+  change in that anchor, lag 0. Hypothesis: positive. Report r, n and the 95%
+  CI whichever way it falls.
+- **Secondary, reported but not claimed:** the same on levels, and on the FWI
+  overall. No lag scan; a scan is how the 288-cell result above found its one
+  cell.
+- **Pass, stated in advance:** r > 0 with a CI excluding zero. A CI that spans
+  zero is reported as "no detectable relationship at this n", not retried.
+
+Found during the 2026-10-23 citability sprint (`docs/CITABILITY.md`), which
+also found that 8 of the 16 weighted inputs never moved in the daily era. That
+finding does not change this test; it is the published series that is tested.
+
 ---
 
 ## 2. Independence: publish the effective number of inputs
@@ -285,6 +309,19 @@ keeps its correct predictions is not evidence of anything.
 The claim to publish is therefore **"20 tracked inputs, 10.7 effective"** — and
 it is a stronger claim than expected, which is the opposite of the usual reason
 for publishing your own weakest number.
+
+**Correction, 2026-10-23: the 10.7 was a measurement error, and the hypothesis
+was right.** The script set the correlation of a zero-variance input to 0, and
+the participation ratio reads a row of zeros as a perfectly independent input,
+so every input that never moves added about one to the count. Eight weighted
+inputs never moved in the daily era (`brave_news`, `brave_web`, `reddit`,
+`brave_talent` read the collector's page size of 20; `guardian` and
+`mediastack` read 0; `podchaser` and `gofractional` sit at the normalizer's
+ceiling). With them reported separately rather than counted, the measured
+figure on 2026-10-23 is **4.4 effective inputs** (145 days, 8 moving
+sources). "Closer to 5 than to 20" stands. The 10.7 and 11.3 figures are
+superseded, and the public surfaces that quote 10.7 are corrected under
+`docs/CITABILITY.md`.
 
 ---
 

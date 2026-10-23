@@ -46,7 +46,7 @@ async function restAll(path) {
 async function csv(url) {
   let r;
   for (let i = 0; i < 4; i++) {
-    r = await fetch(url, { headers: { 'User-Agent': 'pulse-quality/1.0' } });
+    r = await fetch(url, { headers: { 'User-Agent': 'pulse-quality/1.0 (+https://pulse.fractionl.ai)' } });
     if (r.ok) break;
     await new Promise((res) => setTimeout(res, 1500 * (i + 1)));
   }

@@ -343,10 +343,16 @@ async function run() {
   // Only sources the index currently intends to collect, with enough overlap to
   // correlate. A retired source still has rows in the window and must not be
   // counted as part of today's evidence base.
-  const sources = Object.keys(series)
+  const eligible = Object.keys(series)
     .filter((s) => weights[s] !== undefined)
     .filter((s) => Object.keys(series[s]).length >= 10)
     .sort();
+  // A source whose daily value never moves carries no information. Until
+  // 2026-10-23 such a source entered the matrix with r = 0 against everything,
+  // which the participation ratio reads as perfectly independent: each constant
+  // input added about 1 to the effective count. They are reported separately.
+  const constantSources = eligible.filter((s) => new Set(Object.values(series[s])).size <= 1);
+  const sources = eligible.filter((s) => !constantSources.includes(s));
 
   const n = sources.length;
   const R = Array.from({ length: n }, () => new Array(n).fill(0));
@@ -396,6 +402,7 @@ async function run() {
     window: { since: SINCE, days: days.length, sources: n },
     effectiveInputs: effective,
     trackedInputs: Object.keys(weights).length,
+    constantSources,
     eigenvalues: lambdas.map((l) => Math.round(l * 1000) / 1000),
     redundantPairs: redundant.map((p) => ({ ...p, r: Math.round(p.r * 1000) / 1000 })),
     redundancy: redundancyOf.map((r) => ({ ...r, meanAbsR: r.meanAbsR == null ? null : Math.round(r.meanAbsR * 1000) / 1000 })),
@@ -422,6 +429,10 @@ function report(x) {
   out.push('');
   out.push(`Effective inputs   ${x.effectiveInputs.toFixed(1)} of ${x.trackedInputs} tracked (${pct(x.effectiveInputs / x.trackedInputs)} of the count)`);
   out.push(`                   The honest version of "${x.trackedInputs} tracked inputs".`);
+  if (x.constantSources?.length) {
+    out.push(`Constant inputs    ${x.constantSources.length} composite-weighted source(s) never moved in the window and add no information:`);
+    out.push(`                   ${x.constantSources.join(', ')}`);
+  }
   out.push('');
 
   if (x.redundantPairs.length) {
