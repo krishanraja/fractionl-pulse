@@ -94,10 +94,13 @@ jobs:
             echo "ok=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # Pinned: `latest` resolves through GitHub's unauthenticated API and failed
+      # on its rate limit on 2026-10-23, deploying nothing. A pinned version is a
+      # plain release download.
       - uses: supabase/setup-cli@v1
         if: steps.token.outputs.ok == 'true' && steps.plan.outputs.functions != ''
         with:
-          version: latest
+          version: 2.120.0
 
       - name: Deploy
         if: steps.token.outputs.ok == 'true' && steps.plan.outputs.functions != ''
