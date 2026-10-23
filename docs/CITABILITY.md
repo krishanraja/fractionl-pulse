@@ -128,6 +128,22 @@ Krish's concern on 2026-10-23, in his words: "I am worried we are now gutting th
 
 The two level failures were shared trends rather than shared information: Hacker News mentions rose from 9 to 25 a month while Form D filings rose steadily. **Rulings (Krish, 2026-10-23):** check 3 is read on 7-day changes, which makes Wikipedia (0.34) and wider Hacker News (0.58) ready for a ruling too; GDELT is dropped from the lane (its 23 trial rows are kept as the record); and Podchaser-as-flow joins the culture pillar at a dated seam on **Monday 23 November 2026**, chain-linked, with its before-and-after measured at the 20 November review and published on the changelog.
 
+**Repairs before retirement (Krish, 2026-10-23: "make sure you are not treating data sources as unfixable and instead just retiring them when there was a pretty simple fix at play").** The nine retirements were made on the evidence that each input never moved, without testing whether a simple repair would make it move. That was a gap in the process, now closed: every retired input was tested (`collect-trials ?diagnose=repairs`, the pipeline's own keys), and every one with a working repair is back in the trial lane. Today's readings:
+
+| Retired input | Cause | Repair (trial) | 2026-10-23 |
+|---|---|---|---|
+| Google Trends | normalizer floored raw 2.6 to 5.3 at 5 | score raw on its own trailing 28 days (`trial_trends`) | 72; **passes 1 to 5**, backfilled 60 days |
+| Guardian | exact phrases genuinely had 0 hits in 90 days | interim-executive wording plus "fractional" (`trial_guardian`) | 25 articles; **passes 1 to 5**, backfilled. Caveat: "fractional" also matches unrelated uses, to check before a ruling |
+| Mediastack | the two-word keyword returned 0 | single keyword "fractional" (`trial_mediastack`) | 21 articles |
+| Brave News | one page of 20 over a month, always full | past week, 50 per request (`trial_brave_news`) | 22, uncapped |
+| Brave web | one page of 20, always full | past week per role term, paged (`trial_brave_web`) | 50, uncapped |
+| Reddit via Brave | one page of 20, always full | past month per role term, paged (`trial_reddit`) | 9, uncapped |
+| Podchaser | the total sat at the ceiling | weekly new podcasts (`trial_podchaser_flow`) | ruled in for 2026-11-23 |
+| LinkedIn talent via Brave | page cap | none works: 0 under any time filter | stays retired; the DataForSEO LinkedIn count remains |
+| GoFractional | a published marketing figure | none: not a measurement | stays retired |
+
+The retirement at the 2026-10-26 seam stands, because each input still reads constant in its retired form. A repaired form returns only through the gate and a ruling. The rule going forward, added to the entry gate's spirit: **no input is retired as broken until a repair has been tried and has failed, with the test recorded.**
+
 **Dates.** The first review is the 20 November checkpoint, after three weeks of v2 data. Podchaser-as-flow and GDELT are measured against the gate by then, and any that pass are put to Krish for a seam on **Monday 23 November 2026**. The state-level BFS cut and the broader Hacker News and Wikipedia terms follow at the next monthly seam, **Monday 21 December 2026**. Companies House and partner data are 2027 work, and their dates come from the partner programme, not from this file.
 
 ## Re-score log
