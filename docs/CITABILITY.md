@@ -22,7 +22,24 @@ How to re-score: run the commands in each row's evidence column against producti
 | 9 | **Stable citation URL, suggested citation and machine access** | A permanent URL for a dated reading, suggested citation text, and an API, MCP and `llms.txt` an agent can read without a key. |
 | 10 | **A named owner and a contact** | A named, accountable owner and a working contact address for corrections, on the methodology page. |
 
-## Score on 2026-10-23: 3.5 / 10
+## Current score: 6.5 / 10 (2026-10-23, after the day's fixes)
+
+| # | Now | Evidence a stranger can check | What moves it |
+|---|---|---|---|
+| 1 Fresh | 1 | `/fwi-api/current` `meta.asOf` is today | |
+| 2 Inputs moving | 0 | Today's published reading still includes the nine constant inputs | First v2 reading, 2026-10-26: `contributors` lists nine moving inputs |
+| 3 Construction | 0 | v2 (one vote per source, carry-forward) is deployed (`calculate-fwi` v53) but publishes from 2026-10-26 | Same |
+| 4 Precision and band | 0 | Today's reading has no band | 2026-10-26: `score.band`, page title and app show `NN (low to high)` |
+| 5 Sources per number | 1 | `/fwi-api/current` `contributors`, each marked scored or held out | |
+| 6 Validation with n | 1 | `/methodology#validation`, `product-truth.json` `methodology.external_validation` | |
+| 7 Methodology page | 1 | `https://pulse.fractionl.ai/methodology`, server-rendered, own title | |
+| 8 Changelog | 1 | `https://pulse.fractionl.ai/changelog`; the 2026-10-26 entry gets its fixed link amount at the first v2 run | |
+| 9 Citation and machine access | 1 | `meta.citation`, `llms.txt`, MCP, `/fwi-api/history` | |
+| 10 Owner and contact | 0.5 | Krish Raja and `data@fractionl.ai` on `/methodology` | Krish confirms `data@fractionl.ai` reaches a person |
+
+Expected on 2026-10-26 once the first v2 reading is read back: 9.5, and 10 when the mailbox is confirmed.
+
+## First score on 2026-10-23: 3.5 / 10
 
 Evidence was read on 2026-10-23 from production (`/fwi-api/current`, `/fwi-api/history`, the public `signals` table), the live site and the repository at `1e5ff2c`. Commands are in the evidence column so anyone can repeat them.
 
@@ -105,4 +122,5 @@ Krish's concern on 2026-10-23, in his words: "I am worried we are now gutting th
 
 | Date | Score | Commit | What moved |
 |---|---|---|---|
-| 2026-10-23 | 3.5 | this commit | First score. |
+| 2026-10-23 | 3.5 | `e4d5572` | First score. |
+| 2026-10-23 | 6.5 | this commit | Live on production and read back: `/methodology` and `/changelog` (7, 8); validation with n on the methodology page, `llms.txt` and `product-truth.json` (6); `contributors` in `/fwi-api/current` lists the inputs that made the reading, held-out ones marked (5); owner named, corrections to `data@fractionl.ai` (10, half: the mailbox has not been shown to receive). Method v2 is deployed behind the 2026-10-26 seam but has not published a reading, so 2, 3 and 4 still score 0 on live evidence. `npm run smoke:release` 18/18. |

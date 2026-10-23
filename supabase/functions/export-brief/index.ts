@@ -18,6 +18,17 @@ const TRACKED_INPUTS = [
   'wikipedia_pageviews', 'openalex',
 ] as const;
 
+// From the 2026-10-26 seam (FWI method v2, docs/CITABILITY.md): the nine inputs
+// that never moved are retired and two official supply series join. Nine are
+// in the composite, four are context. Mirrors SOURCE_CONFIDENCE_WEIGHTS in
+// ingest-signals.
+const METHOD_V2_EFFECTIVE = '2026-10-26';
+const TRACKED_INPUTS_V2 = [
+  'adzuna', 'serpapi_jobs', 'sec_edgar', 'serpapi_linkedin', 'census_bfs_pbs', 'bls_incorporated',
+  'newsapi', 'hn', 'wikipedia_pageviews',
+  'fred', 'census_acs', 'bls', 'openalex',
+] as const;
+
 interface MoverItem { skill: string; change_pct: number; note?: string | null }
 interface InsightItem { title?: string; type?: string; body?: string }
 
@@ -61,6 +72,11 @@ serve(async (req) => {
 
     const current = latest[0];
     const prior = latest.length > 1 ? latest[1] : null;
+    const v2 = current.date >= METHOD_V2_EFFECTIVE;
+    const tracked: readonly string[] = v2 ? TRACKED_INPUTS_V2 : TRACKED_INPUTS;
+    const band = (current.metadata as { band?: { low: number; high: number } } | null)?.band ?? null;
+    // v2 readings are whole numbers with a band; v1 readings keep one decimal.
+    const headline = (value: number | null | undefined) => (v2 ? score(value, 0) : score(value));
 
     const overallDelta = prior ? numeric(current.overall_score) - numeric(prior.overall_score) : 0;
     const demandDelta = prior ? numeric(current.demand_score) - numeric(prior.demand_score) : 0;
@@ -89,7 +105,7 @@ serve(async (req) => {
       .from('data_source_health')
       .select('source, status')
       .eq('status', 'healthy')
-      .in('source', [...TRACKED_INPUTS]);
+      .in('source', [...tracked]);
 
     const healthyCount = healthData?.length || 0;
 
@@ -112,7 +128,7 @@ serve(async (req) => {
 
 ## Headline
 
-The Fractional Working Index stands at **${score(current.overall_score)}** (${getLabel(numeric(current.overall_score))})${prior ? `, ${delta(overallDelta)} ${arrow(overallDelta)} from the prior observation of ${score(prior.overall_score)}` : ''}.
+The Fractional Working Index stands at **${headline(current.overall_score)}**${band ? ` (band ${band.low} to ${band.high})` : ''} (${getLabel(numeric(current.overall_score))})${prior ? `, ${delta(overallDelta)} ${arrow(overallDelta)} from the prior observation of ${score(prior.overall_score, Number.isInteger(prior.overall_score) && v2 ? 0 : 1)}` : ''}. Method and limits: https://pulse.fractionl.ai/methodology. It is not validated against an official measure.
 
 ---
 
@@ -120,12 +136,12 @@ The Fractional Working Index stands at **${score(current.overall_score)}** (${ge
 
 | Dimension | Score | Change | Direction |
 |-----------|-------|--------|-----------|
-| **Overall FWI** | ${score(current.overall_score)} | ${delta(overallDelta)} | ${arrow(overallDelta)} ${getLabel(numeric(current.overall_score))} |
-| Hiring Activity (Demand) | ${score(current.demand_score)} | ${delta(demandDelta)} | ${arrow(demandDelta)} |
-| Talent Availability (Supply) | ${score(current.supply_score)} | ${delta(supplyDelta)} | ${arrow(supplyDelta)} |
-| Market Momentum (Culture) | ${score(current.momentum_score)} | ${delta(cultureDelta)} | ${arrow(cultureDelta)} |
+| **Overall FWI** | ${headline(current.overall_score)}${band ? ` (${band.low} to ${band.high})` : ''} | ${delta(overallDelta)} | ${arrow(overallDelta)} ${getLabel(numeric(current.overall_score))} |
+| Hiring Activity (Demand) | ${headline(current.demand_score)} | ${delta(demandDelta)} | ${arrow(demandDelta)} |
+| Talent Availability (Supply) | ${headline(current.supply_score)} | ${delta(supplyDelta)} | ${arrow(supplyDelta)} |
+| Market Momentum (Culture) | ${headline(current.momentum_score)} | ${delta(cultureDelta)} | ${arrow(cultureDelta)} |
 
-**Data completeness:** ${(numeric(current.confidence) * 100).toFixed(0)}% | **Tracked inputs currently healthy:** ${healthyCount}/${TRACKED_INPUTS.length}
+**Data completeness:** ${(numeric(current.confidence) * 100).toFixed(0)}% | **Tracked inputs currently healthy:** ${healthyCount}/${tracked.length}
 
 ---
 
@@ -184,11 +200,14 @@ All signals are normalized to a 0-100 scale. An anomaly guard rejects data point
         supply: current.supply_score,
         culture: current.momentum_score,
         confidence: current.confidence,
+        band,
+        method: v2 ? 'fwi-v2-2026-10-26' : 'fwi-v1',
+        methodology_url: 'https://pulse.fractionl.ai/methodology',
         delta: { overall: overallDelta, demand: demandDelta, supply: supplyDelta, culture: cultureDelta },
         movers: movers || [],
         insights: insights || [],
         sources_healthy: healthyCount,
-        tracked_inputs: TRACKED_INPUTS.length,
+        tracked_inputs: tracked.length,
         source_count_note: 'Tracked inputs are not all independent and do not all report on every reading.',
       }, null, 2), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
