@@ -295,6 +295,19 @@ async function audit() {
   const frozen = Object.entries(valuesBy)
     .filter(([, cats]) => Object.values(cats).every((v) => v.size === 1))
     .map(([src, cats]) => `${src} (${Object.entries(cats).map(([c, v]) => `${c}=${[...v][0]}`).join(', ')})`);
+  // Per category too: a source can move overall while most of its rows sit at
+  // a cap. Found 2026-10-23: serpapi_jobs read exactly 10 (the requested
+  // depth) for CFO, CMO, COO and CTO on all 31 days while CEO and CRO moved.
+  const capped = Object.entries(valuesBy)
+    .filter(([, cats]) => !Object.values(cats).every((v) => v.size === 1))
+    .map(([src, cats]) => [src, Object.entries(cats).filter(([c, v]) => c !== 'aggregate' && v.size === 1)])
+    .filter(([, frozenCats]) => frozenCats.length)
+    .map(([src, frozenCats]) => `${src}: ${frozenCats.map(([c, v]) => `${c}=${[...v][0]}`).join(', ')}`);
+  if (capped.length) {
+    add('amber', 'integrity', `${capped.length} weighted input(s) have categories that did not move in 28 days`,
+      `${capped.join('; ')}. The source moves, but these rows are fixed, usually at a provider page size or a normalizer bound.`,
+      'Read the raw value against the request: a value equal to the requested page size or depth is a cap, not a count.');
+  }
   if (frozen.length) {
     add('amber', 'integrity', `${frozen.length} weighted input(s) did not move in 28 days`,
       `${frozen.join('; ')}. A reading that cannot move sets the composite's level without carrying information.`,
