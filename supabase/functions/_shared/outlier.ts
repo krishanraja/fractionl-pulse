@@ -33,3 +33,38 @@ export function isRatioOutlier(
   const ratio = value / m;
   return ratio > factor || ratio < 1 / factor;
 }
+
+// Anomaly guard, hold-then-confirm (FWI method v2, Ruling, Krish, 2026-10-23).
+//
+// The v1 guard rejected any reading more than 3 standard deviations from the
+// source's recent stored readings, and never stored what it rejected. A real
+// level change therefore kept being compared with the old level and rejected
+// day after day: NewsAPI fell from about 21 to about 12 articles on 2026-10-13
+// and was rejected for nine days. Now an outlier is held for one day (stored
+// visibly, never scored). If the next reading sits at the held level, the
+// change is real and is accepted; a one-off spike is still dropped.
+
+export const ANOMALY_Z = 3;
+export const ANOMALY_MIN_HISTORY = 3;
+export const ANOMALY_MIN_SD = 1;
+
+export type AnomalyDecision =
+  | { action: 'accept'; reason: 'no-history' | 'low-variance' | 'in-range' }
+  | { action: 'confirm'; z: number; held: number }
+  | { action: 'hold'; z: number; mean: number; sd: number };
+
+export function anomalyDecision(value: number, history: number[], heldYesterday: number | null = null): AnomalyDecision {
+  const h = history.filter((v) => Number.isFinite(v));
+  if (h.length < ANOMALY_MIN_HISTORY) return { action: 'accept', reason: 'no-history' };
+  const mean = h.reduce((a, b) => a + b, 0) / h.length;
+  const sd = Math.sqrt(h.reduce((s, v) => s + (v - mean) ** 2, 0) / h.length);
+  if (sd < ANOMALY_MIN_SD) return { action: 'accept', reason: 'low-variance' };
+  const z = Math.abs(value - mean) / sd;
+  if (z <= ANOMALY_Z) return { action: 'accept', reason: 'in-range' };
+  // Same tolerance as the guard itself: the new reading confirms the held one
+  // when it is within ANOMALY_Z of the old spread from it.
+  if (heldYesterday != null && Math.abs(value - heldYesterday) <= ANOMALY_Z * sd) {
+    return { action: 'confirm', z: Math.round(z * 10) / 10, held: heldYesterday };
+  }
+  return { action: 'hold', z: Math.round(z * 10) / 10, mean: Math.round(mean * 10) / 10, sd: Math.round(sd * 10) / 10 };
+}

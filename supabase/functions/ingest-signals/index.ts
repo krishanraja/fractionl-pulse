@@ -8,7 +8,7 @@ import {
   parseTrendsSeries,
   recentTermAverage,
 } from '../_shared/dataforseo.ts';
-import { isRatioOutlier } from '../_shared/outlier.ts';
+import { anomalyDecision, isRatioOutlier } from '../_shared/outlier.ts';
 import { METHOD_V2_EFFECTIVE, RETIRED_AT_V2, officialScore, yoy } from '../_shared/fwi-method.ts';
 import { RELEASE_DAY, fetchOfficialSupply } from '../_shared/official-supply.ts';
 
@@ -1728,38 +1728,88 @@ serve(async (req) => {
       throw new Error(`Insufficient signals: ${successfulSignals.length} sources succeeded`);
     }
 
-    // Anomaly guard: reject signals >3 stddev from recent 8-week history
-    const { data: recentHistory } = await supabase
-      .from('signals')
-      .select('source, category, normalized_value')
-      .lt('date', today)
-      .order('date', { ascending: false })
-      .limit(500);
+    // Anomaly guard. Before the 2026-10-26 seam: the v1 guard, unchanged, so the
+    // v1 days still to be published are computed as they always were. From the
+    // seam: hold-then-confirm (Ruling, Krish, 2026-10-23; _shared/outlier.ts),
+    // judged against each source's own last eight stored readings, not the last
+    // 500 rows across all sources (about 11 days).
+    let validatedSignals: SignalResult[];
+    const heldRows: Array<Record<string, unknown>> = [];
+    if (today < METHOD_V2_EFFECTIVE) {
+      // Anomaly guard: reject signals >3 stddev from recent 8-week history
+      const { data: recentHistory } = await supabase
+        .from('signals')
+        .select('source, category, normalized_value')
+        .lt('date', today)
+        .order('date', { ascending: false })
+        .limit(500);
 
-    const historyMap: Record<string, number[]> = {};
-    for (const h of (recentHistory || [])) {
-      const key = `${h.source}_${h.category}`;
-      if (!historyMap[key]) historyMap[key] = [];
-      if (historyMap[key].length < 8) historyMap[key].push(h.normalized_value);
-    }
-
-    const validatedSignals = successfulSignals.filter(signal => {
-      const key = `${signal.source}_${signal.category}`;
-      const history = historyMap[key];
-      if (!history || history.length < 3) return true; // not enough data to judge
-      const mean = history.reduce((a, b) => a + b, 0) / history.length;
-      const stddev = Math.sqrt(history.reduce((s, v) => s + (v - mean) ** 2, 0) / history.length);
-      if (stddev < 1) return true; // too little variance to judge
-      const zScore = Math.abs(signal.normalized_value - mean) / stddev;
-      if (zScore > 3) {
-        console.warn(`[Anomaly Guard] REJECTED ${key}: value ${signal.normalized_value} is ${zScore.toFixed(1)} stddev from mean ${mean.toFixed(1)} (stddev=${stddev.toFixed(1)})`);
-        return false;
+      const historyMap: Record<string, number[]> = {};
+      for (const h of (recentHistory || [])) {
+        const key = `${h.source}_${h.category}`;
+        if (!historyMap[key]) historyMap[key] = [];
+        if (historyMap[key].length < 8) historyMap[key].push(h.normalized_value);
       }
-      return true;
-    });
 
-    const rejected = successfulSignals.length - validatedSignals.length;
-    if (rejected > 0) console.log(`[Anomaly Guard] Rejected ${rejected} outlier signal(s)`);
+      validatedSignals = successfulSignals.filter(signal => {
+        const key = `${signal.source}_${signal.category}`;
+        const history = historyMap[key];
+        if (!history || history.length < 3) return true; // not enough data to judge
+        const mean = history.reduce((a, b) => a + b, 0) / history.length;
+        const stddev = Math.sqrt(history.reduce((s, v) => s + (v - mean) ** 2, 0) / history.length);
+        if (stddev < 1) return true; // too little variance to judge
+        const zScore = Math.abs(signal.normalized_value - mean) / stddev;
+        if (zScore > 3) {
+          console.warn(`[Anomaly Guard] REJECTED ${key}: value ${signal.normalized_value} is ${zScore.toFixed(1)} stddev from mean ${mean.toFixed(1)} (stddev=${stddev.toFixed(1)})`);
+          return false;
+        }
+        return true;
+      });
+
+      const rejected = successfulSignals.length - validatedSignals.length;
+      if (rejected > 0) console.log(`[Anomaly Guard] Rejected ${rejected} outlier signal(s)`);
+
+    } else {
+      const since = new Date(Date.parse(today + 'T00:00:00Z') - 30 * 86400000).toISOString().slice(0, 10);
+      const yesterday = new Date(Date.parse(today + 'T00:00:00Z') - 86400000).toISOString().slice(0, 10);
+      const history: Record<string, number[]> = {};
+      for (let o = 0; ; o += 1000) {
+        const { data } = await supabase.from('signals').select('date, source, category, signal_type, normalized_value')
+          .gte('date', since).lt('date', today).in('signal_type', ['demand', 'supply', 'momentum', 'context'])
+          .order('date', { ascending: false }).range(o, o + 999);
+        for (const h of data || []) {
+          const key = `${h.source}_${h.category}`;
+          if ((history[key] ||= []).length < 8) history[key].push(Number(h.normalized_value));
+        }
+        if (!data || data.length < 1000) break;
+      }
+      const { data: heldData } = await supabase.from('signals').select('category, normalized_value')
+        .eq('source', 'guard_held').eq('date', yesterday);
+      const heldYesterday: Record<string, number> = {};
+      for (const h of heldData || []) heldYesterday[String(h.category)] = Number(h.normalized_value);
+
+      validatedSignals = successfulSignals.filter((signal) => {
+        const key = `${signal.source}_${signal.category}`;
+        const d = anomalyDecision(signal.normalized_value, history[key] || [], heldYesterday[key] ?? null);
+        if (d.action === 'confirm') {
+          console.log(`[Anomaly Guard] ${key}: ${signal.normalized_value} confirms yesterday's held ${d.held}; accepted as a level change (z ${d.z})`);
+          signal.metadata = { ...(signal.metadata || {}), guard: 'confirmed_level_change', held_yesterday: d.held, z: d.z };
+          return true;
+        }
+        if (d.action === 'hold') {
+          console.warn(`[Anomaly Guard] HELD ${key}: ${signal.normalized_value} is ${d.z} sd from ${d.mean} (sd ${d.sd}); scored only if tomorrow confirms it`);
+          heldRows.push({
+            date: today, source: 'guard_held', signal_type: 'candidate', category: key,
+            normalized_value: signal.normalized_value, raw_value: signal.raw_value,
+            metadata: { source: signal.source, category: signal.category, z: d.z, mean: d.mean, sd: d.sd },
+          });
+          return false;
+        }
+        return true;
+      });
+      const held = successfulSignals.length - validatedSignals.length;
+      if (held > 0) console.log(`[Anomaly Guard] Held ${held} reading(s) for confirmation`);
+    }
 
     // Defensive layer: never persist a supply reading that measured nothing (raw_value 0).
     // A collector can return HTTP 200 with an empty body (success === true) yet contain no
@@ -1782,7 +1832,7 @@ serve(async (req) => {
 
     const { error: upsertError } = await supabase
       .from('signals')
-      .upsert(signalRecords, { onConflict: 'date,source,signal_type,category' });
+      .upsert([...signalRecords, ...heldRows], { onConflict: 'date,source,signal_type,category' });
 
     if (upsertError) throw upsertError;
 

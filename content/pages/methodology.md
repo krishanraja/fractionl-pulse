@@ -42,7 +42,7 @@ Three pillars, each the mean of one vote per source:
 
 **The chain link.** At the 26 October seam the new method would have read higher than the old one on the same days, because the retired inputs held the old level down. To keep the series continuous, a fixed amount is added to every v2 reading: the mean gap between the published readings and the v2 rebuild of the same 28 days before the seam. It is measured once, at the first v2 run, recorded with that reading, and never changed. The value is on the [changelog](/changelog). So a v2 reading is 0.5 × demand + 0.2 × supply + 0.3 × culture + the link amount, rounded to a whole number.
 
-**Anomaly guard.** A reading more than three standard deviations from that source's most recent stored readings (up to eight) is rejected before it is stored.
+**Anomaly guard.** A reading more than three standard deviations from that source's last eight stored readings is held for a day, stored visibly and not scored. If the next reading sits at the held level, the change is accepted as real; a one-off spike is dropped. (Before 26 October 2026 an outlier was rejected outright and never stored, which kept rejecting a real change: NewsAPI's fall on 13 October was rejected for nine days.)
 
 **Completeness.** Every reading publishes `dataCompleteness`, the weighted share of tracked inputs that arrived. It is a coverage measure, not accuracy.
 

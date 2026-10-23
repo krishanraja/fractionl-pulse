@@ -279,7 +279,7 @@ async function audit() {
   const intendedNotDelivering = intended.filter((s) => !delivering.includes(s));
   // trial_* sources are the trial lane (collect-trials): stored as 'candidate',
   // never scored, reported by `npm run trial`, not drift.
-  const deliveringNotIntended = delivering.filter((s) => !intended.includes(s) && !PROBATIONARY.includes(s) && !HELD_OUT.includes(s) && !RETIRED_AT_SEAM.includes(s) && !s.startsWith('trial_'));
+  const deliveringNotIntended = delivering.filter((s) => !intended.includes(s) && !PROBATIONARY.includes(s) && !HELD_OUT.includes(s) && !RETIRED_AT_SEAM.includes(s) && !s.startsWith('trial_') && s !== 'guard_held');
   const onTrial = delivering.filter((s) => PROBATIONARY.includes(s));
 
   // --- A2. Inputs that cannot move -----------------------------------------
