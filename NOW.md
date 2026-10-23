@@ -2,7 +2,7 @@
 repo: krishanraja/fractionl-pulse
 product: Pulse by Fractionl
 as_of: 2026-10-23
-head: aa7fd0a
+head: 3df480e
 lifecycle: live
 production_url: https://pulse.fractionl.ai
 state_doc: docs/DOCUMENTATION_GOVERNANCE.md
