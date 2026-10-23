@@ -144,6 +144,18 @@ The two level failures were shared trends rather than shared information: Hacker
 
 The retirement at the 2026-10-26 seam stands, because each input still reads constant in its retired form. A repaired form returns only through the gate and a ruling. The rule going forward, added to the entry gate's spirit: **no input is retired as broken until a repair has been tried and has failed, with the test recorded.**
 
+**Relevance check, 2026-10-23 (gate check 0, Ruling, Krish, 2026-10-23).** Krish asked for the Guardian's "fractional" matches to be checked. They were all unrelated, which showed the gate could pass an input that measures the wrong thing, so every text-match trial was sampled and the dated reviews are in `docs/trial-relevance.json`:
+
+| Trial | Sample | Verdict |
+|---|---|---|
+| Guardian (repair) | 7 of 7 "fractional" matches unrelated (cricket, F1, fractional jet ownership); "interim CEO" matches name individual executives | **Dropped**; the original retirement was right |
+| Mediastack (repair) | about 1 in 21 on topic; the keyword matches "fraction" | **Dropped**; the original retirement was right |
+| Podchaser weekly flow (ruled in for 2026-11-23) | about 3 of the 50 newest matches on topic; the search is fuzzy | **Fails check 0.** Repair tried: a title-and-description filter keeps 46 of 46 relevant shows, but only 2 started in the last 90 days, so the count has sat at 2 since 2026-09-23 and fails check 2 |
+| Brave web | 48 of 49 on topic, top site 18% | passes check 0 |
+| Brave News | 22 of 22 on topic, one site 73% | passes by counting distinct sites |
+| Hacker News (wide) | 15 of 15 on topic | passes; ready for a ruling |
+| Reddit | 2 of 2 on topic | passes; small |
+
 **Dates.** The first review is the 20 November checkpoint, after three weeks of v2 data. Podchaser-as-flow and GDELT are measured against the gate by then, and any that pass are put to Krish for a seam on **Monday 23 November 2026**. The state-level BFS cut and the broader Hacker News and Wikipedia terms follow at the next monthly seam, **Monday 21 December 2026**. Companies House and partner data are 2027 work, and their dates come from the partner programme, not from this file.
 
 ## Re-score log

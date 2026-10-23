@@ -26,7 +26,7 @@ export interface TrialDef {
 export const TRIALS: TrialDef[] = [
   { source: 'trial_google_jobs', pillar: 'demand', replaces: 'serpapi_jobs', backfill: 'none', textMatch: true,
     what: 'Google Jobs results for six roles at depth 100. Production asks for 10, and CFO, CMO, COO and CTO read exactly 10 every day to 2026-10-23.' },
-  { source: 'trial_podchaser_relevant', pillar: 'culture', backfill: 'archive', textMatch: true,
+  { source: 'trial_podchaser_relevant', pillar: 'culture', backfill: 'archive', textMatch: true, singleSite: true,
     what: 'New podcasts in the last 90 days whose title or description names fractional executive work, from the 100 newest Podchaser matches for each of four role terms. Replaces trial_podchaser_flow, whose fuzzy search made about 3 of 50 matches relevant.' },
   { source: 'trial_wikipedia', pillar: 'culture', replaces: 'wikipedia_pageviews', backfill: 'archive', textMatch: false,
     what: 'Wikipedia daily views of articles about interim and fractional executive work only, without the generic C-suite articles or "Fractional ownership".' },
