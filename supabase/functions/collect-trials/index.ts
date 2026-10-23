@@ -18,7 +18,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { dataForSeoGet, parseGoogleJobs } from '../_shared/dataforseo.ts';
 import { addDays } from '../_shared/fwi-method.ts';
 import {
-  HN_TRIAL_PHRASES, SCALE_FULL, TRIAL_SOURCES, WIKI_TRIAL_PAGES, logScale, plausibleFlow,
+  BRAVE_ROLE_TERMS, GUARDIAN_TRIAL_QUERY, HN_TRIAL_PHRASES, SCALE_FULL, TRIAL_SOURCES, WIKI_TRIAL_PAGES,
+  logScale, plausibleFlow, trailingZScore,
 } from '../_shared/trials.ts';
 
 const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' };
@@ -133,6 +134,53 @@ async function hnCount(date: string): Promise<number> {
   return total;
 }
 
+// ---- Repairs of inputs retired at the 2026-10-26 seam -----------------------
+
+// trial_trends: the Google Trends raw value scored against its trailing 28 days.
+// Raw comes from serpapi_trends until the seam and trial_trends_raw after it.
+async function trendsRows(dates: string[], backfilled: boolean): Promise<Row[]> {
+  const raw: Record<string, number> = {};
+  for (const src of ['serpapi_trends', 'trial_trends_raw']) {
+    const { data } = await supabase.from('signals').select('date, raw_value').eq('source', src).gte('date', addDays(dates[0], -40));
+    for (const r of data || []) if (Number.isFinite(Number(r.raw_value)) && Number(r.raw_value) > 0) raw[r.date] = Number(r.raw_value);
+  }
+  return dates.flatMap((d) => {
+    if (raw[d] === undefined) return [];
+    const trailing = Array.from({ length: 28 }, (_, i) => raw[addDays(d, -(i + 1))]).filter((x) => x !== undefined);
+    const score = trailingZScore(raw[d], trailing);
+    return score == null ? [] : [row(d, 'trial_trends', 'search_interest_z', raw[d], score, { trailing_days: trailing.length, backfilled })];
+  });
+}
+
+const BRAVE = Deno.env.get('BRAVE_API_KEY') || '';
+async function braveCount(path: string, q: string, freshness: string, pageSize: number): Promise<{ count: number; capped: boolean }> {
+  let count = 0;
+  for (let offset = 0; offset < 5; offset++) {
+    await new Promise((r) => setTimeout(r, 1200));
+    const j = await getJson(`https://api.search.brave.com/res/v1/${path}?q=${encodeURIComponent(q)}&count=${pageSize}&offset=${offset}&freshness=${freshness}${path === 'web/search' ? '&result_filter=web' : ''}`,
+      { headers: { 'X-Subscription-Token': BRAVE, Accept: 'application/json' } }, 2) as { results?: unknown[]; web?: { results?: unknown[] }; query?: { more_results_available?: boolean } };
+    const got = (j.results ?? j.web?.results ?? []).length;
+    count += got;
+    if (got < pageSize || j.query?.more_results_available === false) return { count, capped: false };
+  }
+  return { count, capped: true };
+}
+
+async function guardianCount(date: string): Promise<number> {
+  const G = Deno.env.get('GUARDIAN_API_KEY') || '';
+  const j = await getJson(`https://content.guardianapis.com/search?q=${encodeURIComponent(GUARDIAN_TRIAL_QUERY)}&from-date=${addDays(date, -90)}&to-date=${date}&page-size=1&api-key=${G}`, {}, 2) as { response?: { status?: string; total?: number } };
+  if (j.response?.status !== 'ok') throw new Error('Guardian status not ok');
+  return Number(j.response.total || 0);
+}
+
+async function mediastackCount(): Promise<number> {
+  const M = Deno.env.get('MEDIASTACK_API_KEY') || '';
+  const r = await fetch(`http://api.mediastack.com/v1/news?access_key=${M}&keywords=fractional&languages=en&limit=1`);
+  const j = await r.json() as { pagination?: { total?: number }; error?: { code?: string; message?: string } };
+  if (j.error) throw new Error(`${j.error.code}: ${j.error.message}`);
+  return Number(j.pagination?.total || 0);
+}
+
 // ?diagnose=repairs: test whether a retired input has a simple repair
 // (Krish, 2026-10-23: "make sure you are not treating data sources as
 // unfixable and instead just retiring them when there was a pretty simple fix").
@@ -218,6 +266,33 @@ serve(async (req) => {
     for (const d of dates) { const n = await hnCount(d); out.push(row(d, 'trial_hn_wide', 'mentions_30d', n, logScale(n, SCALE_FULL.trial_hn_wide), { phrases: HN_TRIAL_PHRASES, backfilled })); }
     return out;
   });
+
+  await attempt('trial_trends', () => trendsRows(dates, backfilled));
+  await attempt('trial_guardian', async () => {
+    const out: Row[] = [];
+    for (const d of dates) { const n = await guardianCount(d); out.push(row(d, 'trial_guardian', 'interim_executive_90d', n, logScale(n, SCALE_FULL.trial_guardian), { query: GUARDIAN_TRIAL_QUERY, backfilled })); }
+    return out;
+  });
+  if (!backfilled) {
+    await attempt('trial_brave_news', async () => {
+      const r = await braveCount('news/search', BRAVE_ROLE_TERMS.join(' OR '), 'pw', 50);
+      return [row(today, 'trial_brave_news', 'articles_7d', r.count, logScale(r.count, SCALE_FULL.trial_brave_news), { capped: r.capped })];
+    });
+    await attempt('trial_brave_web', async () => {
+      let total = 0, capped = false;
+      for (const term of BRAVE_ROLE_TERMS) { const r = await braveCount('web/search', term, 'pw', 20); total += r.count; capped ||= r.capped; }
+      return [row(today, 'trial_brave_web', 'results_7d', total, logScale(total, SCALE_FULL.trial_brave_web), { terms: BRAVE_ROLE_TERMS, capped })];
+    });
+    await attempt('trial_reddit', async () => {
+      let total = 0, capped = false;
+      for (const term of BRAVE_ROLE_TERMS) { const r = await braveCount('web/search', `site:reddit.com ${term}`, 'pm', 20); total += r.count; capped ||= r.capped; }
+      return [row(today, 'trial_reddit', 'results_30d', total, logScale(total, SCALE_FULL.trial_reddit), { terms: BRAVE_ROLE_TERMS, capped })];
+    });
+    await attempt('trial_mediastack', async () => {
+      const n = await mediastackCount();
+      return [row(today, 'trial_mediastack', 'articles', n, logScale(n, SCALE_FULL.trial_mediastack), { keywords: 'fractional' })];
+    });
+  }
 
   if (rows.length) {
     const { error } = await supabase.from('signals').upsert(rows, { onConflict: 'date,source,signal_type,category' });

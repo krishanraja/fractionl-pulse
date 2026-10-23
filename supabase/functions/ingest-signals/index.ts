@@ -199,7 +199,7 @@ const OPENALEX_PHRASES = [
 
 interface SignalResult {
   source: string;
-  signal_type: 'demand' | 'supply' | 'momentum' | 'context';
+  signal_type: 'demand' | 'supply' | 'momentum' | 'context' | 'candidate';
   category: string;
   raw_value: number;
   normalized_value: number;
@@ -1673,7 +1673,13 @@ serve(async (req) => {
       t(collectAdzunaSignals(today), [] as SignalResult[], 'adzuna'),
       t(collectDataForSeoJobsSignals(today), [] as SignalResult[], 'serpapi_jobs'),
       t(collectSecEdgarSignal(today), failedSignal('sec_edgar', 'demand', 'vc_pipeline'), 'sec_edgar'),
-      unlessRetired('serpapi_trends', () => t(collectDataForSeoTrendsSignal(today), failedSignal('serpapi_trends', 'momentum', 'search_interest'), 'serpapi_trends'), null),
+      // Retired from the composite at the seam, but its raw value keeps being
+      // collected into the trial lane: rescored against its own history it
+      // moves (trial_trends in collect-trials). Same DataForSEO cost as before.
+      retiredNow
+        ? t(collectDataForSeoTrendsSignal(today), failedSignal('serpapi_trends', 'momentum', 'search_interest'), 'serpapi_trends')
+            .then((r) => ({ ...r, source: 'trial_trends_raw', signal_type: 'candidate' as const }))
+        : t(collectDataForSeoTrendsSignal(today), failedSignal('serpapi_trends', 'momentum', 'search_interest'), 'serpapi_trends'),
       t(collectNewsApiSignal(today), failedSignal('newsapi', 'momentum', 'media_coverage'), 'newsapi'),
       unlessRetired('mediastack', () => t(collectMediastackSignal(today), failedSignal('mediastack', 'momentum', 'media_coverage'), 'mediastack'), null),
       unlessRetired('guardian', () => t(collectGuardianSignal(today), failedSignal('guardian', 'momentum', 'prestige_media'), 'guardian'), null),

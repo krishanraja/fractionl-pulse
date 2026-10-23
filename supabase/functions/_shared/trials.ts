@@ -26,7 +26,27 @@ export const TRIALS: TrialDef[] = [
     what: 'Wikipedia daily views of articles about interim and fractional executive work only, without the generic C-suite articles or "Fractional ownership".' },
   { source: 'trial_hn_wide', pillar: 'culture', replaces: 'hn', backfill: 'archive',
     what: 'Hacker News stories and comments naming fractional or interim C-suite roles over 30 days (production counts stories matching "fractional" only).' },
+  // Repairs of inputs retired at the 2026-10-26 seam (Krish, 2026-10-23: test
+  // the simple fix before calling a source unfixable). Each re-enters only
+  // through the gate. Diagnosis, collect-trials ?diagnose=repairs, 2026-10-23.
+  { source: 'trial_trends', pillar: 'culture', backfill: 'stored',
+    what: 'Google Trends search interest scored against its own trailing 28 days (50 + 10z). Raw moved between 2.6 and 5.3 while the retired normalizer floored it at 5.' },
+  { source: 'trial_brave_news', pillar: 'culture', backfill: 'none',
+    what: 'Brave News results over the past week at up to 50 per request: 22 on 2026-10-23, under the cap, so a count. The retired input asked for 20 over a month and always got 20.' },
+  { source: 'trial_brave_web', pillar: 'culture', backfill: 'none',
+    what: 'Brave web results over the past week for each role term, paged until Brave reports no more: "fractional CFO" returned 10 with none left on 2026-10-23.' },
+  { source: 'trial_reddit', pillar: 'culture', backfill: 'none',
+    what: 'Reddit results via Brave over the past month, paged until none are left. Past week and past day both returned 0 on 2026-10-23.' },
+  { source: 'trial_guardian', pillar: 'culture', backfill: 'archive',
+    what: 'Guardian articles over 90 days on interim chief executives and finance directors: 18 on 2026-10-23. The retired query ("fractional executive" OR "fractional CFO") genuinely returned 0.' },
+  { source: 'trial_mediastack', pillar: 'culture', backfill: 'none',
+    what: 'Mediastack articles mentioning "fractional": one call a day, inside the free plan. Diagnosis was cut short by the plan\'s rate limit on 2026-10-23.' },
 ];
+
+// Not repairable, on test (2026-10-23): LinkedIn talent via Brave returns 0
+// for any time filter, so the page-capped count cannot become a flow; the
+// DataForSEO LinkedIn count remains the LinkedIn input. GoFractional is a
+// published marketing figure, not a measurement.
 
 // Dropped (Ruling, Krish, 2026-10-23): trial_gdelt. GDELT counted only 3 to 7
 // matching articles a week and its timeline had a gap from 14 September to
@@ -48,7 +68,26 @@ export const SCALE_FULL = {
   trial_podchaser_flow: 200,  // new matching podcasts per week; ~25-60 observed
   trial_wikipedia: 2000,      // mean daily views
   trial_hn_wide: 500,         // stories + comments per 30 days
+  trial_brave_news: 100,      // articles per week
+  trial_brave_web: 200,       // results per week across the role terms
+  trial_reddit: 100,          // results per month
+  trial_guardian: 100,        // articles per 90 days
+  trial_mediastack: 200,      // articles
 } as const;
+
+export const BRAVE_ROLE_TERMS = ['"fractional CFO"', '"fractional CMO"', '"fractional CTO"', '"fractional executive"'];
+export const GUARDIAN_TRIAL_QUERY = '"interim chief executive" OR "interim CEO" OR "interim finance director" OR "interim chief financial officer" OR "fractional"';
+
+// Trends rescored against its own recent history: 50 + 10z over the trailing
+// window, clamped. A raw series moving inside a narrow band still moves.
+export function trailingZScore(value: number, trailing: number[]): number | null {
+  const t = trailing.filter((x) => Number.isFinite(x));
+  if (t.length < 7) return null;
+  const m = t.reduce((a, b) => a + b, 0) / t.length;
+  const sd = Math.sqrt(t.reduce((a, b) => a + (b - m) ** 2, 0) / t.length);
+  if (!sd) return null;
+  return Math.max(0, Math.min(100, Math.round(50 + 10 * ((value - m) / sd))));
+}
 
 // A weekly flow from a cumulative total is only a reading when the total moved
 // forward by a plausible amount. Podchaser's total fell by 588 and then rose by
