@@ -801,9 +801,16 @@ function standingPage(p, site, baseStyles) {
   return `<!doctype html><html lang="en-GB"><head>${h}</head><body>${body}</body></html>`;
 }
 
-export function buildStandingPages({ root, distDir, site, baseStyles }) {
+// {{name}} placeholders in a standing page are filled at build time from live
+// data (vars), so a page that states a measured value never waits for a person
+// to edit it. An unfilled placeholder fails the build rather than shipping.
+export function buildStandingPages({ root, distDir, site, baseStyles, vars = {} }) {
   const pages = loadPages(root);
   for (const p of pages) {
+    p.body = p.body.replace(/\{\{(\w+)\}\}/g, (_, k) => {
+      if (vars[k] === undefined) throw new Error(`${PAGES_DIR_REL}/${p.meta.slug}.md: no value for {{${k}}}`);
+      return vars[k];
+    });
     mkdirSync(join(distDir, p.meta.slug), { recursive: true });
     writeFileSync(join(distDir, p.meta.slug, 'index.html'), standingPage(p, site, baseStyles));
   }

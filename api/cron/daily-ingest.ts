@@ -13,6 +13,11 @@ const RETRY_DELAY_MS = 5000;
 // so tightening them doesn't need a code change.
 const COMPLETENESS_ALERT_THRESHOLD = Number(process.env.COMPLETENESS_ALERT_THRESHOLD || '0.75');
 const MIN_HEALTHY_SOURCES = Number(process.env.MIN_HEALTHY_SOURCES || '14');
+// From the 2026-10-26 seam (FWI method v2) about 15 sources are collected
+// instead of 21, so the v1 floor of 14 would raise a "degraded" alert whenever
+// one failed. An alert that fires daily stops being read.
+const MIN_HEALTHY_SOURCES_V2 = Number(process.env.MIN_HEALTHY_SOURCES_V2 || '10');
+const METHOD_V2_EFFECTIVE = '2026-10-26';
 
 interface IngestResult {
   signals_collected?: number;
@@ -20,7 +25,7 @@ interface IngestResult {
   sources_healthy?: number;
   skipped?: boolean;
   reason?: string;
-  fwi_result?: { overall_score?: number };
+  fwi_result?: { overall_score?: number; error?: string };
 }
 
 interface CallResult<T> {
@@ -233,6 +238,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       'Insights attempted': 'No (ingest failed first)',
     });
   } else {
+    // The collection can succeed while the index calculation fails: ingest
+    // returns success with fwi_result.error, and until 2026-10-23 nothing
+    // alerted, so a day could publish no reading silently. That is the failure
+    // the 2026-10-26 v2 seam would produce if its link measurement broke.
+    const fwiError = ingest.result?.fwi_result?.error;
+    if (fwiError || typeof ingest.result?.fwi_result?.overall_score !== 'number') {
+      await sendAlert('critical', `Index calculation failed for ${today}: no reading published`, {
+        'Date': today,
+        'Signals collected': String(ingest.result?.signals_collected ?? 'Unknown'),
+        'Calculation error': fwiError || 'No overall score returned',
+        'Method': today >= METHOD_V2_EFFECTIVE ? 'v2 (from the 2026-10-26 seam)' : 'v1',
+      });
+    }
     if (!insights.ok) {
       await sendAlert('warning', `Insights generation failed for ${today}`, {
         'Date': today,
@@ -248,14 +266,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const confidence = ingest.result?.confidence;
     const sourcesHealthy = ingest.result?.sources_healthy;
     const lowConfidence = typeof confidence === 'number' && confidence < COMPLETENESS_ALERT_THRESHOLD;
-    const lowCoverage = typeof sourcesHealthy === 'number' && sourcesHealthy < MIN_HEALTHY_SOURCES;
+    const minHealthy = today >= METHOD_V2_EFFECTIVE ? MIN_HEALTHY_SOURCES_V2 : MIN_HEALTHY_SOURCES;
+    const lowCoverage = typeof sourcesHealthy === 'number' && sourcesHealthy < minHealthy;
     if (lowConfidence || lowCoverage) {
       await sendAlert('warning', `Pipeline degraded for ${today}: source failures are thinning the index`, {
         'Date': today,
         'Data completeness': String(confidence ?? 'Unknown'),
         'Completeness alert threshold': String(COMPLETENESS_ALERT_THRESHOLD),
         'Healthy sources this run': String(sourcesHealthy ?? 'Unknown'),
-        'Minimum healthy sources': String(MIN_HEALTHY_SOURCES),
+        'Minimum healthy sources': String(minHealthy),
         'Failing sources': await fetchFailedSources(),
       });
     }

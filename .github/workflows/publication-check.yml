@@ -1,0 +1,82 @@
+# Daily check that the published index is what the method says it should be.
+#
+# Krish, 2026-10-23: "all of this needs to be antifragile, claude schedules
+# suck." This replaces session check-ins: it runs whether or not anyone is
+# watching, fails loudly, and heals its own issue when the next run passes.
+#
+# 09:15 UTC: after the 06:00 ingest, the 06:40 rebuild, the 08:00 backstop
+# ingest and the 08:40 rebuild, so a day the backstop rescued is not reported
+# as a failure. Read-only; needs no secrets.
+#
+# Note: GitHub pauses scheduled workflows in a repository with no activity for
+# 60 days. This repository commits daily (the docs steward), so it does not.
+name: Daily publication check
+
+on:
+  schedule:
+    - cron: '15 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check today's publication
+        id: check
+        run: |
+          set +e
+          node scripts/publication-check.mjs > check.txt 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          cat check.txt
+          {
+            echo 'report<<CHECK_EOF'
+            cat check.txt
+            echo 'CHECK_EOF'
+          } >> "$GITHUB_OUTPUT"
+          { echo '```'; cat check.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open or update the failure issue
+        if: steps.check.outputs.exit_code != '0'
+        uses: actions/github-script@v7
+        env:
+          REPORT: ${{ steps.check.outputs.report }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const label = 'publication-check';
+            await github.rest.issues.createLabel({ owner, repo, name: label, color: 'b60205' }).catch(() => {});
+            const today = new Date().toISOString().slice(0, 10);
+            const body = [
+              `Run: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`,
+              '', '```', process.env.REPORT, '```', '',
+              'Read the failing line, not the exit code. The method and the rulings are in `docs/CITABILITY.md`; the seam logic is in `supabase/functions/calculate-fwi/v2.ts`.',
+              'This issue closes itself when a later daily run passes.',
+            ].join('\n');
+            const open = await github.rest.issues.listForRepo({ owner, repo, labels: label, state: 'open' });
+            if (open.data.length) {
+              await github.rest.issues.createComment({ owner, repo, issue_number: open.data[0].number, body: `Still failing on ${today}.\n\n${body}` });
+            } else {
+              await github.rest.issues.create({ owner, repo, title: `Publication check failed ${today}`, labels: [label], assignees: ['krishanraja'], body });
+            }
+            core.setFailed('publication check failed');
+
+      - name: Close the failure issue once passing
+        if: steps.check.outputs.exit_code == '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const open = await github.rest.issues.listForRepo({ owner, repo, labels: 'publication-check', state: 'open' });
+            for (const issue of open.data) {
+              await github.rest.issues.createComment({ owner, repo, issue_number: issue.number, body: `Passing again: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}` });
+              await github.rest.issues.update({ owner, repo, issue_number: issue.number, state: 'closed', state_reason: 'completed' });
+            }

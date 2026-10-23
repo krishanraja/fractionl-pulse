@@ -1,6 +1,11 @@
 -- 021_retire_constant_inputs.sql
 --
--- ORDERING: apply only AFTER the first FWI method v2 run (2026-10-26 06:00 UTC)
+-- SUPERSEDED 2026-10-23, before it was applied: ingest-signals deletes these
+-- rows itself on every run from the 2026-10-26 seam, so nothing depends on this
+-- file being applied at the right moment. Kept as the record; applying it is
+-- harmless (the delete is idempotent) but unnecessary.
+--
+-- ORDERING (historical): apply only AFTER the first FWI method v2 run (2026-10-26 06:00 UTC)
 -- has written its fwi_scores row. ingest-signals v66 stops collecting these nine
 -- sources from that date and no longer writes their health rows, so after the
 -- seam these rows would sit as stale "failed" or "healthy" entries forever.

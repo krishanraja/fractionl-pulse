@@ -1891,6 +1891,15 @@ serve(async (req) => {
     }
     if (healthyRows.length > 0) await supabase.from('data_source_health').upsert(healthyRows, { onConflict: 'source' });
     if (failedRows.length > 0) await supabase.from('data_source_health').upsert(failedRows, { onConflict: 'source' });
+    // From the seam the retired inputs are not collected, so their health rows
+    // would sit stale forever. Removed here, every run, idempotently, rather
+    // than by a migration someone has to remember to apply after the first v2
+    // run (Krish, 2026-10-23: this has to be antifragile, not schedule-bound).
+    if (retiredNow) {
+      const { error: cleanupError } = await supabase.from('data_source_health').delete()
+        .eq('pipeline', 'fwi').in('source', [...RETIRED_AT_V2]);
+      if (cleanupError) console.warn('[Health] retired-source cleanup failed:', cleanupError.message);
+    }
 
     console.log('[Pipeline] Triggering FWI calculation...');
     let fwiResult: FwiResult = { error: 'FWI calculation not attempted' };

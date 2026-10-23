@@ -264,6 +264,12 @@ const roleSlugs = await buildRolePages(DIST, SITE);
 // ---- Answer hub: /answers, /answers/<slug>, feed, llms-full.txt -------------
 // Same static HTML for every visitor; validation failures stop the build.
 const answers = buildAnswerHub({ root: join(__dirname, '..'), distDir: DIST, site: SITE, baseStyles: STYLES });
-const standing = buildStandingPages({ root: join(__dirname, '..'), distDir: DIST, site: SITE, baseStyles: STYLES });
+// The seam's link amount comes from the live seam record (meta.method), so the
+// changelog states it from the first v2 rebuild without anyone editing it.
+const seam = data?.meta?.method;
+const seamLink = seam && typeof seam.link_offset === 'number'
+  ? `**Fixed at the first v2 run: ${seam.link_offset >= 0 ? '+' : ''}${seam.link_offset} points**, measured over the ${seam.link_window.n} published days from ${seam.link_window.first} to ${seam.link_window.last}, and recorded with the reading (\`meta.method\` in \`/fwi-api/current\`).`
+  : 'The value fixed at the seam is filled in here automatically from the first v2 reading (06:00 UTC on 26 October 2026).';
+const standing = buildStandingPages({ root: join(__dirname, '..'), distDir: DIST, site: SITE, baseStyles: STYLES, vars: { seam_link: seamLink } });
 buildSitemap(DIST, SITE, roleSlugs, [...standing, ...sitemapAnswerEntries(answers, SITE)]);
 

@@ -113,6 +113,7 @@ function parseThresholds() {
   return {
     completeness: num('COMPLETENESS_ALERT_THRESHOLD', 0.75),
     minHealthySources: num('MIN_HEALTHY_SOURCES', 14),
+    minHealthySourcesV2: num('MIN_HEALTHY_SOURCES_V2', 10),
     // The aspirational target lives in the roadmap's §6 table, not in code.
     target: (() => {
       const m = read('docs/DATA_SOURCES_ROADMAP.md').match(/Data completeness\s*\|\s*>?\s*([0-9.]+)/i);
@@ -531,8 +532,9 @@ async function audit() {
     add('amber', 'quality', `Completeness ${confidence} is below the ${thresholds.target} target`,
       `${sourcesToday ?? '?'} sources contributed on ${todayScore.date}.`);
   }
-  if (sourcesToday !== null && sourcesToday < thresholds.minHealthySources) {
-    add('red', 'quality', `Only ${sourcesToday} healthy sources (minimum ${thresholds.minHealthySources})`,
+  const minHealthy = todayScore.date >= '2026-10-26' ? thresholds.minHealthySourcesV2 : thresholds.minHealthySources;
+  if (sourcesToday !== null && sourcesToday < minHealthy) {
+    add('red', 'quality', `Only ${sourcesToday} healthy sources (minimum ${minHealthy})`,
       `Configured: ${intended.length}.`);
   }
 

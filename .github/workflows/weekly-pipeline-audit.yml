@@ -45,11 +45,29 @@ jobs:
             echo 'AUDIT_EOF'
           } >> "$GITHUB_OUTPUT"
 
+      # The trial lane's gate, every week, so candidate inputs reach Krish with
+      # their evidence without anyone scheduling a review (2026-10-23).
+      - name: Trial lane gate
+        id: trial
+        run: |
+          set +e
+          node scripts/trial-evaluate.mjs > trial.txt 2>&1
+          cat trial.txt
+          {
+            echo 'report<<TRIAL_EOF'
+            cat trial.txt
+            echo 'TRIAL_EOF'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Summary
         run: |
           {
             echo '```'
             cat audit.txt
+            echo '```'
+            echo '### Trial lane'
+            echo '```'
+            cat trial.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -58,6 +76,7 @@ jobs:
         uses: actions/github-script@v7
         env:
           REPORT: ${{ steps.audit.outputs.report }}
+          TRIAL: ${{ steps.trial.outputs.report }}
           CODE: ${{ steps.audit.outputs.exit_code }}
         with:
           script: |
@@ -77,6 +96,11 @@ jobs:
                 '',
                 '```',
                 process.env.REPORT,
+                '```',
+                '',
+                '### Trial lane (candidate inputs; a READY trial needs a ruling)',
+                '```',
+                process.env.TRIAL,
                 '```',
               ].join('\n'),
             });
