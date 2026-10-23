@@ -9,16 +9,16 @@
 //   POST /collect-trials?backfill_days=60    rebuild the last N days from each
 //                                            trial's own dated archive; rows are
 //                                            marked metadata.backfilled = true
-//   &only=trial_gdelt,trial_wikipedia        limit to some trials
+//   &only=trial_hn_wide,trial_wikipedia      limit to some trials
 //
-// Runs from the pipeline's address on purpose: GDELT and Wikimedia rate-limit
-// shared addresses (both refused the sprint container on 2026-10-23).
+// Runs from the pipeline's address on purpose: Wikimedia rate-limits shared
+// addresses (it refused the sprint container on 2026-10-23).
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { dataForSeoGet, parseGoogleJobs } from '../_shared/dataforseo.ts';
 import { addDays } from '../_shared/fwi-method.ts';
 import {
-  GDELT_TRIAL_QUERY, HN_TRIAL_PHRASES, SCALE_FULL, TRIAL_SOURCES, WIKI_TRIAL_PAGES, logScale, plausibleFlow,
+  HN_TRIAL_PHRASES, SCALE_FULL, TRIAL_SOURCES, WIKI_TRIAL_PAGES, logScale, plausibleFlow,
 } from '../_shared/trials.ts';
 
 const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' };
@@ -99,20 +99,6 @@ function flowRow(date: string, totals: Record<string, number>, backfilled: boole
   return row(date, 'trial_podchaser_flow', 'flow', flow, logScale(flow, SCALE_FULL.trial_podchaser_flow), { total: now, total_7d_ago: before, backfilled });
 }
 
-// ---- trial_gdelt: articles over the 7 days ending each date
-async function gdeltDaily(from: string, to: string): Promise<Record<string, number>> {
-  const q = encodeURIComponent(GDELT_TRIAL_QUERY);
-  const j = await getJson(`https://api.gdeltproject.org/api/v2/doc/doc?query=${q}&mode=timelinevolraw&format=json&startdatetime=${ymd(addDays(from, -7))}000000&enddatetime=${ymd(to)}235959`, {}, 3) as
-    { timeline?: Array<{ data?: Array<{ date: string; value: number }> }> };
-  const out: Record<string, number> = {};
-  for (const p of j.timeline?.[0]?.data || []) {
-    const d = `${p.date.slice(0, 4)}-${p.date.slice(4, 6)}-${p.date.slice(6, 8)}`;
-    out[d] = (out[d] || 0) + Number(p.value || 0);
-  }
-  if (!Object.keys(out).length) throw new Error('GDELT returned no timeline');
-  return out;
-}
-
 // ---- trial_wikipedia: mean daily views over the 7 days ending each date
 async function wikiDaily(from: string, to: string): Promise<{ byDate: Record<string, number>; pages: string[]; missing: string[] }> {
   const byDate: Record<string, number> = {}; const pages: string[] = []; const missing: string[] = [];
@@ -171,10 +157,6 @@ serve(async (req) => {
     const totals = await storedTotals();
     if (!backfilled) totals[today] = await podchaserTotal();
     return dates.map((d) => flowRow(d, totals, backfilled)).filter((r): r is Row => r != null);
-  });
-  await attempt('trial_gdelt', async () => {
-    const byDate = await gdeltDaily(from, to);
-    return dates.flatMap((d) => { const s = windowSum(byDate, d, 7); return s == null ? [] : [row(d, 'trial_gdelt', 'news_volume_7d', s, logScale(s, SCALE_FULL.trial_gdelt), { query: GDELT_TRIAL_QUERY, backfilled })]; });
   });
   await attempt('trial_wikipedia', async () => {
     const w = await wikiDaily(from, to);

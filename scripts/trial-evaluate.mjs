@@ -7,7 +7,10 @@
 //
 //   1 dated provenance   >= 28 days stored (live or backfilled from a dated archive)
 //   2 it moves           every category moved in the last 28 days, none at a cap
-//   3 adds information   |r| < 0.8 against every current v2 input (daily values)
+//   3 adds information   |r| < 0.8 against every current v2 input, on 7-day
+//                        changes (Ruling, Krish, 2026-10-23: levels conflate
+//                        two series that merely trend together); the level r
+//                        is still printed as information
 //   4 not an anchor      by construction: no held-out series is a trial
 //   5 impact measured    v2 over the last 28 days with and without it
 //   6 Krish rules        always open here; this script only prepares the case
@@ -107,10 +110,9 @@ for (const t of TRIALS) {
     if (r != null && Math.abs(r) > Math.abs(worst.r)) worst = { r, n, against: src };
   }
 
-  // Information only, not a gate check: the same comparison on 7-day changes.
-  // Two series that both trend over the window correlate in levels without
-  // sharing information; changes remove the shared trend. The gate stays as
-  // agreed (levels) until Krish rules otherwise.
+  // The gate's check 3 (Ruling, Krish, 2026-10-23): the comparison on 7-day
+  // changes. Two series that both trend over the window correlate in levels
+  // without sharing information; changes remove the shared trend.
   const weekly = (ser) => Object.fromEntries(Object.keys(ser).filter((d) => ser[addDays(d, -7)] !== undefined).map((d) => [d, ser[d] - ser[addDays(d, -7)]]));
   let worstChange = { r: 0, n: 0, against: null };
   for (const src of Object.keys(V2_SOURCES)) {
@@ -134,7 +136,7 @@ for (const t of TRIALS) {
   const gate = {
     '1 dated provenance': dates.length >= 28,
     '2 it moves': recent.length > 0 && frozen.length === 0 && atCap === 0,
-    '3 adds information': worst.against == null ? null : Math.abs(worst.r) < 0.8,
+    '3 adds information': worstChange.against == null ? null : Math.abs(worstChange.r) < 0.8,
     '4 not an anchor': true,
     '5 impact measured': impact != null,
     '6 Krish rules': null,
@@ -156,8 +158,8 @@ for (const r of results) {
   console.log(`  days ${r.days} (${r.live_days} collected live)${r.first ? `, ${r.first} .. ${r.last}` : ''}`);
   console.log(`  gate: ${Object.entries(r.gate).map(([k, v]) => `${k} ${mark(v)}`).join(' · ')}`);
   if (r.frozen_categories.length || r.at_cap_rows) console.log(`  frozen: ${r.frozen_categories.join(', ') || 'none'}; rows at cap: ${r.at_cap_rows}`);
-  if (r.max_r) console.log(`  highest |r| against a current input: ${r.max_r.r} vs ${r.max_r.against} (n = ${r.max_r.n})`);
-  if (r.max_r_weekly_change) console.log(`  same on 7-day changes (information, not the gate): ${r.max_r_weekly_change.r} vs ${r.max_r_weekly_change.against} (n = ${r.max_r_weekly_change.n})`);
+  if (r.max_r_weekly_change) console.log(`  highest |r| on 7-day changes (check 3): ${r.max_r_weekly_change.r} vs ${r.max_r_weekly_change.against} (n = ${r.max_r_weekly_change.n})`);
+  if (r.max_r) console.log(`  same on levels (information): ${r.max_r.r} vs ${r.max_r.against} (n = ${r.max_r.n})`);
   if (r.impact) console.log(`  impact over the last 28 days: mean shift ${r.impact.mean_shift >= 0 ? '+' : ''}${r.impact.mean_shift}, max ${r.impact.max_abs_shift}; sd of daily change ${r.impact.sd_daily_change_before} -> ${r.impact.sd_daily_change_after}`);
   console.log(`  ${r.ready_for_ruling ? 'READY for a ruling' : 'not ready'}\n`);
 }

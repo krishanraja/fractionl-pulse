@@ -100,7 +100,7 @@ Krish's concern on 2026-10-23, in his words: "I am worried we are now gutting th
 
 1. **Dated provenance:** 28 days collected, or backfilled from a public record that carries its own dates. Never estimated.
 2. **It moves:** it passes the audit's 28-day movement gate (`npm run audit`).
-3. **It adds information:** |r| < 0.8 against every existing input, measured by `npm run quality`.
+3. **It adds information:** |r| < 0.8 against every existing input on 7-day changes, measured by `npm run trial` (Ruling, Krish, 2026-10-23: two series that merely trend together correlate in levels without sharing information; the level r is still printed).
 4. **It is not an anchor:** nothing held out for validation (Indeed postings, JOLTS professional services, FRED ICSA, Census BFS weekly, SEC 8-K interim appointments) ever enters the composite.
 5. **Impact measured:** the before-and-after from `node scripts/seam-v2-preview.mjs` is written into the decision.
 6. **Krish rules on it.** Then it lands on `/changelog` with its effective date.
@@ -126,7 +126,7 @@ Krish's concern on 2026-10-23, in his words: "I am worried we are now gutting th
 | Hacker News stories and comments for the roles (replacing current HN) | 60 | 0.84 vs SEC Form D, n = 53 | 0.58, n = 40 | +1.4 mean, max 4.8 | Fails 3 on levels |
 | Google Jobs at depth 100 (replacing depth 10) | 0 | | | | Collection starts with the 2026-10-24 05:00 UTC preparation |
 
-The two level failures look like shared trends rather than shared information: Hacker News mentions rose from 9 to 25 a month while Form D filings rose steadily, and on 7-day changes neither trial comes near 0.8. Whether check 3 should be read on changes instead of levels is Krish's decision; the gate stays on levels until he rules.
+The two level failures were shared trends rather than shared information: Hacker News mentions rose from 9 to 25 a month while Form D filings rose steadily. **Rulings (Krish, 2026-10-23):** check 3 is read on 7-day changes, which makes Wikipedia (0.34) and wider Hacker News (0.58) ready for a ruling too; GDELT is dropped from the lane (its 23 trial rows are kept as the record); and Podchaser-as-flow joins the culture pillar at a dated seam on **Monday 23 November 2026**, chain-linked, with its before-and-after measured at the 20 November review and published on the changelog.
 
 **Dates.** The first review is the 20 November checkpoint, after three weeks of v2 data. Podchaser-as-flow and GDELT are measured against the gate by then, and any that pass are put to Krish for a seam on **Monday 23 November 2026**. The state-level BFS cut and the broader Hacker News and Wikipedia terms follow at the next monthly seam, **Monday 21 December 2026**. Companies House and partner data are 2027 work, and their dates come from the partner programme, not from this file.
 
