@@ -12,11 +12,13 @@ import { RELEASE_DAY, fetchOfficialSupply } from '../_shared/official-supply.ts'
 
 // Completeness weights from the seam. The nine retired inputs leave; the two
 // official supply series take the retired supply sources' share, so supply
-// keeps 0.17 of the denominator. Context inputs still count, as in v1.
+// keeps 0.17 of the denominator. Context inputs still count, as in v1. The
+// promoted trial inputs take the weights of what they replaced, and Trends its
+// v1 weight back (Ruling, Krish, 2026-10-23).
 export const COMPLETENESS_WEIGHTS_V2: Record<string, number> = {
   adzuna: 0.12, serpapi_jobs: 0.07, sec_edgar: 0.09,
   serpapi_linkedin: 0.06, census_bfs_pbs: 0.06, bls_incorporated: 0.05,
-  newsapi: 0.04, hn: 0.01, wikipedia_pageviews: 0.06,
+  newsapi: 0.04, trial_hn_wide: 0.01, trial_wikipedia: 0.06, trial_trends: 0.05,
   bls: 0.04, fred: 0.01, census_acs: 0.01, openalex: 0.02,
 };
 

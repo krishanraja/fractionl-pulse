@@ -7,7 +7,7 @@
 // on that day, measures the chain-link offset, and prints the linked reading,
 // its band, and how the v2 series moves day to day against the published one.
 //
-// Run:  node scripts/seam-v2-preview.mjs [--through=YYYY-MM-DD] [--exclude=source,...] [--json]
+// Run:  node scripts/seam-v2-preview.mjs [--through=YYYY-MM-DD] [--exclude=source,...] [--add=trial:pillar,...] [--json]
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -21,6 +21,9 @@ const arg = (k) => (process.argv.find((a) => a.startsWith(`--${k}=`)) || '').spl
 const JSON_MODE = process.argv.includes('--json');
 // --exclude=a,b measures a proposed further retirement without editing the method.
 for (const src of (arg('exclude') || '').split(',').filter(Boolean)) delete V2_SOURCES[src];
+// --add=trial_source:pillar,...  measures adding a trial (its stored candidate
+// rows are read like any other source's) without editing the method.
+for (const pair of (arg('add') || '').split(',').filter(Boolean)) { const [src, pillar] = pair.split(':'); V2_SOURCES[src] = pillar; }
 const s = readFileSync(join(ROOT, 'src/lib/supabase.ts'), 'utf8');
 const SB = { url: s.match(/DEFAULT_SUPABASE_URL\s*=\s*'([^']+)'/)[1], key: s.match(/(eyJ[A-Za-z0-9._-]+)/)[1] };
 async function restAll(path) {

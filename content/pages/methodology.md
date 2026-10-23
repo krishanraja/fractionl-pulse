@@ -14,7 +14,7 @@ Cite it as "Fractional Working Index (FWI), Pulse by Fractionl", with the readin
 
 ## What a reading is
 
-From 26 October 2026 each reading is a **whole number with a band**, for example **45 (40 to 50)**. The band is the interquartile range of the reading when each pillar's source votes are resampled with replacement 500 times, with a fixed seed per date so it never moves when nothing moved. It says how much the reading depends on which sources voted. It is not a confidence interval on the true state of the market. Readings before 26 October 2026 were published to one decimal place without a band; they are kept exactly as published.
+From 26 October 2026 each reading is a **whole number with a band**, for example **49 (45 to 53)**. The band is the interquartile range of the reading when each pillar's source votes are resampled with replacement 500 times, with a fixed seed per date so it never moves when nothing moved. It says how much the reading depends on which sources voted. It is not a confidence interval on the true state of the market. Readings before 26 October 2026 were published to one decimal place without a band; they are kept exactly as published.
 
 Score bands: 75 and above Surging, 60 to 74 Growing, 45 to 59 Stable, 30 to 44 Cooling, below 30 Contracting.
 
@@ -26,7 +26,7 @@ Three pillars, each the mean of one vote per source:
 |---|---|---|
 | Demand | 50% | Adzuna US job postings naming each of six roles; Google Jobs results for the same six roles (via DataForSEO); SEC Form D technology filings over 90 days (financing context) |
 | Supply | 20% | Census Business Formation Statistics applications in professional services (NAICS 54, seasonally adjusted, monthly); BLS incorporated self-employed (year-over-year change, monthly); Google's result count for LinkedIn profiles naming four fractional roles (via DataForSEO) |
-| Culture | 30% | NewsAPI article count over 28 days; Hacker News stories mentioning "fractional" over 30 days; Wikipedia pageviews for six articles |
+| Culture | 30% | NewsAPI article count over 28 days; Hacker News stories and comments naming fractional and interim executive roles over 30 days; Wikipedia pageviews of the interim management and fractional executive articles (7-day average, to the day before); Google Trends search interest, scored against its own trailing 28 days |
 
 **One vote per source.** A source that writes several rows (one per role) is averaged to one value before its pillar is averaged, so its influence does not depend on how many rows it writes.
 
@@ -36,7 +36,7 @@ Three pillars, each the mean of one vote per source:
 
 **The official supply series** are scored as known on each day: the latest month the agency had published by then, compared with its own previous 36 months as 50 + 10 × z, clamped to 0 to 100. A month counts as published from the 20th of the following month (Census) or the 12th (BLS), later than the agencies' own calendars. The BLS series is published unadjusted, so it is scored on its year-over-year change.
 
-**Each input is put on a 0 to 100 scale before averaging:** job-posting counts on a log scale where 200 postings is 100; Form D filings linearly, where 800 filings in 90 days is 50; news counts by square root (15 × √count); LinkedIn profile counts on a log scale where 10,000 is 100; Wikipedia daily views on a log scale where 2,000 is 100; Hacker News by story count and average points.
+**Each input is put on a 0 to 100 scale before averaging:** job-posting counts on a log scale where 200 postings is 100; Form D filings linearly, where 800 filings in 90 days is 50; news counts by square root (15 × √count); LinkedIn profile counts on a log scale where 10,000 is 100; Wikipedia mean daily views on a log scale where 2,000 is 100; Hacker News stories and comments on a log scale where 500 in 30 days is 100; Google Trends as 50 + 10 × its standard score against its own trailing 28 readings, bounded 0 to 100.
 
 **If no supply vote exists,** supply is reported as unmeasured and its weight is shared between demand and culture. A pillar is never filled with an assumed value.
 
@@ -66,8 +66,8 @@ The pre-registered Indeed test failed. The jobless-claims result came from a sca
 
 - **US only.** The demand and supply inputs are US-scoped. English-language news includes UK material but there is no UK reading.
 - **Proxies, not engagements.** No input counts actual fractional engagements. Job postings that name a fractional role, profile counts and business formation are signals around the market, not the market itself.
-- **Few inputs.** From the seam the composite has nine inputs, all of which move. Before it, the evidence was measured at 4.4 effective independent inputs of 20 tracked, because eight of them never moved. The rebuild plan adds inputs only through dated seams, each with its measured impact.
-- **The culture pillar is thin.** NewsAPI counts are 10 to 25 articles a month, Hacker News is 3 to 6 stories, and Wikipedia sits at 98 to 99 of 100 and includes an article on fractional ownership, which is not fractional leadership. Correcting that page list is on the rebuild plan.
+- **Few inputs.** From the seam the composite has ten inputs, all of which move. Before it, the evidence was measured at 4.4 effective independent inputs of 20 tracked, because eight of them never moved. The rebuild plan adds inputs only through dated seams, each with its measured impact.
+- **The culture pillar is thin.** NewsAPI counts are 10 to 25 articles a month and Hacker News 13 to 25 stories and comments a month. Wikipedia reads about 40 to 47 views a day across the articles, a small audience. Google Trends is scored against its own recent history, so it shows change, not level. Until the seam, the Wikipedia input sat at 98 to 99 of 100 and counted an article on fractional ownership, which is not fractional leadership, and Hacker News counted 3 to 6 stories; both were replaced at the seam.
 - **The supply official series are broad.** They describe professional-services business formation and incorporated self-employment, not fractional executives specifically.
 - **History is mixed.** Thirty-eight days in June 2026 carry a supply value labelled `simulated_estimate` in the history API, and older days have no measured supply. Those labels travel with every export.
 

@@ -28,17 +28,6 @@ export const TRIALS: TrialDef[] = [
     what: 'Google Jobs results for six roles at depth 100. Production asks for 10, and CFO, CMO, COO and CTO read exactly 10 every day to 2026-10-23.' },
   { source: 'trial_podchaser_relevant', pillar: 'culture', backfill: 'archive', textMatch: true, singleSite: true,
     what: 'New podcasts in the last 90 days whose title or description names fractional executive work, from the 100 newest Podchaser matches for each of four role terms. Replaces trial_podchaser_flow, whose fuzzy search made about 3 of 50 matches relevant.' },
-  { source: 'trial_wikipedia', pillar: 'culture', replaces: 'wikipedia_pageviews', backfill: 'archive', textMatch: false,
-    what: 'Wikipedia daily views of articles about interim and fractional executive work only, without the generic C-suite articles or "Fractional ownership".' },
-  { source: 'trial_hn_wide', pillar: 'culture', replaces: 'hn', backfill: 'archive', textMatch: true, singleSite: true,
-    what: 'Hacker News stories and comments naming fractional or interim C-suite roles over 30 days (production counts stories matching "fractional" only).' },
-  // Repairs of inputs retired at the 2026-10-26 seam (Krish, 2026-10-23: test
-  // the simple fix before calling a source unfixable). Each re-enters only
-  // through the gate. Diagnosis, collect-trials ?diagnose=repairs, 2026-10-23.
-  // Not sampled for check 0: search interest in the exact role phrases
-  // ('fractional CMO', 'fractional CFO', ...) has no matched items to review.
-  { source: 'trial_trends', pillar: 'culture', backfill: 'stored', textMatch: false,
-    what: 'Google Trends search interest scored against its own trailing 28 days (50 + 10z). Raw moved between 2.6 and 5.3 while the retired normalizer floored it at 5.' },
   { source: 'trial_brave_news', pillar: 'culture', backfill: 'none', textMatch: true,
     what: 'Distinct sites publishing on the role terms in Brave News over the past week. Counting results let one SEO publisher supply 16 of 22 on 2026-10-23 (Ruling, Krish, 2026-10-23: count distinct sites).' },
   { source: 'trial_brave_web', pillar: 'culture', backfill: 'none', textMatch: true,
@@ -68,6 +57,11 @@ export const DROPPED_TRIALS = ['trial_gdelt', 'trial_guardian', 'trial_mediastac
 
 export const PODCHASER_TERMS = ['fractional executive', 'fractional CFO', 'fractional CMO', 'fractional CTO'];
 export const FRACTIONAL_WORK = /\bfractional\s+(c[a-z]os?|chief|executives?|execs?|leaders?|leadership)\b/i;
+
+// Promoted into the composite at the 2026-10-26 seam (Ruling, Krish,
+// 2026-10-23) after passing the gate; collect-trials keeps collecting them,
+// now for the score, and writes their health rows.
+export const PROMOTED = ['trial_wikipedia', 'trial_hn_wide', 'trial_trends'];
 
 export const TRIAL_SOURCES = TRIALS.map((t) => t.source);
 export const isTrial = (source: string) => source.startsWith('trial_');

@@ -34,3 +34,12 @@ test('Trends rescored on its own history moves where the floored normalizer coul
   assert.equal(trailingZScore(3.0, [3, 3, 3, 3, 3, 3, 3]), null, 'a constant history gives no score, not a fake 50');
   assert.equal(trailingZScore(3.0, [3, 4]), null, 'too little history gives no score');
 });
+
+import { REPLACED_AT_V2, RETIRED_AT_V2 } from './fwi-method.ts';
+import { PROMOTED } from './trials.ts';
+
+test('promoted trials are composite inputs; what they replaced and what was retired are not (Ruling, Krish, 2026-10-23)', () => {
+  for (const s of PROMOTED) assert.ok(s in V2_SOURCES, s);
+  for (const s of [...REPLACED_AT_V2, ...RETIRED_AT_V2]) assert.equal(s in V2_SOURCES, false, s);
+  assert.equal(TRIALS.some((t) => PROMOTED.includes(t.source)), false, 'a promoted input is no longer on trial');
+});

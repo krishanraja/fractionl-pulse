@@ -57,9 +57,9 @@ await check('six-role demand contract', async () => {
 await check('brief count and methodology contract', async () => {
   const { response, body, text } = await json(`${FUNCTIONS}/export-brief?format=json`);
   assert.equal(response.status, 200);
-  // 20 tracked inputs until the 2026-10-26 seam, 13 from it (9 in the
+  // 20 tracked inputs until the 2026-10-26 seam, 14 from it (10 in the
   // composite, 4 context). The hard-coded 21 here went stale on 2026-09-21.
-  assert.equal(body?.tracked_inputs, body?.date >= '2026-10-26' ? 13 : 20);
+  assert.equal(body?.tracked_inputs, body?.date >= '2026-10-26' ? 14 : 20);
   assert.ok(body.sources_healthy >= 0 && body.sources_healthy <= body.tracked_inputs);
   assert.doesNotMatch(text, /People Data Labs|NY Times|\bPDL\b|\bNYT\b/i);
 });

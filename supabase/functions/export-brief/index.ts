@@ -19,13 +19,14 @@ const TRACKED_INPUTS = [
 ] as const;
 
 // From the 2026-10-26 seam (FWI method v2, docs/CITABILITY.md): the nine inputs
-// that never moved are retired and two official supply series join. Nine are
-// in the composite, four are context. Mirrors SOURCE_CONFIDENCE_WEIGHTS in
-// ingest-signals.
+// that never moved are retired and two official supply series join; three
+// trial inputs are promoted, two of them replacing hn and wikipedia_pageviews.
+// Ten are in the composite, four are context. Mirrors SOURCE_CONFIDENCE_WEIGHTS
+// in ingest-signals.
 const METHOD_V2_EFFECTIVE = '2026-10-26';
 const TRACKED_INPUTS_V2 = [
   'adzuna', 'serpapi_jobs', 'sec_edgar', 'serpapi_linkedin', 'census_bfs_pbs', 'bls_incorporated',
-  'newsapi', 'hn', 'wikipedia_pageviews',
+  'newsapi', 'trial_hn_wide', 'trial_wikipedia', 'trial_trends',
   'fred', 'census_acs', 'bls', 'openalex',
 ] as const;
 

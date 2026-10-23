@@ -12,7 +12,8 @@
 //     number, no retired input among the contributors
 //   - the page title carries the reading (and its band from the seam)
 //   - the changelog states the fixed link amount once a v2 reading exists
-//   - no retired source still has a health row after the seam
+//   - no retired or replaced source still has a health row after the seam, and
+//     every promoted trial input has one
 //
 // Run:  node scripts/publication-check.mjs [--json] [--seam=YYYY-MM-DD]
 import { readFileSync } from 'node:fs';
@@ -27,7 +28,11 @@ const method = readFileSync(join(ROOT, 'supabase/functions/_shared/fwi-method.ts
 // --seam=YYYY-MM-DD overrides the seam date, so the v2 checks can be shown to
 // fail on a v1 day (a negative control) before the real seam arrives.
 const SEAM = (process.argv.find((a) => a.startsWith('--seam=')) || '').split('=')[1] || method.match(/METHOD_V2_EFFECTIVE\s*=\s*'([^']+)'/)[1];
-const RETIRED = [...method.match(/RETIRED_AT_V2\s*=\s*\[([\s\S]*?)\]/)[1].matchAll(/'([a-z0-9_]+)'/g)].map((m) => m[1]);
+const list = (name) => [...method.match(new RegExp(`${name}\\s*=\\s*\\[([\\s\\S]*?)\\]`))[1].matchAll(/'([a-z0-9_]+)'/g)].map((m) => m[1]);
+// Retired inputs and the two the promoted trials replaced (hn, wikipedia_pageviews):
+// none may appear among the contributors or keep a health row after the seam.
+const RETIRED = [...list('RETIRED_AT_V2'), ...list('REPLACED_AT_V2')];
+const PROMOTED = (readFileSync(join(ROOT, 'supabase/functions/_shared/trials.ts'), 'utf8').match(/PROMOTED\s*=\s*\[([^\]]*)\]/)?.[1].match(/'([a-z0-9_]+)'/g) || []).map((x) => x.slice(1, -1));
 const JSON_MODE = process.argv.includes('--json');
 
 const results = [];
@@ -56,7 +61,9 @@ if (asOf && asOf >= SEAM) {
   check('changelog states the fixed link amount', /Fixed at the first v2 run/.test(changelog), 'looked for "Fixed at the first v2 run" on /changelog');
   const health = (await get(`${SB.url}/rest/v1/data_source_health?select=source&pipeline=eq.fwi`)).body || [];
   const stale = health.map((h) => h.source).filter((x) => RETIRED.includes(x));
-  check('no health row left for a retired input', stale.length === 0, stale.join(', ') || 'none');
+  check('no health row left for a retired or replaced input', stale.length === 0, stale.join(', ') || 'none');
+  const unwatched = PROMOTED.filter((p) => !health.some((h) => h.source === p));
+  check('every promoted input has a health row', PROMOTED.length > 0 && unwatched.length === 0, unwatched.join(', ') || PROMOTED.join(', '));
 }
 
 const home = (await get(`${SITE}/`, false)).body;

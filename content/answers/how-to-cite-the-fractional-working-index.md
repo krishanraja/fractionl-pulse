@@ -44,7 +44,7 @@ AI agents can use the hosted MCP server instead, whose `get_fractional_working_i
 
 ## Say it accurately
 
-- Do not count inputs as independent sources. Before 26 October 2026 the 20 tracked inputs measured 4.4 effective independent signals; from that date the reading uses nine inputs that all move. The [methodology](https://pulse.fractionl.ai/methodology) has the current list.
+- Do not count inputs as independent sources. Before 26 October 2026 the 20 tracked inputs measured 4.4 effective independent signals; from that date the reading uses ten inputs that all move. The [methodology](https://pulse.fractionl.ai/methodology) has the current list.
 - Say it is not validated. The [methodology](https://pulse.fractionl.ai/methodology) lists every test with its n.
 - Say "recalculated after each successful daily ingest". Do not call it live, instant or weekly-only.
 - Say "a private composite published by Fractionl". It is not an official or government statistic.

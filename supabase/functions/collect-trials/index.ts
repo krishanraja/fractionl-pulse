@@ -5,7 +5,12 @@
 // move a published number. Promotion needs the six-check entry gate
 // (`npm run trial`) and a ruling by Krish.
 //
-//   POST /collect-trials                     today's readings (pg_cron, 06:30 UTC)
+// Promoted inputs (PROMOTED in _shared/trials.ts) are still collected here, now
+// for the score: trial_wikipedia and trial_hn_wide pass the anomaly guard and
+// get health rows (_shared/promoted.ts). The run moved to 05:40 UTC with the
+// promotion so the 06:00 ingest and its FWI run see same-day values.
+//
+//   POST /collect-trials                     today's readings (pg_cron, 05:40 UTC)
 //   POST /collect-trials?backfill_days=60    rebuild the last N days from each
 //                                            trial's own dated archive; rows are
 //                                            marked metadata.backfilled = true
@@ -16,9 +21,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { dataForSeoGet, parseGoogleJobs } from '../_shared/dataforseo.ts';
-import { addDays } from '../_shared/fwi-method.ts';
+import { METHOD_V2_EFFECTIVE, addDays } from '../_shared/fwi-method.ts';
+import { guardPromoted, writePromotedHealth } from '../_shared/promoted.ts';
 import {
-  BRAVE_ROLE_TERMS, FRACTIONAL_WORK, GUARDIAN_TRIAL_QUERY, HN_TRIAL_PHRASES, PODCHASER_TERMS, SCALE_FULL, TRIAL_SOURCES, WIKI_TRIAL_PAGES,
+  BRAVE_ROLE_TERMS, FRACTIONAL_WORK, GUARDIAN_TRIAL_QUERY, HN_TRIAL_PHRASES, PODCHASER_TERMS, PROMOTED, SCALE_FULL, TRIAL_SOURCES, WIKI_TRIAL_PAGES,
   logScale, trailingZScore,
 } from '../_shared/trials.ts';
 
@@ -283,7 +289,7 @@ serve(async (req) => {
   const today = url.searchParams.get('date') || new Date().toISOString().slice(0, 10);
   const backfillDays = Math.max(0, Math.min(90, Number(url.searchParams.get('backfill_days') || 0)));
   const only = (url.searchParams.get('only') || '').split(',').filter(Boolean);
-  const want = (s: string) => (!only.length || only.includes(s)) && TRIAL_SOURCES.includes(s);
+  const want = (s: string) => (!only.length || only.includes(s)) && (TRIAL_SOURCES.includes(s) || PROMOTED.includes(s));
   const dates = backfillDays ? Array.from({ length: backfillDays }, (_, i) => addDays(today, -(backfillDays - i))) : [today];
   const from = dates[0], to = dates.at(-1)!;
   const backfilled = backfillDays > 0;
@@ -307,7 +313,10 @@ serve(async (req) => {
   });
   await attempt('trial_wikipedia', async () => {
     const w = await wikiDaily(from, to);
-    return dates.flatMap((d) => { const s = windowSum(w.byDate, d, 7); return s == null ? [] : [row(d, 'trial_wikipedia', 'interim_fractional_pages', Math.round(s / 7), logScale(s / 7, SCALE_FULL.trial_wikipedia), { pages: w.pages, missing_pages: w.missing, backfilled })]; });
+    // The seven days ending the day before: Wikimedia publishes a day's views
+    // the next day, so a window ending on the reading's own date never exists
+    // when the daily run reads it (found 2026-10-23: no daily row, ever).
+    return dates.flatMap((d) => { const end = addDays(d, -1); const s = windowSum(w.byDate, end, 7); return s == null ? [] : [row(d, 'trial_wikipedia', 'interim_fractional_pages', Math.round(s / 7), logScale(s / 7, SCALE_FULL.trial_wikipedia), { pages: w.pages, missing_pages: w.missing, window_end: end, backfilled })]; });
   });
   await attempt('trial_hn_wide', async () => {
     const out: Row[] = [];
@@ -315,7 +324,9 @@ serve(async (req) => {
     return out;
   });
 
-  await attempt('trial_trends', () => trendsRows(dates, backfilled));
+  // Daily trial_trends is written by ingest-signals at 06:00, when today's
+  // Trends reading exists; this path rebuilds past days only.
+  if (backfilled) await attempt('trial_trends', () => trendsRows(dates, backfilled));
   if (!backfilled) {
     await attempt('trial_brave_news', async () => {
       // Distinct publishing sites, not results (Ruling, Krish, 2026-10-23): one
@@ -338,10 +349,19 @@ serve(async (req) => {
     });
   }
 
+  // Scored inputs from the seam: hold-then-confirm, then a health row each.
+  const scoring = !backfilled && today >= METHOD_V2_EFFECTIVE;
+  const owned = PROMOTED.filter((s) => s !== 'trial_trends' && want(s));
+  if (scoring) {
+    const { keep, held } = await guardPromoted(supabase, rows, today);
+    rows.splice(0, rows.length, ...keep, ...held);
+    for (const h of held) report[String(h.metadata.source)] = `held by the anomaly guard (z ${h.metadata.z})`;
+  }
   if (rows.length) {
     const { error } = await supabase.from('signals').upsert(rows, { onConflict: 'date,source,signal_type,category' });
     if (error) return new Response(JSON.stringify({ error: error.message, report }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
+  if (scoring) await writePromotedHealth(supabase, owned, rows.filter((r) => r.date === today).map((r) => r.source), report);
   await supabase.from('pipeline_runs').insert({
     source: 'collect-trials', started_at: new Date().toISOString(), completed_at: new Date().toISOString(),
     status: Object.values(report).some((v) => v.startsWith('failed')) ? 'error' : 'success',

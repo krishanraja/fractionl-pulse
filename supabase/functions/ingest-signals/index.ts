@@ -9,7 +9,9 @@ import {
   recentTermAverage,
 } from '../_shared/dataforseo.ts';
 import { anomalyDecision, isRatioOutlier } from '../_shared/outlier.ts';
-import { METHOD_V2_EFFECTIVE, RETIRED_AT_V2, officialScore, yoy } from '../_shared/fwi-method.ts';
+import { METHOD_V2_EFFECTIVE, REPLACED_AT_V2, RETIRED_AT_V2, officialScore, yoy } from '../_shared/fwi-method.ts';
+import { PROMOTED } from '../_shared/trials.ts';
+import { guardPromoted, trendsRowFor, writePromotedHealth } from '../_shared/promoted.ts';
 import { RELEASE_DAY, fetchOfficialSupply } from '../_shared/official-supply.ts';
 
 const corsHeaders = {
@@ -123,19 +125,23 @@ const HELD_OUT_SOURCES = ['sec_exec_transitions'];
 // supply series take the retired supply share, so supply keeps 0.17. Mirrors
 // COMPLETENESS_WEIGHTS_V2 in calculate-fwi/v2.ts. Runs dated before the seam use
 // SOURCE_CONFIDENCE_WEIGHTS_V1 below, so nothing published before it changes.
+// The three trial_* inputs were promoted at the same seam (Ruling, Krish,
+// 2026-10-23): collect-trials collects them at 05:40 UTC and writes their
+// health rows; this run counts them as delivered when today's rows exist.
 const SOURCE_CONFIDENCE_WEIGHTS: Record<string, number> = {
   adzuna: 0.12,
   serpapi_jobs: 0.07,
   sec_edgar: 0.09,
   newsapi: 0.04,
-  hn: 0.01,
+  trial_hn_wide: 0.01,
   serpapi_linkedin: 0.06,
   census_bfs_pbs: 0.06,
   bls_incorporated: 0.05,
   fred: 0.01,
   census_acs: 0.01,
   bls: 0.04,
-  wikipedia_pageviews: 0.06,
+  trial_wikipedia: 0.06,
+  trial_trends: 0.05,
   openalex: 0.02,
 };
 
@@ -1644,8 +1650,11 @@ serve(async (req) => {
     // carried no information and cost Brave and Apify spend (Ruling, Krish,
     // 2026-10-23). Their historical rows stay; published days are not restated.
     const retiredNow = today >= METHOD_V2_EFFECTIVE;
+    // hn and wikipedia_pageviews stop too: replaced at the seam by the
+    // corrected trial_hn_wide and trial_wikipedia, which collect-trials owns.
+    const leftAtSeam: readonly string[] = [...RETIRED_AT_V2, ...REPLACED_AT_V2];
     const unlessRetired = <T>(src: string, run: () => Promise<T>, none: T): Promise<T> =>
-      retiredNow && (RETIRED_AT_V2 as readonly string[]).includes(src) ? Promise.resolve(none) : run();
+      retiredNow && leftAtSeam.includes(src) ? Promise.resolve(none) : run();
     const [
       adzunaResults,
       dataForSeoJobsResults,
@@ -1685,7 +1694,7 @@ serve(async (req) => {
       unlessRetired('guardian', () => t(collectGuardianSignal(today), failedSignal('guardian', 'momentum', 'prestige_media'), 'guardian'), null),
       unlessRetired('podchaser', () => t(collectPodchaserSignal(today), failedSignal('podchaser', 'momentum', 'audio_culture'), 'podchaser'), null),
       unlessRetired('reddit', () => t(collectRedditSignal(today), failedSignal('reddit', 'momentum', 'community_discourse'), 'reddit'), null),
-      t(collectHNSignal(today), failedSignal('hn', 'momentum', 'community_discourse'), 'hn'),
+      unlessRetired('hn', () => t(collectHNSignal(today), failedSignal('hn', 'momentum', 'community_discourse'), 'hn'), null),
       unlessRetired('brave_news', () => t(collectBraveNewsSignal(today), failedSignal('brave_news', 'momentum', 'media_coverage'), 'brave_news'), null),
       unlessRetired('brave_web', () => t(collectBraveWebMentionsSignal(today), failedSignal('brave_web', 'momentum', 'web_discourse'), 'brave_web'), null),
       t(collectDataForSeoLinkedInSupply(today), [] as SignalResult[], 'serpapi_linkedin'),
@@ -1695,7 +1704,7 @@ serve(async (req) => {
       t(collectFredContext(today), [] as SignalResult[], 'fred'),
       t(collectCensusACS(today), failedSignal('census_acs', 'context', 'self_employment'), 'census_acs'),
       t(collectBLSSignals(today), [] as SignalResult[], 'bls'),
-      t(collectWikipediaPageviews(today), failedSignal('wikipedia_pageviews', 'momentum', 'wiki_interest'), 'wikipedia_pageviews'),
+      unlessRetired('wikipedia_pageviews', () => t(collectWikipediaPageviews(today), failedSignal('wikipedia_pageviews', 'momentum', 'wiki_interest'), 'wikipedia_pageviews'), null),
       t(collectOpenAlex(today), failedSignal('openalex', 'context', 'research_interest'), 'openalex'),
       t(collectOfficialSupply(today), [] as SignalResult[], 'official_supply')
     ]);
@@ -1842,7 +1851,31 @@ serve(async (req) => {
 
     if (upsertError) throw upsertError;
 
+    // trial_trends, promoted at the seam: today's Trends reading against its own
+    // trailing 28 readings, through the same guard, with its own health row.
+    if (retiredNow) {
+      const rawTrends = successfulSignals.find(s => s.source === 'trial_trends_raw' && s.raw_value > 0);
+      let trendsError: string | undefined = rawTrends ? undefined : 'no Trends reading collected today';
+      let wrote: string[] = [];
+      try {
+        const r = rawTrends ? await trendsRowFor(supabase, today, rawTrends.raw_value) : null;
+        if (rawTrends && !r) trendsError = 'too little trailing history to score';
+        if (r) {
+          const { keep, held } = await guardPromoted(supabase, [r], today);
+          const { error } = await supabase.from('signals').upsert([...keep, ...held], { onConflict: 'date,source,signal_type,category' });
+          if (error) trendsError = error.message; else wrote = keep.map(k => k.source);
+          if (held.length) trendsError = `held by the anomaly guard (z ${held[0].metadata.z})`;
+        }
+      } catch (e) { trendsError = (e as Error).message; }
+      await writePromotedHealth(supabase, ['trial_trends'], wrote, { trial_trends: trendsError }, 'ingest-signals');
+    }
+
     const successfulSources = [...new Set(successfulSignals.map(s => s.source))];
+    if (retiredNow) {
+      const { data: promotedToday } = await supabase.from('signals').select('source')
+        .eq('date', today).in('source', PROMOTED);
+      for (const src of new Set((promotedToday || []).map((r: { source: string }) => r.source))) successfulSources.push(src);
+    }
     const confidence = calculateWeightedConfidence(successfulSources, today);
 
     if (runData?.id) {
@@ -1897,7 +1930,7 @@ serve(async (req) => {
     // run (Krish, 2026-10-23: this has to be antifragile, not schedule-bound).
     if (retiredNow) {
       const { error: cleanupError } = await supabase.from('data_source_health').delete()
-        .eq('pipeline', 'fwi').in('source', [...RETIRED_AT_V2]);
+        .eq('pipeline', 'fwi').in('source', [...leftAtSeam]);
       if (cleanupError) console.warn('[Health] retired-source cleanup failed:', cleanupError.message);
     }
 

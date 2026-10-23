@@ -33,9 +33,18 @@ export const V2_SOURCES: Record<string, Pillar> = {
   census_bfs_pbs: 'supply',
   bls_incorporated: 'supply',
   newsapi: 'culture',
-  hn: 'culture',
-  wikipedia_pageviews: 'culture',
+  // Folded into the seam the same day (Ruling, Krish, 2026-10-23), each having
+  // passed the trial lane's gate (docs/CITABILITY.md): corrected or rescored
+  // versions collected by collect-trials, under their trial ids so their
+  // backfilled history stays attached.
+  trial_hn_wide: 'culture',        // replaces hn
+  trial_wikipedia: 'culture',      // replaces wikipedia_pageviews
+  trial_trends: 'culture',         // Google Trends rescored on its own history
 };
+
+// Inputs that leave the composite at the seam because a corrected version
+// replaces them (not retired as uninformative; see RETIRED_AT_V2).
+export const REPLACED_AT_V2 = ['hn', 'wikipedia_pageviews'] as const;
 
 export const CARRY_FORWARD_DAYS = 7;
 export const MEDIAN_VOTE_SOURCES: Record<string, number> = { serpapi_linkedin: 14 };

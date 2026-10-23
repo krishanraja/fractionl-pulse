@@ -89,6 +89,7 @@ Every methodology decision this sprint needed, ruled in one batch. Each is appli
 7. **`sec_exec_transitions` leaves probation as a permanent held-out anchor**, backfilled from EDGAR full-text search, never fed into the composite.
 8. **Retire `serpapi_trends` at the same seam** (later the same day). The audit gate added in this sprint found its vote fixed at the normalizer floor of 5 since 2026-08-14. Krish's condition: a plan to rebuild the evidence base, below.
 9. **Deploy now; apply the health-row migration (`021`) after the first v2 run.**
+10. **Fold three trials into the same seam** (later the same day): `trial_wikipedia` replaces `wikipedia_pageviews`, `trial_hn_wide` replaces `hn`, and `trial_trends` (Google Trends scored against its own trailing 28 readings) joins culture. Each was a repair of an input that measured the wrong thing or could not move, passed the entry gate and the relevance check, and keeps its trial name so its rebuilt history stays one series for the chain link. The composite has ten inputs. Being scored, they get what every scored input gets: the hold-then-confirm guard and a health row (`supabase/functions/_shared/promoted.ts`); collect-trials moves to 05:40 UTC (migration `023`) so the 06:00 run scores same-day values. Found while wiring it: Wikimedia publishes a day's views the next day, so the trial's daily run had never produced a reading; it now reads the seven days ending the day before, in the daily run and the backfill alike.
 
 ## Rebuild plan: adding information back, one dated seam at a time
 
@@ -116,7 +117,7 @@ Krish's concern on 2026-10-23, in his words: "I am worried we are now gutting th
 | Companies House officer appointments (UK) | Supply, UK | The first second-geography input; structured, dated appointment records | Yes | Free key needed; UK only, so a separate UK reading, not the US composite |
 | Verified partner engagement records | All three | The only fractional-specific supply and demand data, and the moat in `docs/NORTH_STAR.md` | From each partner's own dated records | Depends on the partner programme in `docs/CORPORATE_STRATEGY.md` |
 
-**The trial lane, built 2026-10-23** (Ruling, Krish, 2026-10-23). Candidates are collected by `supabase/functions/collect-trials` at 06:30 UTC daily and stored as `signal_type = 'candidate'`, which neither method reads, so a trial cannot move a published number. `npm run trial` checks each one against the gate above and measures its impact with the same method module the pipeline runs. First read, 2026-10-23, after a 60-day backfill from each trial's dated archive (Google Jobs cannot be backfilled):
+**The trial lane, built 2026-10-23** (Ruling, Krish, 2026-10-23). Candidates are collected by `supabase/functions/collect-trials` daily (06:30 UTC until migration `023` moved it to 05:40) and stored as `signal_type = 'candidate'`, which neither method reads, so a trial cannot move a published number. `npm run trial` checks each one against the gate above and measures its impact with the same method module the pipeline runs. First read, 2026-10-23, after a 60-day backfill from each trial's dated archive (Google Jobs cannot be backfilled):
 
 | Trial | Days | Highest level r (gate) | On 7-day changes (information) | Impact, last 28 days | Gate |
 |---|---|---|---|---|---|

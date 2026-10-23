@@ -245,7 +245,10 @@ async function audit() {
   SB = parseSupabase();
   PROBATIONARY = parseProbationary();
   const HELD_OUT = parseListIn('supabase/functions/ingest-signals/index.ts', 'HELD_OUT_SOURCES');
-  const RETIRED_AT_SEAM = parseListIn('supabase/functions/_shared/fwi-method.ts', 'RETIRED_AT_V2');
+  // Replaced inputs (hn, wikipedia_pageviews -> their trial_* repairs) leave at
+  // the same seam and are treated the same way.
+  const RETIRED_AT_SEAM = [...parseListIn('supabase/functions/_shared/fwi-method.ts', 'RETIRED_AT_V2'),
+    ...parseListIn('supabase/functions/_shared/fwi-method.ts', 'REPLACED_AT_V2')];
 
   const intended = Object.keys(weights);
   const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);

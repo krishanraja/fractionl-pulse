@@ -2,7 +2,7 @@
 title: How reliable is the Fractional Working Index?
 slug: how-reliable-is-the-fractional-working-index
 description: What backs a Fractional Working Index reading: its band, completeness, how much independent evidence it rests on, its guards, and its failed validation.
-answer: Treat it as a transparent, directional instrument, not an official statistic. From 26 October 2026 every reading is a whole number with a band, built from nine inputs that all move. Its inputs measured 4.4 effective independent signals, and the index has not been validated: a pre-registered test against Indeed postings failed.
+answer: Treat it as a transparent, directional instrument, not an official statistic. From 26 October 2026 every reading is a whole number with a band, built from ten inputs that all move. Its inputs measured 4.4 effective independent signals, and the index has not been validated: a pre-registered test against Indeed postings failed.
 datePublished: 2026-10-21
 dateModified: 2026-10-23
 related: what-is-the-fractional-working-index, how-to-cite-the-fractional-working-index, is-fractional-leadership-growing-2026
@@ -20,7 +20,7 @@ Pulse measures this rather than assuming it, as the **effective number of indepe
 
 The figure published from 21 September 2026, **10.7 effective inputs of 20 tracked**, was wrong. On 23 October 2026 the calculation was found to count an input whose value never moves as perfectly independent, and eight of the 20 inputs had not moved once since June: four stored a search provider's page size, two stored zero, two sat at the top of their scale. Measured correctly, the figure is **4.4**. The hypothesis written down before the first measurement, about five, was right.
 
-The nine inputs that never moved, including a search-interest series stuck at its floor, were retired from the reading of 26 October 2026. Removing them changes the information in the index by nothing, because they carried none; it removes a false appearance of breadth. Two official supply series that do move were added at the same seam. Earlier readings are kept as published, and the [changelog](https://pulse.fractionl.ai/changelog) dates the change.
+The nine inputs that never moved, including a search-interest series stuck at its floor, were retired from the reading of 26 October 2026. Removing them changes the information in the index by nothing, because they carried none; it removes a false appearance of breadth. Two official supply series that do move were added at the same seam, two culture inputs were replaced by corrected versions, and the search-interest series returned scored against its own history, so it can move. Earlier readings are kept as published, and the [changelog](https://pulse.fractionl.ai/changelog) dates the change.
 
 ## Guards against bad data
 

@@ -133,7 +133,7 @@
     "cadence": "DataForSEO Google Jobs tasks are prepared daily at 05:00 UTC. Vercel schedules the main ingest at 06:00 UTC daily and a Monday backstop at 06:00 UTC. Supabase also retains a Monday ingest backstop. The composite is recalculated after each successful ingest; the brief and role windows use a weekly context.",
     "history": "The public API exposes up to 12 months of mixed-frequency observations. Daily score rows accumulate from June 2026; full three-pillar coverage does not exist for the entire period.",
     "publisher_status": "A private composite published by Fractionl, not an official or government index",
-    "tracked_inputs_note": "20 until 2026-10-25 (method v1). From 2026-10-26 (method v2) the composite uses 9 inputs, every one of which moves; 8 of the 20 never moved and a 9th sat at its normalizer floor, so they were retired at that seam.",
+    "tracked_inputs_note": "20 until 2026-10-25 (method v1). From 2026-10-26 (method v2) the composite uses 10 inputs, every one of which moves; 8 of the 20 never moved and a 9th sat at its normalizer floor, so they were retired at that seam. Two culture inputs (hn, wikipedia_pageviews) were replaced by corrected versions (trial_hn_wide, trial_wikipedia) and Google Trends returned rescored on its own history (trial_trends).",
     "composite_inputs_from_2026_10_26": [
       "adzuna",
       "serpapi_jobs",
@@ -142,8 +142,9 @@
       "census_bfs_pbs",
       "bls_incorporated",
       "newsapi",
-      "hn",
-      "wikipedia_pageviews"
+      "trial_hn_wide",
+      "trial_wikipedia",
+      "trial_trends"
     ],
     "effective_independent_inputs": {
       "value": 4.4,

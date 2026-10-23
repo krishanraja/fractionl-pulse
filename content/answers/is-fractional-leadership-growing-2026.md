@@ -44,7 +44,7 @@ A fair one-line reading is the band, the direction of the 30-day change and the 
 
 ## What the index can and cannot tell you
 
-The FWI blends its inputs into three pillars: demand (50%), supply (20%) and culture (30%); from 26 October 2026 there are nine inputs, every one of which moves, and each reading carries a band. Demand is mainly job postings that name six roles: fractional CFO, CMO, CTO, COO, CRO and interim CEO. The score is recalculated after each successful daily ingest and read through a weekly brief and seven-day role windows.
+The FWI blends its inputs into three pillars: demand (50%), supply (20%) and culture (30%); from 26 October 2026 there are ten inputs, every one of which moves, and each reading carries a band. Demand is mainly job postings that name six roles: fractional CFO, CMO, CTO, COO, CRO and interim CEO. The score is recalculated after each successful daily ingest and read through a weekly brief and seven-day role windows.
 
 It cannot see fractional work won by referral rather than by a posting, and a large share of engagements never reach a job board. The role-demand collectors are US-scoped, so it is not a UK benchmark. It is a private composite, not an official statistic, and it is not a forecast.
 

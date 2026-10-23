@@ -57,7 +57,7 @@ const band = data?.score?.band;
 const v2 = data?.meta?.version === '2.0';
 const scoreText = haveLive ? (band ? `${score} (${band.low} to ${band.high})` : score.toFixed(1)) : '';
 const inputsPhrase = v2
-  ? 'nine inputs across demand, supply and culture, every one of which moves, with five official and market series held out to test it'
+  ? 'ten inputs across demand, supply and culture, every one of which moves, with five official and market series held out to test it'
   : '20 tracked inputs across demand, supply, culture, and context';
 
 const deltaPhrase = typeof delta === 'number'
