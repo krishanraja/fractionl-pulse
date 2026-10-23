@@ -70,6 +70,36 @@ Every methodology decision this sprint needed, ruled in one batch. Each is appli
 5. **Publish** a server-rendered `/methodology` and `/changelog`, the validation result with its n, and the correction of "10.7 effective independent inputs" to the measured 4.4 on every surface.
 6. **Named owner:** Krish Raja, corrections to `data@fractionl.ai`.
 7. **`sec_exec_transitions` leaves probation as a permanent held-out anchor**, backfilled from EDGAR full-text search, never fed into the composite.
+8. **Retire `serpapi_trends` at the same seam** (later the same day). The audit gate added in this sprint found its vote fixed at the normalizer floor of 5 since 2026-08-14. Krish's condition: a plan to rebuild the evidence base, below.
+9. **Deploy now; apply the health-row migration (`021`) after the first v2 run.**
+
+## Rebuild plan: adding information back, one dated seam at a time
+
+Krish's concern on 2026-10-23, in his words: "I am worried we are now gutting the data and without a plan to make any improvements." This is the plan.
+
+**What the retirement removes, measured.** The nine retired inputs carried no information: their values never moved, so removing them changes the effective number of independent inputs by zero (4.4 before, measured by `node scripts/quality-metrics.mjs` with constants excluded). What they did was set the composite's level and fake its breadth. The seam adds two official supply series that move, so the evidence base after 2026-10-26 is larger in information than before it, while smaller in count: 9 composite inputs that all move, against 16 of which 7 moved.
+
+**The entry gate, for every new input.** A candidate joins the composite only when it passes all six, and only at a dated Monday seam, chain-linked so the series stays continuous:
+
+1. **Dated provenance:** 28 days collected, or backfilled from a public record that carries its own dates. Never estimated.
+2. **It moves:** it passes the audit's 28-day movement gate (`npm run audit`).
+3. **It adds information:** |r| < 0.8 against every existing input, measured by `npm run quality`.
+4. **It is not an anchor:** nothing held out for validation (Indeed postings, JOLTS professional services, FRED ICSA, Census BFS weekly, SEC 8-K interim appointments) ever enters the composite.
+5. **Impact measured:** the before-and-after from `node scripts/seam-v2-preview.mjs` is written into the decision.
+6. **Krish rules on it.** Then it lands on `/changelog` with its effective date.
+
+**Candidates, in order of expected information per unit of cost.** All are free.
+
+| Candidate | Pillar | What it adds | Backfill | Status, 2026-10-23 |
+|---|---|---|---|---|
+| Podchaser new podcasts per week (the retired collector, re-measured as a flow) | Culture | A count that moves: 25 to 59 new matching podcasts a week since June, against a stock total that sat at the normalizer ceiling | Yes, from the dated totals already stored in `signals` since 2026-06-01 | Measured from stored data; needs a guard for index glitches (-588 and +475 in two weeks of July) |
+| GDELT news volume for the fractional terms | Culture | One honest, keyless news-volume series to replace the four constant news inputs | Yes, daily from 2017 in GDELT's own archive | Not verified: GDELT rate-limits this container's shared address; to test from the pipeline's address |
+| Hacker News and Wikipedia, already collected, given more terms and pages | Culture | Breadth inside inputs that already move | Yes, both archives are dated | Ready to measure |
+| Census Business Formation Statistics by state for NAICS 54 | Supply | Geography inside the new official supply series | Yes, monthly from 2004 | Same file as the 2026-10-26 series |
+| Companies House officer appointments (UK) | Supply, UK | The first second-geography input; structured, dated appointment records | Yes | Free key needed; UK only, so a separate UK reading, not the US composite |
+| Verified partner engagement records | All three | The only fractional-specific supply and demand data, and the moat in `docs/NORTH_STAR.md` | From each partner's own dated records | Depends on the partner programme in `docs/CORPORATE_STRATEGY.md` |
+
+**Dates.** The first review is the 20 November checkpoint, after three weeks of v2 data. Podchaser-as-flow and GDELT are measured against the gate by then, and any that pass are put to Krish for a seam on **Monday 23 November 2026**. The state-level BFS cut and the broader Hacker News and Wikipedia terms follow at the next monthly seam, **Monday 21 December 2026**. Companies House and partner data are 2027 work, and their dates come from the partner programme, not from this file.
 
 ## Re-score log
 
