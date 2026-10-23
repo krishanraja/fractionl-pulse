@@ -59,6 +59,18 @@ Highest score gain first. Rows 7 to 10 are engineering and copy and can land wit
 5. The validation statement, published with n (point 6; +0.5).
 6. A named owner and correction route (point 10; +0.5).
 
+## Rulings (Krish, 2026-10-23)
+
+Every methodology decision this sprint needed, ruled in one batch. Each is applied from one dated seam, **effective 2026-10-26**; no published day before it is restated.
+
+1. **Retire eight inputs from the composite:** `brave_news`, `brave_web`, `reddit`, `brave_talent`, `guardian`, `mediastack`, `podchaser`, `gofractional`. Measured reason in point 2 above.
+2. **One vote per source, missing source carried forward.** Each source's rows are averaged to one value, then sources are averaged within the pillar; a source missing on a day holds its own last value for up to 7 days, then drops out.
+3. **A supply strategy, not a suspension.** Krish rejected suspending the supply pillar ("we need a supply strategy; we don't just give up on stuff like that"). Supply from the seam: Census Business Formation Statistics applications in professional services (NAICS 54, monthly, seasonally adjusted), BLS incorporated self-employed (FRED `LNU02048984`, monthly), each normalized against its own trailing 36 months and holding its latest release until the next, plus the LinkedIn proxy as one vote on a 14-day median. The official series are backfilled from their release record as a separately labelled series, never written into published history.
+4. **Chain-linked, whole number with a band.** A fixed additive offset, measured over the 28 published days before the seam, keeps the new series continuous with the old level; the offset and the before-and-after are published on the changelog. Every surface shows a whole number with its band.
+5. **Publish** a server-rendered `/methodology` and `/changelog`, the validation result with its n, and the correction of "10.7 effective independent inputs" to the measured 4.4 on every surface.
+6. **Named owner:** Krish Raja, corrections to `data@fractionl.ai`.
+7. **`sec_exec_transitions` leaves probation as a permanent held-out anchor**, backfilled from EDGAR full-text search, never fed into the composite.
+
 ## Re-score log
 
 | Date | Score | Commit | What moved |
