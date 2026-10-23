@@ -181,7 +181,7 @@ async function handleCurrentFWI(): Promise<Response> {
     // value, the day it was observed, and whether it was carried forward.
     contributors: v2
       ? votes.map((v) => ({ source: v.source, name: SOURCE_NAMES[v.source] || v.source, pillar: v.pillar, value: v.value, asOf: v.as_of, carried: v.carried }))
-      : (md.sources || []).map((src) => ({ source: src, name: SOURCE_NAMES[src] || src, scored: !V1_NOT_SCORED.includes(src) })),
+      : (md.sources || []).filter((src) => !src.startsWith('trial_')).map((src) => ({ source: src, name: SOURCE_NAMES[src] || src, scored: !V1_NOT_SCORED.includes(src) })),
     topMovers: (movers || []).map(m => ({
       role: m.skill,
       signalType: m.signal_type,

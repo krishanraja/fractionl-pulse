@@ -169,7 +169,38 @@ serve(async (req) => {
     }).eq('id', run.id);
     if (updateError) throw new Error(`Tasks were accepted but the ledger update failed: ${updateError.message}`);
 
-    return new Response(JSON.stringify({ success: true, idempotent: false, date: targetDate, tasks: acceptedTasks }), {
+    // Trial lane (Ruling, Krish, 2026-10-23): the same six searches at depth 100,
+    // because production's depth 10 pins CFO, CMO, COO and CTO at exactly 10.
+    // Posted only after the production ledger is final and recorded under its
+    // own key, so a trial failure can neither block nor re-bill production.
+    // About $0.036 a day (DataForSEO bills each additional 10 results).
+    let trial: Record<string, unknown> = {};
+    try {
+      const trialSubmitted = await dataForSeoPost<Record<string, unknown>>(
+        '/serp/google/jobs/task_post',
+        FRACTIONAL_ROLES.map((role) => ({
+          keyword: role.phrase, location_code: 2840, language_code: 'en', depth: 100,
+          tag: `pulse-trial:${targetDate}:${role.category}`,
+        })),
+        { login: DATAFORSEO_LOGIN, password: DATAFORSEO_PASSWORD },
+        { acceptedTaskCodes: [20000, 20100] },
+      );
+      trial = {
+        trial_tasks: trialSubmitted.map((task, index) => ({ id: task.id, category: FRACTIONAL_ROLES[index].category, phrase: FRACTIONAL_ROLES[index].phrase })),
+        trial_reported_cost: trialSubmitted.reduce((sum, task) => sum + (Number(task.cost) || 0), 0),
+      };
+    } catch (trialError) {
+      trial = { trial_error: (trialError as Error).message };
+      console.error('[DataForSEO Jobs Prepare] trial submission failed (production unaffected):', (trialError as Error).message);
+    }
+    await supabase.from('pipeline_runs').update({
+      metadata: {
+        target_date: targetDate, provider: 'dataforseo', submission_state: 'accepted',
+        tasks: acceptedTasks, request_count: acceptedTasks.length, reported_cost: totalCost, ...trial,
+      },
+    }).eq('id', run.id);
+
+    return new Response(JSON.stringify({ success: true, idempotent: false, date: targetDate, tasks: acceptedTasks, ...trial }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {

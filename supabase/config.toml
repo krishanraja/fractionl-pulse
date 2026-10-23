@@ -80,3 +80,7 @@ verify_jwt = true
 
 [functions.send-content-brief]
 verify_jwt = true
+
+# Trial lane (docs/CITABILITY.md "Rebuild plan"): service-role only, called by pg_cron.
+[functions.collect-trials]
+verify_jwt = true
