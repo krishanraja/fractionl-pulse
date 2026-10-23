@@ -242,6 +242,11 @@ serve(async (req) => {
       for (const h of j.hits || []) hn.push(`[${phrase}] ${(h.title || h.story_title || '').slice(0, 80)} :: ${(h.comment_text || '').replace(/<[^>]+>/g, ' ').slice(0, 160)}`);
     }
     out.hn_wide = hn;
+    // The live hn input's own query (production, not a trial): stories matching
+    // the bare word "fractional" over 30 days. Sampled because live inputs had
+    // never been through gate check 0 (2026-10-23).
+    const prod = await getJson(`https://hn.algolia.com/api/v1/search?query=%22fractional%22&tags=story&hitsPerPage=50&numericFilters=created_at_i>${end - 30 * 86400}`, {}, 2) as { nbHits?: number; hits?: Array<{ title?: string; url?: string }> };
+    out.hn_production = { total: prod.nbHits, titles: (prod.hits || []).map((h) => `${h.title} | ${h.url || ''}`) };
     try {
       const tok = (await getJson('https://api.podchaser.com/graphql', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: `mutation { requestAccessToken(input:{grant_type: CLIENT_CREDENTIALS, client_id:"${PODCHASER_ID}", client_secret:"${PODCHASER_SECRET}"}) { access_token } }` }) }, 1) as { data?: { requestAccessToken?: { access_token?: string } } }).data?.requestAccessToken?.access_token;
