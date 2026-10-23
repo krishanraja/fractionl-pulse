@@ -17,7 +17,7 @@ Every change to what the Fractional Working Index measures or how it is computed
 - **A missing source holds its last vote for up to 7 days**; the LinkedIn profile count votes its 14-day median.
 - **Whole numbers with a band** replace one decimal place.
 - **Chain-linked:** a fixed amount, measured once at the first v2 run over the 28 published days before the seam, is added to every v2 reading so the series is continuous. Measured in a preview on 23 October 2026 over 26 September to 23 October, with the ten inputs above: **-9.0 points**; on that day the published 48 would have read **49 (45 to 53)** under v2. {{seam_link}}
-- **Day-to-day movement:** the standard deviation of the daily change over the 28 preview days falls from 3.6 to 2.0 points, because a source failing for a day no longer moves the pillar.
+- **Day-to-day movement:** the standard deviation of the daily change over the 28 preview days falls from 3.6 to 2.1 points, because a source failing for a day no longer moves the pillar.
 - The LinkedIn ratio guard written on 13 October 2026 switches on with v2; it had not been deployed before.
 - **The anomaly guard holds, then confirms**, instead of rejecting outright. Under v1 a rejected reading was never stored, so a real level change kept being compared with the old level: NewsAPI's genuine fall on 13 October 2026 was rejected for nine days, until 21 October.
 
