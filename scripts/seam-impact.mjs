@@ -18,7 +18,8 @@
 //     redistributed to demand and culture
 //   - each pillar rounded to 0.1, composite = 0.5 D + 0.2 S + 0.3 C, rounded
 //
-// Run:  node scripts/seam-impact.mjs [--since=YYYY-MM-DD] [--json]
+// Run:  node scripts/seam-impact.mjs [--since=YYYY-MM-DD] [--json] [--series]
+//       --series adds each variant's daily pillars to the JSON, for anchor checks.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -93,7 +94,7 @@ function composite(dayRows, variant, carry) {
     if (variant.perSource) { const m = Object.values(perSrc[t]).map(mean); return m.length ? r1(mean(m)) : null; }
     return by[t].length ? r1(mean(by[t])) : null;
   };
-  const d = pillar('demand') ?? 0, c = pillar('momentum') ?? 0, s = pillar('supply');
+  const d = pillar('demand') ?? 0, c = pillar('momentum') ?? 0, s = variant.noSupply ? null : pillar('supply');
   const w = s == null ? { demand: W.demand / 0.8, supply: 0, momentum: W.momentum / 0.8 } : W;
   return { overall: r1(d * w.demand + (s ?? 0) * w.supply + c * w.momentum), d, s, c, perSrc };
 }
@@ -122,6 +123,11 @@ function summarise(days, published, series) {
     sd_daily_change: r1(sd(ch(lv))),
     sd_daily_change_last28: r1(sd(ch(last28.map((d) => series[d].overall)))),
     r_with_published: pearson(lv, pub)?.toFixed(3),
+    // Chain link: the additive offset that makes the new method continuous with
+    // the published level, measured over the last 28 published days and frozen
+    // at the seam. linked_latest is what the latest day would publish.
+    link_offset_28d: r1(mean(last28.map((d) => published[d] - series[d].overall))),
+    linked_latest: r1(series[days.at(-1)].overall + mean(last28.map((d) => published[d] - series[d].overall))),
     latest: { date: days.at(-1), overall: series[days.at(-1)].overall, demand: series[days.at(-1)].d, supply: series[days.at(-1)].s, culture: series[days.at(-1)].c },
   };
 }
@@ -136,33 +142,49 @@ const published = Object.fromEntries(scores.map((s) => [s.date, Number(s.overall
 const days = Object.keys(published).filter((d) => rowsByDay[d]).sort();
 
 const lastDay = days.at(-1);
-const window28 = new Date(+new Date(lastDay) - 27 * 86400000).toISOString().slice(0, 10);
-const CONSTANT = constantSources(signals, window28);
+// Constant over the whole window, not a recent slice: a source that moved even
+// once since --since is not called constant here.
+const CONSTANT = constantSources(signals, SINCE);
 
 const baseline = runSeries(days, rowsByDay, {});
 const matched = days.filter((d) => Math.abs(baseline[d].overall - published[d]) <= 0.15).length;
 
+// The list put to Krish on 2026-10-23, frozen so the proposal reproduces
+// whatever --since is used. CONSTANT above is recomputed for the window.
+const PROPOSED_RETIRE = ['brave_news', 'brave_talent', 'brave_web', 'guardian', 'mediastack', 'podchaser', 'reddit', 'gofractional'];
 const VARIANTS = {
   'A. drop constant inputs': { exclude: new Set(CONSTANT) },
   'B. one vote per source (mean of each source, then of sources)': { perSource: true },
   'C. carry a missing source forward up to 7 days': { carryForward: true, perSource: true },
   'A+B+C': { exclude: new Set(CONSTANT), perSource: true, carryForward: true },
+  // Proposed 2026-10-23 package: the constants plus gofractional (a published
+  // marketing figure behind a paid scraper), with supply either kept on its one
+  // remaining moving source or suspended until a second one exists.
+  'P1. A+B+C, also drop gofractional, supply on serpapi_linkedin alone': { exclude: new Set(PROPOSED_RETIRE), perSource: true, carryForward: true },
+  'P2. as P1, supply pillar suspended (weight to demand and culture)': { exclude: new Set(PROPOSED_RETIRE), perSource: true, carryForward: true, noSupply: true },
 };
 const results = { since: SINCE, days: days.length, constant_sources_last28d: CONSTANT,
   replica: { matched_within_0_15: matched, of: days.length },
   published: summarise(days, published, Object.fromEntries(days.map((d) => [d, { overall: published[d] }]))),
   variants: {} };
-for (const [k, v] of Object.entries(VARIANTS)) results.variants[k] = summarise(days, published, runSeries(days, rowsByDay, v));
+const SERIES_MODE = process.argv.includes('--series');
+for (const [k, v] of Object.entries(VARIANTS)) {
+  const series = runSeries(days, rowsByDay, v);
+  results.variants[k] = summarise(days, published, series);
+  if (SERIES_MODE) results.variants[k].series = Object.fromEntries(days.map((d) => [d, { overall: series[d].overall, demand: series[d].d, supply: series[d].s, culture: series[d].c }]));
+}
+if (SERIES_MODE) results.baseline_series = Object.fromEntries(days.map((d) => [d, { overall: baseline[d].overall, demand: baseline[d].d, supply: baseline[d].s, culture: baseline[d].c }]));
 
-if (JSON_MODE) { console.log(JSON.stringify(results, null, 2)); process.exit(0); }
+if (JSON_MODE || SERIES_MODE) { console.log(JSON.stringify(results, null, 2)); process.exit(0); }
 console.log(`SEAM IMPACT — ${days[0]} .. ${lastDay} (${days.length} published days). Nothing is written.\n`);
 console.log(`Replica of calculate-fwi reproduces ${matched}/${days.length} published days within 0.15 points.`);
 console.log(`${matched === days.length ? 'Baseline trusted.' : 'Days that do not reproduce were computed by an earlier method; read variant shifts as approximate.'}\n`);
-console.log(`Constant over the last 28 days (one normalized value per category): ${CONSTANT.join(', ') || 'none'}\n`);
+console.log(`Constant since ${SINCE} (one normalized value per category): ${CONSTANT.join(', ') || 'none'}\n`);
 const p = results.published;
 console.log(`Published series   mean ${p.mean_level}  sd(daily change) ${p.sd_daily_change}  last 28d ${p.sd_daily_change_last28}`);
 for (const [k, s] of Object.entries(results.variants)) {
   console.log(`\n${k}`);
   console.log(`  mean ${s.mean_level}  shift vs published ${s.mean_shift_vs_published >= 0 ? '+' : ''}${s.mean_shift_vs_published}  max |shift| ${s.max_abs_shift}  r with published ${s.r_with_published}`);
   console.log(`  sd(daily change) ${s.sd_daily_change}  last 28d ${s.sd_daily_change_last28}   latest ${s.latest.date}: ${s.latest.overall} (D ${s.latest.demand} S ${s.latest.supply} C ${s.latest.culture})`);
+  if (s.link_offset_28d != null) console.log(`  chain-linked: offset ${s.link_offset_28d >= 0 ? '+' : ''}${s.link_offset_28d} (28-day mean gap), latest would publish ${s.linked_latest}`);
 }

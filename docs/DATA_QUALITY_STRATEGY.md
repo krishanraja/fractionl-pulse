@@ -261,6 +261,35 @@ Found during the 2026-10-23 citability sprint (`docs/CITABILITY.md`), which
 also found that 8 of the 16 weighted inputs never moved in the daily era. That
 finding does not change this test; it is the published series that is tested.
 
+**Fourth measurement, 2026-10-23, the pre-registered test above**
+(`scripts/validate-anchor-indeed.mjs`, `npm run validate:indeed`; the
+pre-registration is commit `e4d5572`, this result the commit after it).
+
+```
+PRIMARY   FWI demand WoW change vs Indeed anchor WoW change, lag 0
+          r = -0.53   n = 18   95% CI [-0.80, -0.09]    FAIL, opposite sign
+SECONDARY (reported, not claimed)
+          overall WoW change   r = -0.30  n = 18  CI [-0.67, 0.20]
+          demand level         r =  0.57  n = 19  CI [ 0.16, 0.82]
+          overall level        r =  0.37  n = 19  CI [-0.10, 0.71]
+```
+
+**The hypothesis failed, and it failed the wrong way.** Week to week, the
+demand pillar moved against advertised postings for the functions its roles
+lead. Measured: the sign and the n above. The first explanation tried,
+that the pillar's weekly change is composition noise from which role rows
+arrived, **does not survive a check**: rebuilding the demand pillar with one
+vote per source and a missing source carried forward (`node
+scripts/seam-impact.mjs --series`, variants B and C) gives r = -0.42 and
+-0.55 at the same n=18. That check was post hoc and is not a test. The
+mechanism is unknown. One untested reading is that postings naming
+"fractional" move against full-time postings for the same functions; nothing
+here supports it beyond the sign. The positive levels correlation is
+secondary and both series drifted over the summer, so it is not claimed
+either. This is the
+publishable statement: **as of 2026-10-23 the FWI is not validated against any
+held-out official or market measure at n = 17 to 20 weeks.**
+
 ---
 
 ## 2. Independence: publish the effective number of inputs
