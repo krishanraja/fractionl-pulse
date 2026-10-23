@@ -449,6 +449,45 @@ measured result under §5 or it is dropped. A candidate source that silently
 starts moving the published number before anything has validated it is how an
 index loses the right to be called one.
 
+**First evaluation, 2026-10-22: not promoted, and the stored series cannot be
+promoted as specified** (`scripts/evaluate-sec-candidate.mjs`,
+`npm run evaluate:sec`, outcome 2). Track record: 26 daily rows since
+2026-09-21, which is 31 days, so a short series by this section's own standard.
+Worse, the stored value is a rolling 90-day count: raw 687 to 743 (CV 1.9%),
+normalised 48 to 52 across all 26 rows. That is the `serpapi_supply_trends`
+defect again, a near-constant, produced here by the window rather than a
+reporting floor. The same filings counted per calendar week (SEC full-text
+search is keyless and has history) swing 35 to 115 a week (CV 35%), so the
+information is in the data and the 90-day window averages it away.
+
+Measured on the weekly counts, daily era, n = 20 independent weeks
+(2026-06-01 to 2026-10-18). The test was fixed before reading any data: total
+weekly filings against the demand pillar, levels, lag 0.
+
+```
+filings vs demand pillar, lag 0     n = 20   r = 0.35   95% CI [-0.11, 0.69]
+  leave-one-week-out range 0.26 to 0.42
+```
+
+The CI spans zero: no relationship is demonstrated, and this is not a rejection
+of the idea either, since the CI does not rule out a moderate one. The 15
+exploratory cells (leads 0-2 weeks and week-on-week changes, four fields) are
+not claimed. Four exclude zero against about 0.8 expected by chance: culture
+levels (r = 0.54), culture week-on-week (0.68), culture at a 2-week lag
+(-0.49, wrong-signed), supply week-on-week (-0.48). The two culture positives
+fall to 0.27 and 0.37 when the single week of 2026-08-03 (115 filings, the
+series maximum) is dropped, so one week produced them. That is measured; that
+a news-led culture pillar reacted to the same event that produced the filings
+is an inference.
+
+**Verdict: stay probationary, zero weight, no promotion on this evidence.**
+Proposed, not applied (it changes what a collected series means, so it is
+Krish's call): re-specify the collected value as a 7-day filing count in place
+of the 90-day count, with an effective date and no restatement of the stored
+rows. Re-run this script at n >= 30 weeks (about 2026-12-28); promotion needs
+the pre-registered primary CI to exclude zero and a max |r| below 0.8 against
+every existing input.
+
 Explicitly rejected: anything requiring a scraper against a site whose terms
 forbid it, and anything that is a fourth news API. The first is a legal risk for
 a published instrument and the second adds cost without adding information.
