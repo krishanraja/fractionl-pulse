@@ -1,7 +1,7 @@
 ---
 repo: krishanraja/fractionl-pulse
 product: Pulse by Fractionl
-as_of: 2026-10-22
+as_of: 2026-10-23
 head: aa7fd0a
 lifecycle: live
 production_url: https://pulse.fractionl.ai
@@ -31,7 +31,9 @@ Angles a writer can use (the registry anonymises this repo; say "a side build", 
 
 Objection it answers: "One person with AI can prototype, but cannot run a data product." Here is one that has accumulated daily observations since June 2026, with its audit trail in the open.
 
-## Where it is right now (as of 2026-10-22)
+## Where it is right now (as of 2026-10-23)
+
+<!-- north-star-state {"week_of": "2026-10-26", "week_target": 10.0, "current": null, "current_as_of": null, "current_source": null, "urgency": 4, "urgency_reason": "not scored yet (the sprint scores it this week)"} --> **North Star number: U4, far behind.** Citability score against docs/CITABILITY.md: not scored yet (the sprint scores it this week), against 10/10 this week, on the way to 10/10 by 26 October 2026. A bold swing every day; work that does not move the number waits.
 
 - **Lifecycle: live**, in the governance doc's own vocabulary: a user can use the public instrument in production now. **Production was read directly on 2026-09-24** (`data_source_health`, `pipeline_runs`, `signals`, `fwi_scores`, `supabase_migrations.schema_migrations`): the FWI reads **50.30 for 2026-09-24 at 0.93 completeness**, and the FWI pipeline carries **20 health rows, 18 healthy**, the two not healthy being `hn` and `gofractional`. That readback settles the "20 in code, 21 in production" question left open on 2026-09-21: production reads 20. `public/product-truth.json` `production_snapshot` and `docs/DATA_SOURCES_ROADMAP.md` section 1 are still stamped 11 August 2026 and remain stale; this file, not those, carries the current reading.
 - **Live (readback 2026-08-11, schedule readback 2026-09-21):** the public FWI with demand, supply and culture components; twelve months of mixed-frequency history; six US-scoped role-demand pages; the weekly brief; Ask the Index; public REST endpoints; four hosted MCP tools; discovery files at `/product-truth.json`, `/llms.txt` and `/.well-known/ai-plugin.json`; optional accounts and free operational API keys.
@@ -47,6 +49,7 @@ Objection it answers: "One person with AI can prototype, but cannot run a data p
 
 ## What changed recently
 
+- 2026-10-23 **The North Star now has a number, a weekly ladder and an urgency rating, so every session knows how far behind it is and how hard to push.** Ruling (Krish, 2026-10-23): every repository chases one aggressive number on a weekly ladder, and urgency U1 to U5 sets its intensity. The number and ladder are in `docs/NORTH_STAR.md`; where it stands is the first line under "Where it is right now". Contract: ai-harness `contract/north-star-metric.md`.
 - 2026-10-21 **Pulse got an answer hub so that what the index measures, its method and how to cite it are machine-legible, without freezing a number** (`c8972f9`, PR #56). Why, in the commit's words: it "moves the North Star line 'the number journalists, firms and AI agents cite'" by publishing question-led answers "that point to the live reading instead of freezing a number". Built: five seed posts under `content/answers/`, grounded only in repo facts and prerendered to static `/answers` pages with RSS, `llms-full.txt` and sitemap entries; a validator (23 `node:test` cases including negative controls) that fails the build on a bad post; a weekly workflow that opens a brief issue from `content/answers-backlog.md` with no model spend; one named AI-crawler group in `robots.txt`; and the truth files updated with the route. A second find in the same commit: secondary routes pointed `og:image` at an SVG, which social platforms do not render, so a 1200x630 PNG replaced it. Same HTML for every visitor, no user-agent logic. Owner doc: `docs/ANSWER_HUB.md`. Production was not read back, so whether `/answers` is live is unverified.
 - 2026-10-19 **Pulse got terms, privacy and a company note on every page, on a ruling** (`43948c4`, PR #53; `cd71df2`, PR #54). Why, in the commit's words: "Ruling (Krish, 2026-10-19): every business site names Mindmaker LLC (USA) and Mindmaker Ltd (UK) in a subtle footer note and in its terms and privacy." A second ruling the same day put Pulse and Circle under that one umbrella. Built: lazy `/terms` and `/privacy` routes, a shared footer carrying the note and legal links, the two paths added to the sitemap, the prerender and the release smoke test, and to `public/product-truth.json`. Not read: production, so whether the pages are live is unverified here.
 
@@ -74,6 +77,7 @@ Objection it answers: "One person with AI can prototype, but cannot run a data p
 - Waiting on Krish: whether the Apify account behind the GoFractional collector needs attention; a rejected proxied run is now retried once without a proxy, which keeps the source delivering but does not address the underlying allowance. A budget note in the commit history puts remaining headroom at roughly $10 to 1 October 2026 against the one Apify caller left.
 - Waiting on Krish: the commercial validation gate of 31 October 2026 (25 qualified conversations, ten letters of intent, five paid pilots) in `docs/CORPORATE_STRATEGY.md` section 8. No progress figures exist in the repo; the steward records none.
 - Waiting on Krish: `docs/FLEET_WIRING.md` and the governance ownership map say "Mindmaker OS". The OS was renamed Mindmake on 2026-08-29 (control-center). Renaming is a naming decision, not drift the steward resolves.
+- North Star check (2026-10-23): holds.
 
 ## Read next
 

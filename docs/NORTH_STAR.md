@@ -8,6 +8,25 @@
 
 Set by Krish on 18 October 2026, and not reached yet. Everything below serves it, every session in this repository works toward it, and only Krish changes it.
 
+## The number
+
+**Citability score against docs/CITABILITY.md**: 10/10 by 26 October 2026, on a linear weekly ladder. Stage 0. The deadline is Friday 30 October 2026. After three weeks of monitored data, around 20 November, Krish sets the aggressive number (1,000 citations a month is the working idea).
+
+```yaml north-star-metric
+metric: "Citability score against docs/CITABILITY.md"
+unit: score
+direction: up
+target: 10
+deadline: 2026-10-26
+ladder_shape: linear
+source: "docs/CITABILITY.md, scored on evidence by the sprint session"
+status: active
+ladder:
+  - [2026-10-26, 10.0]
+```
+
+Urgency (U1 to U5) is worked out every week from where the number stands against that week's target, by [the harness contract](https://github.com/krishanraja/ai-harness/blob/main/contract/north-star-metric.md). Set by Krish on 23 October 2026.
+
 ## The user outcome
 
 A reader can tell, in under one minute, whether fractional leadership demand is expanding or contracting, which C-suite roles are moving, and how complete the evidence is.
