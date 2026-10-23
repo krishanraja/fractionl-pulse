@@ -133,9 +133,60 @@ async function hnCount(date: string): Promise<number> {
   return total;
 }
 
+// ?diagnose=repairs: test whether a retired input has a simple repair
+// (Krish, 2026-10-23: "make sure you are not treating data sources as
+// unfixable and instead just retiring them when there was a pretty simple fix").
+// Runs candidate queries with the pipeline's own keys and returns counts and
+// provider error text only. Stores nothing; about a dozen Brave calls.
+async function diagnoseRepairs(): Promise<Record<string, unknown>> {
+  const out: Record<string, unknown> = {};
+  const safe = async (label: string, fn: () => Promise<unknown>) => { try { out[label] = await fn(); } catch (e) { out[label] = `error: ${(e as Error).message}`; } };
+  const end = new Date().toISOString().slice(0, 10), start = addDays(end, -90);
+  const G = Deno.env.get('GUARDIAN_API_KEY') || '';
+  const guardian = async (q: string, extra = '') => {
+    const r = await fetch(`https://content.guardianapis.com/search?q=${encodeURIComponent(q)}&from-date=${start}&to-date=${end}&page-size=1${extra}&api-key=${G}`, { headers: { 'User-Agent': UA } });
+    const j = await r.json() as { response?: { status?: string; total?: number; message?: string }; message?: string };
+    return { http: r.status, status: j.response?.status, total: j.response?.total, message: j.response?.message ?? j.message };
+  };
+  await safe('guardian_current', () => guardian('"fractional executive" OR "fractional CFO"'));
+  await safe('guardian_fractional_word', () => guardian('fractional AND (executive OR CFO OR director OR leadership)'));
+  await safe('guardian_interim', () => guardian('"interim chief executive" OR "interim CEO" OR "interim finance director"'));
+  await safe('guardian_portfolio_career', () => guardian('"portfolio career" OR "fractional"'));
+  const M = Deno.env.get('MEDIASTACK_API_KEY') || '';
+  const mediastack = async (kw: string, extra = '') => {
+    const r = await fetch(`http://api.mediastack.com/v1/news?access_key=${M}&keywords=${encodeURIComponent(kw)}&languages=en&limit=1${extra}`);
+    const j = await r.json() as { pagination?: { total?: number }; error?: { code?: string; message?: string } };
+    return { http: r.status, total: j.pagination?.total, error: j.error ? `${j.error.code}: ${j.error.message}` : null };
+  };
+  await safe('mediastack_current', () => mediastack('fractional executive', '&countries=us,gb'));
+  await safe('mediastack_fractional', () => mediastack('fractional'));
+  await safe('mediastack_with_dates', () => mediastack('fractional', `&date=${addDays(end, -30)},${end}`));
+  const B = Deno.env.get('BRAVE_API_KEY') || '';
+  const brave = async (path: string, q: string, extra: string) => {
+    await new Promise((r) => setTimeout(r, 1200));
+    const r = await fetch(`https://api.search.brave.com/res/v1/${path}?q=${encodeURIComponent(q)}${extra}`, { headers: { 'X-Subscription-Token': B, Accept: 'application/json' } });
+    const j = await r.json() as { results?: unknown[]; web?: { results?: unknown[] }; query?: { more_results_available?: boolean } };
+    return { http: r.status, returned: (j.results ?? j.web?.results ?? []).length, more_available: j.query?.more_results_available ?? null };
+  };
+  const roles = '"fractional CFO" OR "fractional CMO" OR "fractional CTO" OR "fractional executive"';
+  await safe('brave_news_month_20', () => brave('news/search', roles, '&count=20&freshness=pm'));
+  await safe('brave_news_week_50', () => brave('news/search', roles, '&count=50&freshness=pw'));
+  await safe('brave_news_day_50', () => brave('news/search', roles, '&count=50&freshness=pd'));
+  await safe('brave_web_week_20', () => brave('web/search', '"fractional CFO"', '&count=20&freshness=pw&result_filter=web'));
+  await safe('brave_web_day_20', () => brave('web/search', '"fractional CFO"', '&count=20&freshness=pd&result_filter=web'));
+  await safe('brave_reddit_week_20', () => brave('web/search', 'site:reddit.com "fractional CFO"', '&count=20&freshness=pw&result_filter=web'));
+  await safe('brave_reddit_day_20', () => brave('web/search', 'site:reddit.com "fractional CFO"', '&count=20&freshness=pd&result_filter=web'));
+  await safe('brave_linkedin_week_20', () => brave('web/search', 'site:linkedin.com/in "fractional CFO"', '&count=20&freshness=pw&result_filter=web'));
+  await safe('brave_linkedin_day_20', () => brave('web/search', 'site:linkedin.com/in "fractional CFO"', '&count=20&freshness=pd&result_filter=web'));
+  return out;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   const url = new URL(req.url);
+  if (url.searchParams.get('diagnose') === 'repairs') {
+    return new Response(JSON.stringify(await diagnoseRepairs(), null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
   const today = url.searchParams.get('date') || new Date().toISOString().slice(0, 10);
   const backfillDays = Math.max(0, Math.min(90, Number(url.searchParams.get('backfill_days') || 0)));
   const only = (url.searchParams.get('only') || '').split(',').filter(Boolean);
