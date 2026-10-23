@@ -15,32 +15,34 @@ export interface TrialDef {
   replaces?: string;       // the input it would replace, if any
   what: string;
   backfill: 'archive' | 'stored' | 'none';
+  // A text match (a search phrase or keyword) must pass gate check 0: a dated,
+  // recorded sample of what it matched (docs/trial-relevance.json).
+  textMatch: boolean;
+  // Exempt from the one-publisher rule because the query is confined to a
+  // single site by design (Reddit, Hacker News).
+  singleSite?: boolean;
 }
 
 export const TRIALS: TrialDef[] = [
-  { source: 'trial_google_jobs', pillar: 'demand', replaces: 'serpapi_jobs', backfill: 'none',
+  { source: 'trial_google_jobs', pillar: 'demand', replaces: 'serpapi_jobs', backfill: 'none', textMatch: true,
     what: 'Google Jobs results for six roles at depth 100. Production asks for 10, and CFO, CMO, COO and CTO read exactly 10 every day to 2026-10-23.' },
-  { source: 'trial_podchaser_flow', pillar: 'culture', backfill: 'stored',
+  { source: 'trial_podchaser_flow', pillar: 'culture', backfill: 'stored', textMatch: true,
     what: 'New podcasts matching "fractional executive" per 7 days: the change in Podchaser\'s total, which as a stock sat at the normalizer ceiling.' },
-  { source: 'trial_wikipedia', pillar: 'culture', replaces: 'wikipedia_pageviews', backfill: 'archive',
+  { source: 'trial_wikipedia', pillar: 'culture', replaces: 'wikipedia_pageviews', backfill: 'archive', textMatch: false,
     what: 'Wikipedia daily views of articles about interim and fractional executive work only, without the generic C-suite articles or "Fractional ownership".' },
-  { source: 'trial_hn_wide', pillar: 'culture', replaces: 'hn', backfill: 'archive',
+  { source: 'trial_hn_wide', pillar: 'culture', replaces: 'hn', backfill: 'archive', textMatch: true, singleSite: true,
     what: 'Hacker News stories and comments naming fractional or interim C-suite roles over 30 days (production counts stories matching "fractional" only).' },
   // Repairs of inputs retired at the 2026-10-26 seam (Krish, 2026-10-23: test
   // the simple fix before calling a source unfixable). Each re-enters only
   // through the gate. Diagnosis, collect-trials ?diagnose=repairs, 2026-10-23.
-  { source: 'trial_trends', pillar: 'culture', backfill: 'stored',
+  { source: 'trial_trends', pillar: 'culture', backfill: 'stored', textMatch: true,
     what: 'Google Trends search interest scored against its own trailing 28 days (50 + 10z). Raw moved between 2.6 and 5.3 while the retired normalizer floored it at 5.' },
-  { source: 'trial_brave_news', pillar: 'culture', backfill: 'none',
-    what: 'Brave News results over the past week at up to 50 per request: 22 on 2026-10-23, under the cap, so a count. The retired input asked for 20 over a month and always got 20.' },
-  { source: 'trial_brave_web', pillar: 'culture', backfill: 'none',
+  { source: 'trial_brave_news', pillar: 'culture', backfill: 'none', textMatch: true,
+    what: 'Distinct sites publishing on the role terms in Brave News over the past week. Counting results let one SEO publisher supply 16 of 22 on 2026-10-23 (Ruling, Krish, 2026-10-23: count distinct sites).' },
+  { source: 'trial_brave_web', pillar: 'culture', backfill: 'none', textMatch: true,
     what: 'Brave web results over the past week for each role term, paged until Brave reports no more: "fractional CFO" returned 10 with none left on 2026-10-23.' },
-  { source: 'trial_reddit', pillar: 'culture', backfill: 'none',
+  { source: 'trial_reddit', pillar: 'culture', backfill: 'none', textMatch: true, singleSite: true,
     what: 'Reddit results via Brave over the past month, paged until none are left. Past week and past day both returned 0 on 2026-10-23.' },
-  { source: 'trial_guardian', pillar: 'culture', backfill: 'archive',
-    what: 'Guardian articles over 90 days on interim chief executives and finance directors: 18 on 2026-10-23. The retired query ("fractional executive" OR "fractional CFO") genuinely returned 0.' },
-  { source: 'trial_mediastack', pillar: 'culture', backfill: 'none',
-    what: 'Mediastack articles mentioning "fractional": one call a day, inside the free plan. Diagnosis was cut short by the plan\'s rate limit on 2026-10-23.' },
 ];
 
 // Not repairable, on test (2026-10-23): LinkedIn talent via Brave returns 0
@@ -52,7 +54,12 @@ export const TRIALS: TrialDef[] = [
 // matching articles a week and its timeline had a gap from 14 September to
 // 20 October 2026, so it failed the provenance check. Its 23 stored candidate
 // rows are kept as the record of why.
-export const DROPPED_TRIALS = ['trial_gdelt'];
+// Dropped (Ruling, Krish, 2026-10-23), on a relevance sample (diagnose=guardian
+// and diagnose=relevance): trial_guardian, all 7 "fractional" matches over 90
+// days unrelated (cricket, F1, fractional jet ownership) and its "interim CEO"
+// matches mentions of named executives; trial_mediastack, about 1 in 21
+// "fractional" matches on topic. The original inputs' retirement was right.
+export const DROPPED_TRIALS = ['trial_gdelt', 'trial_guardian', 'trial_mediastack'];
 
 export const TRIAL_SOURCES = TRIALS.map((t) => t.source);
 export const isTrial = (source: string) => source.startsWith('trial_');
@@ -68,14 +75,13 @@ export const SCALE_FULL = {
   trial_podchaser_flow: 200,  // new matching podcasts per week; ~25-60 observed
   trial_wikipedia: 2000,      // mean daily views
   trial_hn_wide: 500,         // stories + comments per 30 days
-  trial_brave_news: 100,      // articles per week
+  trial_brave_news: 50,       // distinct sites per week
   trial_brave_web: 200,       // results per week across the role terms
   trial_reddit: 100,          // results per month
-  trial_guardian: 100,        // articles per 90 days
-  trial_mediastack: 200,      // articles
 } as const;
 
 export const BRAVE_ROLE_TERMS = ['"fractional CFO"', '"fractional CMO"', '"fractional CTO"', '"fractional executive"'];
+// Kept only for collect-trials ?diagnose=guardian, the test that dropped it.
 export const GUARDIAN_TRIAL_QUERY = '"interim chief executive" OR "interim CEO" OR "interim finance director" OR "interim chief financial officer" OR "fractional"';
 
 // Trends rescored against its own recent history: 50 + 10z over the trailing

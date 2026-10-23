@@ -153,32 +153,20 @@ async function trendsRows(dates: string[], backfilled: boolean): Promise<Row[]> 
 }
 
 const BRAVE = Deno.env.get('BRAVE_API_KEY') || '';
-async function braveCount(path: string, q: string, freshness: string, pageSize: number): Promise<{ count: number; capped: boolean }> {
+async function braveCount(path: string, q: string, freshness: string, pageSize: number): Promise<{ count: number; capped: boolean; hosts: string[] }> {
   let count = 0;
+  const hosts: string[] = [];
   for (let offset = 0; offset < 5; offset++) {
     await new Promise((r) => setTimeout(r, 1200));
     const j = await getJson(`https://api.search.brave.com/res/v1/${path}?q=${encodeURIComponent(q)}&count=${pageSize}&offset=${offset}&freshness=${freshness}${path === 'web/search' ? '&result_filter=web' : ''}`,
       { headers: { 'X-Subscription-Token': BRAVE, Accept: 'application/json' } }, 2) as { results?: unknown[]; web?: { results?: unknown[] }; query?: { more_results_available?: boolean } };
-    const got = (j.results ?? j.web?.results ?? []).length;
+    const items = (j.results ?? j.web?.results ?? []) as Array<{ url?: string }>;
+    const got = items.length;
     count += got;
-    if (got < pageSize || j.query?.more_results_available === false) return { count, capped: false };
+    for (const it of items) { try { hosts.push(new URL(it.url || '').hostname.replace(/^www\./, '')); } catch { /* no url */ } }
+    if (got < pageSize || j.query?.more_results_available === false) return { count, capped: false, hosts };
   }
-  return { count, capped: true };
-}
-
-async function guardianCount(date: string): Promise<number> {
-  const G = Deno.env.get('GUARDIAN_API_KEY') || '';
-  const j = await getJson(`https://content.guardianapis.com/search?q=${encodeURIComponent(GUARDIAN_TRIAL_QUERY)}&from-date=${addDays(date, -90)}&to-date=${date}&page-size=1&api-key=${G}`, {}, 2) as { response?: { status?: string; total?: number } };
-  if (j.response?.status !== 'ok') throw new Error('Guardian status not ok');
-  return Number(j.response.total || 0);
-}
-
-async function mediastackCount(): Promise<number> {
-  const M = Deno.env.get('MEDIASTACK_API_KEY') || '';
-  const r = await fetch(`http://api.mediastack.com/v1/news?access_key=${M}&keywords=fractional&languages=en&limit=1`);
-  const j = await r.json() as { pagination?: { total?: number }; error?: { code?: string; message?: string } };
-  if (j.error) throw new Error(`${j.error.code}: ${j.error.message}`);
-  return Number(j.pagination?.total || 0);
+  return { count, capped: true, hosts };
 }
 
 // ?diagnose=repairs: test whether a retired input has a simple repair
@@ -266,6 +254,21 @@ serve(async (req) => {
     out.brave_news = await titles('news/search', BRAVE_ROLE_TERMS.join(' OR '), 'pw', 50).catch((e) => (e as Error).message);
     out.brave_web_cfo = await titles('web/search', '"fractional CFO"', 'pw', 20).catch((e) => (e as Error).message);
     out.reddit_cfo = await titles('web/search', 'site:reddit.com "fractional CFO"', 'pm', 20).catch((e) => (e as Error).message);
+    for (const term of BRAVE_ROLE_TERMS) out[`brave_web ${term}`] = await titles('web/search', term, 'pw', 20).catch((e) => (e as Error).message);
+    const end = Math.floor(Date.now() / 1000);
+    const hn: string[] = [];
+    for (const phrase of HN_TRIAL_PHRASES) {
+      const j = await getJson(`https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(`"${phrase}"`)}&advancedSyntax=true&tags=(story,comment)&hitsPerPage=8&numericFilters=created_at_i>${end - 30 * 86400}`, {}, 2) as { hits?: Array<{ title?: string; story_title?: string; comment_text?: string }> };
+      for (const h of j.hits || []) hn.push(`[${phrase}] ${(h.title || h.story_title || '').slice(0, 80)} :: ${(h.comment_text || '').replace(/<[^>]+>/g, ' ').slice(0, 160)}`);
+    }
+    out.hn_wide = hn;
+    try {
+      const tok = (await getJson('https://api.podchaser.com/graphql', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: `mutation { requestAccessToken(input:{grant_type: CLIENT_CREDENTIALS, client_id:"${PODCHASER_ID}", client_secret:"${PODCHASER_SECRET}"}) { access_token } }` }) }, 1) as { data?: { requestAccessToken?: { access_token?: string } } }).data?.requestAccessToken?.access_token;
+      const j = await getJson('https://api.podchaser.com/graphql', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
+        body: JSON.stringify({ query: '{ podcasts(searchTerm: "fractional executive", first: 50, sort: { sortBy: DATE_OF_FIRST_EPISODE, direction: DESCENDING }) { paginatorInfo { total } data { title } } }' }) }, 1) as { data?: { podcasts?: { paginatorInfo?: { total?: number }; data?: Array<{ title: string }> } }; errors?: Array<{ message: string }> };
+      out.podchaser = j.errors ? j.errors.map((e) => e.message) : { total: j.data?.podcasts?.paginatorInfo?.total, newest_titles: (j.data?.podcasts?.data || []).map((p) => p.title) };
+    } catch (e) { out.podchaser = (e as Error).message; }
     return new Response(JSON.stringify(out, null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
   if (url.searchParams.get('diagnose') === 'repairs') {
@@ -304,15 +307,15 @@ serve(async (req) => {
   });
 
   await attempt('trial_trends', () => trendsRows(dates, backfilled));
-  await attempt('trial_guardian', async () => {
-    const out: Row[] = [];
-    for (const d of dates) { const n = await guardianCount(d); out.push(row(d, 'trial_guardian', 'interim_executive_90d', n, logScale(n, SCALE_FULL.trial_guardian), { query: GUARDIAN_TRIAL_QUERY, backfilled })); }
-    return out;
-  });
   if (!backfilled) {
     await attempt('trial_brave_news', async () => {
+      // Distinct publishing sites, not results (Ruling, Krish, 2026-10-23): one
+      // SEO publisher supplied 16 of 22 results on 2026-10-23.
       const r = await braveCount('news/search', BRAVE_ROLE_TERMS.join(' OR '), 'pw', 50);
-      return [row(today, 'trial_brave_news', 'articles_7d', r.count, logScale(r.count, SCALE_FULL.trial_brave_news), { capped: r.capped })];
+      const sites = new Set(r.hosts);
+      const top = [...sites].map((h) => [h, r.hosts.filter((x) => x === h).length] as const).sort((a, b) => b[1] - a[1])[0];
+      return [row(today, 'trial_brave_news', 'distinct_sites_7d', sites.size, logScale(sites.size, SCALE_FULL.trial_brave_news),
+        { results: r.count, capped: r.capped, top_site: top ? { host: top[0], results: top[1] } : null })];
     });
     await attempt('trial_brave_web', async () => {
       let total = 0, capped = false;
@@ -323,10 +326,6 @@ serve(async (req) => {
       let total = 0, capped = false;
       for (const term of BRAVE_ROLE_TERMS) { const r = await braveCount('web/search', `site:reddit.com ${term}`, 'pm', 20); total += r.count; capped ||= r.capped; }
       return [row(today, 'trial_reddit', 'results_30d', total, logScale(total, SCALE_FULL.trial_reddit), { terms: BRAVE_ROLE_TERMS, capped })];
-    });
-    await attempt('trial_mediastack', async () => {
-      const n = await mediastackCount();
-      return [row(today, 'trial_mediastack', 'articles', n, logScale(n, SCALE_FULL.trial_mediastack), { keywords: 'fractional' })];
     });
   }
 
