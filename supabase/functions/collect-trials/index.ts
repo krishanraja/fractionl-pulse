@@ -232,6 +232,20 @@ async function diagnoseRepairs(): Promise<Record<string, unknown>> {
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   const url = new URL(req.url);
+  // ?diagnose=guardian: the headlines behind each part of GUARDIAN_TRIAL_QUERY
+  // over its 90-day window, so every match can be classified. Stores nothing.
+  if (url.searchParams.get('diagnose') === 'guardian') {
+    const G = Deno.env.get('GUARDIAN_API_KEY') || '';
+    const end = new Date().toISOString().slice(0, 10), start = addDays(end, -90);
+    const parts = ['"fractional"', '"interim chief executive"', '"interim CEO"', '"interim finance director"', '"interim chief financial officer"', GUARDIAN_TRIAL_QUERY];
+    const out: Record<string, unknown> = { window: `${start}..${end}` };
+    for (const q of parts) {
+      const j = await getJson(`https://content.guardianapis.com/search?q=${encodeURIComponent(q)}&from-date=${start}&to-date=${end}&page-size=50&order-by=newest&api-key=${G}`, {}, 2) as
+        { response?: { total?: number; results?: Array<{ webPublicationDate: string; sectionName: string; webTitle: string; webUrl: string }> } };
+      out[q] = { total: j.response?.total, articles: (j.response?.results || []).map((a) => `${a.webPublicationDate.slice(0, 10)} [${a.sectionName}] ${a.webTitle} | ${a.webUrl}`) };
+    }
+    return new Response(JSON.stringify(out, null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
   if (url.searchParams.get('diagnose') === 'repairs') {
     return new Response(JSON.stringify(await diagnoseRepairs(), null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
