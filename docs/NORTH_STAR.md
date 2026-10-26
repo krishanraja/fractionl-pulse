@@ -10,22 +10,28 @@ Set by Krish on 18 October 2026, and not reached yet. Everything below serves it
 
 ## The number
 
-**Citability score against docs/CITABILITY.md**: 10/10 by 26 October 2026, on a linear weekly ladder. Stage 0. The deadline is Friday 30 October 2026. After three weeks of monitored data, around 20 November, Krish sets the aggressive number (1,000 citations a month is the working idea).
+**Consecutive days at 10/10 citability**, scored every day from live evidence by `scripts/citability.mjs` against [CITABILITY.md](CITABILITY.md) and recorded in [`citability-log.jsonl`](citability-log.jsonl). Target: **30 days in a row**, set by Krish on 26 October 2026 ("one month for now and then let's move from there"). The goal behind it, in his words: "maintain 10/10 data collection consistently for a number of months so that this becomes a sellable product eventually."
+
+The streak cannot start before 17 November 2026, when the last of three inputs clears the delivery bar (if none misses again), so the earliest the target can be met is 16 December 2026. Any day below 10 resets it to zero. When it is met, Krish sets the next length.
 
 ```yaml north-star-metric
-metric: "Citability score against docs/CITABILITY.md"
-unit: score
+metric: "Consecutive days at 10/10 citability (docs/citability-log.jsonl)"
+unit: days
 direction: up
-target: 10
-deadline: 2026-10-26
+target: 30
+deadline: 2026-12-16
 ladder_shape: linear
-source: "docs/CITABILITY.md, scored on evidence by the sprint session"
+source: "docs/citability-log.jsonl, written daily by scripts/citability.mjs in .github/workflows/publication-check.yml"
 status: active
 ladder:
-  - [2026-10-26, 10.0]
+  - [2026-11-17, 1]
+  - [2026-11-24, 8]
+  - [2026-12-01, 15]
+  - [2026-12-08, 22]
+  - [2026-12-16, 30]
 ```
 
-**Beyond the sprint (Krish, 2026-10-26):** "the overall north star of this repository is that we maintain 10/10 data collection consistently for a number of months so that this becomes a sellable product eventually." The measure is the run of consecutive days at 10/10 in [`citability-log.jsonl`](citability-log.jsonl), scored every day by `scripts/citability.mjs` from live evidence and committed by the daily publication check, so a buyer can audit every day of it. The number of months is Krish's to set; until he does, the metric block above stays the sprint's.
+**Stage 0, the sprint (23 to 30 October 2026):** the citability score itself, 10/10 targeted by Friday 30 October; Krish kept the bar at 9.5 for Friday (2026-10-23), and it read 9.5 on 26 October. That score is now the input to the streak above.
 
 Urgency (U1 to U5) is worked out every week from where the number stands against that week's target, by [the harness contract](https://github.com/krishanraja/ai-harness/blob/main/contract/north-star-metric.md). Set by Krish on 23 October 2026.
 

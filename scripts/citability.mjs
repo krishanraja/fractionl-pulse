@@ -243,12 +243,14 @@ const byDate = Object.fromEntries(log.map((l) => [l.date, l.score]));
 let streak = 0;
 for (let d = byDate[today] != null ? today : shift(today, -1); byDate[d] === 10; d = shift(d, -1)) streak++;
 const first10 = log.find((l) => l.score === 10)?.date ?? null;
+// The target is the North Star metric block's (docs/NORTH_STAR.md), not a copy.
+const target = Number(readFileSync(join(ROOT, 'docs/NORTH_STAR.md'), 'utf8').match(/```yaml north-star-metric[\s\S]*?\ntarget:\s*(\d+)/)?.[1]) || null;
 
-if (JSON_MODE) console.log(JSON.stringify({ ...record, streak_days_at_10: streak, first_10: first10, recorded_days: log.length, inputs, points }, null, 2));
+if (JSON_MODE) console.log(JSON.stringify({ ...record, streak_days_at_10: streak, streak_target_days: target, first_10: first10, recorded_days: log.length, inputs, points }, null, 2));
 else {
   console.log(`CITABILITY ${total} / 10 on ${today} (reading ${shown ?? asOf})\n`);
   for (const p of points) console.log(`${String(p.value).padEnd(3)} ${p.n}. ${p.name}\n      ${p.evidence}${p.gap ? `\n      gap: ${p.gap}` : ''}`);
   console.log('\nInputs (point 2):');
   for (const [src, i] of Object.entries(inputs)) console.log(`  ${src.padEnd(18)} ${String(i.delivered).padStart(2)}/30 delivered  misses left ${i.misses_left}  moved ${i.moved ? 'yes' : i.judgeable ? 'NO' : 'pending'} (${i.movement_window_days}d, ${i.distinct_values} values)${i.clear_on ? `  clears ${i.clear_on}` : ''}`);
-  console.log(`\nStreak at 10/10: ${streak} day(s)${first10 ? `, first 10 on ${first10}` : ', not yet reached'}; ${log.length} day(s) recorded in docs/citability-log.jsonl`);
+  console.log(`\nStreak at 10/10: ${streak}${target ? ` of ${target}` : ''} day(s)${first10 ? `, first 10 on ${first10}` : ', not yet reached'}; ${log.length} day(s) recorded in docs/citability-log.jsonl`);
 }
