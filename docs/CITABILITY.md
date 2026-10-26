@@ -22,22 +22,24 @@ How to re-score: run the commands in each row's evidence column against producti
 | 9 | **Stable citation URL, suggested citation and machine access** | A permanent URL for a dated reading, suggested citation text, and an API, MCP and `llms.txt` an agent can read without a key. |
 | 10 | **A named owner and a contact** | A named, accountable owner and a working contact address for corrections, on the methodology page. |
 
-## Current score: 7 / 10 (2026-10-23, after the day's fixes)
+## Current score: 9.5 / 10 (2026-10-26, the first method v2 reading, read back)
 
 | # | Now | Evidence a stranger can check | What moves it |
 |---|---|---|---|
-| 1 Fresh | 1 | `/fwi-api/current` `meta.asOf` is today | |
-| 2 Inputs moving | 0 | Today's published reading still includes the nine constant inputs | First v2 reading, 2026-10-26: `contributors` lists nine moving inputs |
-| 3 Construction | 0 | v2 (one vote per source, carry-forward) is deployed (`calculate-fwi` v53) but publishes from 2026-10-26 | Same |
-| 4 Precision and band | 0 | Today's reading has no band | 2026-10-26: `score.band`, page title and app show `NN (low to high)` |
+| 1 Fresh | 1 | `/fwi-api/current` `meta.asOf` is 2026-10-26; no missing day in 30 (`npm run audit`) | |
+| 2 Inputs moving | 0.5 | `contributors` lists ten inputs, every one of which moved in the last 28 days or has under 14 stored days (the official monthly series). Gaps: NewsAPI delivered on fewer than 90% of the last 30 days (no rows 13 to 21 October, the v1 guard's rejections); four `serpapi_jobs` role rows sit at the depth-10 cap (45), under repair as the depth-100 Google Jobs trial | 20 November, when the NewsAPI gap leaves the window (Krish kept the bar, 2026-10-23); the Google Jobs repair through the gate |
+| 3 Construction | 1 | `fwi_scores` 2026-10-26 `metadata.votes`: ten votes, one per source, none carried; method `fwi-v2-2026-10-26` | |
+| 4 Precision and band | 1 | `46 (42 to 51)` on the API (`score.band`, `meta.citation`), the page title, the homepage, the brief, MCP and the RSS feed; the daily publication check fails if the title or the feed loses it | |
 | 5 Sources per number | 1 | `/fwi-api/current` `contributors`, each marked scored or held out | |
 | 6 Validation with n | 1 | `/methodology#validation`, `product-truth.json` `methodology.external_validation` | |
 | 7 Methodology page | 1 | `https://pulse.fractionl.ai/methodology`, server-rendered, own title | |
-| 8 Changelog | 1 | `https://pulse.fractionl.ai/changelog`; the 2026-10-26 entry gets its fixed link amount at the first v2 run | |
+| 8 Changelog | 1 | `https://pulse.fractionl.ai/changelog`: the seam entry states the fixed link amount, filled from the seam record (-9.5 over 28 days) | |
 | 9 Citation and machine access | 1 | `meta.citation`, `llms.txt`, MCP, `/fwi-api/history` | |
-| 10 Owner and contact | 1 | Krish Raja and `hello@krishraja.com` on `/methodology`, the API (`meta.owner`), `llms.txt` and `product-truth.json`; it is Krish's standing public address. `npm run smoke:release` fails if a page points at a dead `fractionl.ai` mailbox | |
+| 10 Owner and contact | 1 | Krish Raja and `hello@krishraja.com` on `/methodology`, the API (`meta.owner`), `llms.txt` and `product-truth.json`; `npm run smoke:release` fails on a dead mailbox | |
 
-Expected on 2026-10-26 once the first v2 reading is read back: 10.
+Expected: 9.5 at the Friday 30 October close; 10 on 20 November.
+
+**Read back on the seam day (2026-10-26):** the reading is 46 (42 to 51), link -9.5 over the 28 published days to 25 October (the 23 October preview measured -9.0 over the window then; the record is fixed now), completeness 0.97. The guard held one reading, `adzuna` CTO (7 postings, z 4), as designed; Adzuna voted from its other five roles. Three faults were found and fixed the same morning (commit `9a4c922`): ingest dropped the negative BLS year-over-year reading as "empty supply" (the vote was right, rebuilt from the release record; the stored row and the health row were wrong); the RSS feed carried no band and the v1 input count; the audit called the census series frozen on three days of rows.
 
 ## First score on 2026-10-23: 3.5 / 10
 
@@ -165,4 +167,5 @@ The retirement at the 2026-10-26 seam stands, because each input still reads con
 |---|---|---|---|
 | 2026-10-23 | 3.5 | `e4d5572` | First score. |
 | 2026-10-23 | 6.5 | `1dd4d1e` | Live on production and read back: `/methodology` and `/changelog` (7, 8); validation with n on the methodology page, `llms.txt` and `product-truth.json` (6); `contributors` in `/fwi-api/current` lists the inputs that made the reading, held-out ones marked (5); owner named, corrections to `hello@krishraja.com` (10, half: the mailbox has not been shown to receive). Method v2 is deployed behind the 2026-10-26 seam but has not published a reading, so 2, 3 and 4 still score 0 on live evidence. `npm run smoke:release` 18/18. |
-| 2026-10-23 | 7 | this commit | Point 10 to 1: `data@fractionl.ai` stopped receiving when Krish shut the fractionl.ai Workspace; every public contact now reads `hello@krishraja.com`. Migration `020` applied, so the audit reads the run log. |
+| 2026-10-23 | 7 | `f7e2e73` | Point 10 to 1: `data@fractionl.ai` stopped receiving when Krish shut the fractionl.ai Workspace; every public contact now reads `hello@krishraja.com`. Migration `020` applied, so the audit reads the run log. |
+| 2026-10-26 | 9.5 | `9a4c922` | Points 3 and 4 to 1 and point 2 to 0.5 on the first v2 reading, read back: ten votes, one per source, none carried; `46 (42 to 51)` on every surface, the RSS feed fixed the same morning; publication check 10/10, release smoke 18/18. Point 2 holds at 0.5 until NewsAPI's 13 to 21 October gap leaves the window on 20 November. |
