@@ -1518,25 +1518,38 @@ async function collectOpenAlex(_date: string): Promise<SignalResult> {
     since.setUTCFullYear(since.getUTCFullYear() - 1);
     const sinceStr = since.toISOString().slice(0, 10);
 
+    // OpenAlex needs a key: keyless requests draw on a daily budget shared by
+    // everyone on the caller's IP, and Supabase's shared egress spends it
+    // (failing since 2026-10-24 with HTTP 429 "Insufficient budget"). Keys are
+    // free; OPENALEX_API_KEY is the edge-function secret.
+    const OPENALEX_KEY = Deno.env.get('OPENALEX_API_KEY') || '';
+    const headers: Record<string, string> = OPENALEX_KEY ? { Authorization: `Bearer ${OPENALEX_KEY}` } : {};
+    let firstError = '';
     const fetches = OPENALEX_PHRASES.map(async (phrase) => {
       try {
         const encoded = encodeURIComponent(phrase);
-        const url = `https://api.openalex.org/works?search=${encoded}&filter=from_publication_date:${sinceStr},concepts.id:C144133560|C162324750|C39389867&per-page=1&mailto=krishanraja@gmail.com`;
-        const res = await fetchWithRetry(url, {}, 2, 10000);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const url = `https://api.openalex.org/works?search=${encoded}&filter=from_publication_date:${sinceStr},concepts.id:C144133560|C162324750|C39389867&per-page=1&mailto=hello@krishraja.com`;
+        const res = await fetchWithRetry(url, { headers }, 2, 10000);
+        if (!res.ok) {
+          const body = await res.json().catch(() => null) as { error?: string; message?: string } | null;
+          throw new Error(`HTTP ${res.status}${body?.error ? `: ${body.error}` : ''}`);
+        }
         const data = await res.json();
         const count = safeNumber(data.meta?.count, 0);
         perPhrase[phrase] = count;
         totalWorks += count;
       } catch (err) {
         perPhrase[phrase] = 0;
-        console.warn(`[OpenAlex] ${phrase} failed: ${err.message}`);
+        // fetchWithRetry throws a bare "HTTP 429" once its retries are spent.
+        const why = (err as Error).message + (/429/.test((err as Error).message) && !OPENALEX_KEY ? ' (no OPENALEX_API_KEY set; the keyless budget is shared per IP)' : '');
+        firstError ||= why;
+        console.warn(`[OpenAlex] ${phrase} failed: ${why}`);
       }
     });
     await Promise.all(fetches);
 
     if (totalWorks === 0 && Object.values(perPhrase).every(v => v === 0)) {
-      throw new Error('Zero works across all phrases (likely network or filter mismatch)');
+      throw new Error(firstError ? `Every phrase failed; first error: ${firstError}` : 'Zero works across all phrases (the filter matched nothing)');
     }
     const normalized = Math.min(100, Math.max(10, Math.round(Math.log10(totalWorks + 1) / Math.log10(500) * 100)));
     return {
