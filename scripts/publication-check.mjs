@@ -10,7 +10,7 @@
 //   - today's reading exists on the public API
 //   - from the 2026-10-26 seam: method v2 with its link record, a band, a whole
 //     number, no retired input among the contributors
-//   - the page title carries the reading (and its band from the seam)
+//   - the page title and the RSS feed carry the reading (and its band from the seam)
 //   - the changelog states the fixed link amount once a v2 reading exists
 //   - no retired or replaced source still has a health row after the seam, and
 //     every promoted trial input has one
@@ -70,6 +70,14 @@ const home = (await get(`${SITE}/`, false)).body;
 const title = home.match(/<title>([^<]*)<\/title>/)?.[1] ?? '';
 const shown = cur?.score?.band ? `${cur.score.overall} (${cur.score.band.low} to ${cur.score.band.high})` : null;
 check('page title carries the reading', shown ? title.includes(shown) : /Fractional Working Index: \d/.test(title), title);
+
+// The RSS feed is a surface too (point 4: the band on every surface). Found
+// 2026-10-26: its titles still read "46 (Stable)" after the seam.
+if (shown && asOf >= SEAM) {
+  const feed = (await get(`${SB.url}/functions/v1/fwi-feed?format=json`)).body;
+  const top = feed?.items?.[0];
+  check('RSS feed carries the reading with its band', top?.date === asOf && top?.title?.includes(shown), top?.title ?? 'no feed item');
+}
 
 const failed = results.filter((r) => !r.ok);
 if (JSON_MODE) console.log(JSON.stringify({ date: today, seam: SEAM, ok: failed.length === 0, results }, null, 2));

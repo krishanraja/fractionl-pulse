@@ -298,7 +298,13 @@ async function audit() {
     if (r.date < since28 || r.signal_type === 'context' || !intended.includes(r.source)) continue;
     ((valuesBy[r.source] ||= {})[r.category] ||= new Set()).add(String(r.normalized_value));
   }
+  // At least 14 stored days before an input can be called frozen: found
+  // 2026-10-26, census_bfs_pbs flagged on its first 3 days, a monthly release
+  // that holds its value between releases by design.
+  const daysBy = {};
+  for (const r of signals) if (r.date >= since28 && intended.includes(r.source)) (daysBy[r.source] ||= new Set()).add(r.date);
   const frozen = Object.entries(valuesBy)
+    .filter(([src]) => (daysBy[src]?.size || 0) >= 14)
     .filter(([, cats]) => Object.values(cats).every((v) => v.size === 1))
     .map(([src, cats]) => `${src} (${Object.entries(cats).map(([c, v]) => `${c}=${[...v][0]}`).join(', ')})`);
   // Per category too: a source can move overall while most of its rows sit at

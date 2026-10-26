@@ -68,6 +68,8 @@ await check('public FWI feed', async () => {
   const { response, body } = await json(`${FUNCTIONS}/fwi-feed?format=json`);
   assert.equal(response.status, 200);
   assert.ok(Array.isArray(body?.items) && body.items.length > 0);
+  const top = body.items[0];
+  if (top.date >= '2026-10-26') assert.ok(top.band && top.title.includes(`${top.score} (${top.band.low} to ${top.band.high})`), `feed item lacks its band: ${top.title}`);
 });
 
 await check('pipeline trigger rejects anonymous callers', async () => {

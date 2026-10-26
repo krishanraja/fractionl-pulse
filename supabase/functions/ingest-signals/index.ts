@@ -1831,8 +1831,13 @@ serve(async (req) => {
     // profiles/listings; that is the soft-failure that floored the talent-availability index.
     // calculate-fwi also excludes these, but dropping them here keeps the signals table clean
     // so an empty reading can never influence the supply average.
+    // Not for the official series: bls_incorporated's raw value is a
+    // year-over-year change and is negative in a falling month (-3.73 on the
+    // 2026-10-26 seam day, dropped here and its health marked failed while the
+    // score used the vote rebuilt from the release record).
+    const OFFICIAL_SUPPLY = ['census_bfs_pbs', 'bls_incorporated'];
     const cleanedSignals = validatedSignals.filter(signal => {
-      if (signal.signal_type === 'supply' && (signal.raw_value == null || signal.raw_value <= 0)) {
+      if (signal.signal_type === 'supply' && !OFFICIAL_SUPPLY.includes(signal.source) && (signal.raw_value == null || signal.raw_value <= 0)) {
         console.log(`[Persist] dropping empty supply signal ${signal.source}/${signal.category} (raw_value=${signal.raw_value})`);
         return false;
       }

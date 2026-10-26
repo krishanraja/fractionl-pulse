@@ -5,6 +5,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { METHOD_V2_EFFECTIVE } from '../_shared/fwi-method.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -29,7 +30,7 @@ serve(async (req) => {
 
   const { data: rows, error } = await supabase
     .from('fwi_scores')
-    .select('date, overall_score, demand_score, supply_score, momentum_score')
+    .select('date, overall_score, demand_score, supply_score, momentum_score, metadata')
     .order('date', { ascending: false })
     .limit(26);
 
@@ -42,9 +43,15 @@ serve(async (req) => {
     .map((r) => {
       const score = Math.round(r.overall_score * 10) / 10;
       const lab = label(score);
-      const title = `Fractional Working Index: ${score} (${lab}), week of ${r.date}`;
-      const desc = `The fractional executive market reads ${score} of 100 (${lab}) for the week of ${r.date}. Demand ${component(r.demand_score)}, Supply ${component(r.supply_score)}, Culture ${component(r.momentum_score)}. A private composite published by Fractionl using 20 tracked inputs with mixed availability; search-derived inputs are supplied by DataForSEO.`;
-      return { date: r.date, score, lab, title, desc };
+      // From the 2026-10-26 seam a reading is a whole number with its band, on
+      // every surface (docs/CITABILITY.md point 4).
+      const v2 = r.date >= METHOD_V2_EFFECTIVE;
+      const band = (r.metadata as { band?: { low: number; high: number } } | null)?.band;
+      const shown = v2 && band ? `${Math.round(r.overall_score)} (${band.low} to ${band.high})` : String(score);
+      const title = `Fractional Working Index: ${shown}, ${lab}, ${v2 ? 'reading of' : 'week of'} ${r.date}`;
+      const inputs = v2 ? 'ten inputs that all move, with four held out as context' : '20 tracked inputs with mixed availability';
+      const desc = `The fractional executive market reads ${shown} of 100 (${lab}) for ${v2 ? '' : 'the week of '}${r.date}. Demand ${component(r.demand_score)}, Supply ${component(r.supply_score)}, Culture ${component(r.momentum_score)}. A private composite published by Fractionl using ${inputs}; search-derived inputs are supplied by DataForSEO.`;
+      return { date: r.date, score: v2 ? Math.round(r.overall_score) : score, band: v2 && band ? { low: band.low, high: band.high } : null, lab, title, desc };
     });
 
   if (format === 'json') {
