@@ -23,6 +23,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { dataForSeoGet, parseGoogleJobs } from '../_shared/dataforseo.ts';
 import { METHOD_V2_EFFECTIVE, addDays } from '../_shared/fwi-method.ts';
 import { guardPromoted, writePromotedHealth } from '../_shared/promoted.ts';
+import { OPENALEX_PHRASES, openAlexHeaders, openAlexUrl } from '../_shared/openalex.ts';
 import {
   BRAVE_ROLE_TERMS, FRACTIONAL_WORK, GUARDIAN_TRIAL_QUERY, HN_TRIAL_PHRASES, PODCHASER_TERMS, PROMOTED, SCALE_FULL, TRIAL_SOURCES, WIKI_TRIAL_PAGES,
   logScale, trailingZScore,
@@ -280,6 +281,23 @@ serve(async (req) => {
       const relevant = items.filter((p) => pattern.test(`${p.title} ${p.description || ''}`));
       out[term] = { total: j.data?.podcasts?.paginatorInfo?.total, sampled: items.length, relevant: relevant.length,
         relevant_titles: relevant.map((p) => `${(p.startDate || '').slice(0, 10)} ${p.title}`), oldest_sampled: items.at(-1)?.startDate?.slice(0, 10) };
+    }
+    return new Response(JSON.stringify(out, null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+  // Read-only: runs ingest's OpenAlex query with the project's key, with and
+  // without the concepts filter. Reports whether a key is set, never the key.
+  if (url.searchParams.get('diagnose') === 'openalex') {
+    const key = Deno.env.get('OPENALEX_API_KEY') || '';
+    const since = addDays(new Date().toISOString().slice(0, 10), -365);
+    const out: Record<string, unknown> = { key_set: !!key, since };
+    for (const withConcepts of [true, false]) {
+      const rows: Record<string, unknown> = {};
+      for (const phrase of OPENALEX_PHRASES) {
+        const r = await fetch(openAlexUrl(phrase, since, withConcepts), { headers: openAlexHeaders(key) });
+        const j = await r.json().catch(() => null) as { meta?: { count?: number }; error?: string } | null;
+        rows[phrase] = { status: r.status, count: j?.meta?.count ?? null, error: j?.error ?? null };
+      }
+      out[withConcepts ? 'with_concepts' : 'without_concepts'] = rows;
     }
     return new Response(JSON.stringify(out, null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }

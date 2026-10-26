@@ -11,6 +11,7 @@ import {
 import { anomalyDecision, isRatioOutlier } from '../_shared/outlier.ts';
 import { METHOD_V2_EFFECTIVE, REPLACED_AT_V2, RETIRED_AT_V2, officialScore, yoy } from '../_shared/fwi-method.ts';
 import { PROMOTED } from '../_shared/trials.ts';
+import { OPENALEX_PHRASES, openAlexHeaders, openAlexUrl } from '../_shared/openalex.ts';
 import { guardPromoted, trendsRowFor, writePromotedHealth } from '../_shared/promoted.ts';
 import { RELEASE_DAY, fetchOfficialSupply } from '../_shared/official-supply.ts';
 
@@ -195,13 +196,6 @@ const BLS_SERIES = [
   { id: 'CES0500000003', name: 'Avg Hourly Earnings (Private)', category: 'wages', baseline: 35 },
 ];
 
-const OPENALEX_PHRASES = [
-  '"fractional CFO"',
-  '"fractional CMO"',
-  '"fractional CTO"',
-  '"fractional executive"',
-  '"interim executive"',
-];
 
 interface SignalResult {
   source: string;
@@ -1523,12 +1517,11 @@ async function collectOpenAlex(_date: string): Promise<SignalResult> {
     // (failing since 2026-10-24 with HTTP 429 "Insufficient budget"). Keys are
     // free; OPENALEX_API_KEY is the edge-function secret.
     const OPENALEX_KEY = Deno.env.get('OPENALEX_API_KEY') || '';
-    const headers: Record<string, string> = OPENALEX_KEY ? { Authorization: `Bearer ${OPENALEX_KEY}` } : {};
+    const headers = openAlexHeaders(OPENALEX_KEY);
     let firstError = '';
     const fetches = OPENALEX_PHRASES.map(async (phrase) => {
       try {
-        const encoded = encodeURIComponent(phrase);
-        const url = `https://api.openalex.org/works?search=${encoded}&filter=from_publication_date:${sinceStr},concepts.id:C144133560|C162324750|C39389867&per-page=1&mailto=hello@krishraja.com`;
+        const url = openAlexUrl(phrase, sinceStr);
         const res = await fetchWithRetry(url, { headers }, 2, 10000);
         if (!res.ok) {
           const body = await res.json().catch(() => null) as { error?: string; message?: string } | null;
