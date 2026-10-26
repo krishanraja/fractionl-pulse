@@ -25,6 +25,8 @@ ladder:
   - [2026-10-26, 10.0]
 ```
 
+**Beyond the sprint (Krish, 2026-10-26):** "the overall north star of this repository is that we maintain 10/10 data collection consistently for a number of months so that this becomes a sellable product eventually." The measure is the run of consecutive days at 10/10 in [`citability-log.jsonl`](citability-log.jsonl), scored every day by `scripts/citability.mjs` from live evidence and committed by the daily publication check, so a buyer can audit every day of it. The number of months is Krish's to set; until he does, the metric block above stays the sprint's.
+
 Urgency (U1 to U5) is worked out every week from where the number stands against that week's target, by [the harness contract](https://github.com/krishanraja/ai-harness/blob/main/contract/north-star-metric.md). Set by Krish on 23 October 2026.
 
 ## The user outcome

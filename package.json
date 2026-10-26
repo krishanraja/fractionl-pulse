@@ -25,6 +25,7 @@
     "trial": "node scripts/trial-evaluate.mjs",
     "trial:json": "node scripts/trial-evaluate.mjs --json",
     "smoke:release": "node scripts/release-smoke.mjs",
+    "citability": "node scripts/citability.mjs",
     "test:dataforseo": "node --test supabase/functions/_shared/dataforseo.test.ts supabase/functions/_shared/outlier.test.ts",
     "test:method": "node --test supabase/functions/_shared/fwi-method.test.ts supabase/functions/_shared/trials.test.ts",
     "test:e2e": "playwright test",

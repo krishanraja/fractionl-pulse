@@ -5,7 +5,17 @@
 
 A journalist, a fractional-talent firm or an AI assistant should be able to quote the Fractional Working Index and defend the quote if challenged. This file is the test. Ten points, each scored **1** (passes on evidence a stranger could check), **0.5** (partly true, the gap named) or **0** (fails). A point scores on evidence, never on intent or on code that is not live.
 
-How to re-score: run the commands in each row's evidence column against production, read the live site, and change the score only when the evidence changes. Record every re-score in the log at the bottom with the date and the commit.
+How to re-score: `npm run citability` scores all ten points from live evidence (the public API, pages and `signals` table, public key only). It runs every day in `.github/workflows/publication-check.yml`, which appends the day's line to [`citability-log.jsonl`](citability-log.jsonl) and opens an issue assigned to Krish the day the score falls from 10. The hand-written re-score log at the bottom records only changes of method or interpretation.
+
+## How it is measured (from 2026-10-26)
+
+The North Star is holding 10/10 for months (Krish, 2026-10-26), so each point is scored by a rule a machine applies the same way every day:
+
+- **Point 2, delivery:** an input passes when it stored a reading on at least 27 of the last 30 days (90%), so a third miss in any 30 days loses the point. A day the anomaly guard held a reading counts as a miss.
+- **Point 2, movement:** a daily input passes when its one-vote-per-source value took more than one value in the last 28 days. The monthly official series (Census NAICS 54, BLS incorporated) hold one value between releases by design, so they are judged on their release record with the pipeline's own code: delivered on a day when that day's reading had a release no more than three months old, moving when their score changed across the releases of the last 62 days, and they must vote in today's reading.
+- **Not judgeable is not a pass.** An input with too little history is reported as pending and keeps point 2 below 1.
+- **Point 2, partial:** 0.5 when at least 7 of 10 inputs pass every check, otherwise 0.
+- **Negative control:** `npm run citability -- --date=2026-12-01` scores a day with no reading and must fail point 1.
 
 ## The ten points
 
@@ -27,7 +37,7 @@ How to re-score: run the commands in each row's evidence column against producti
 | # | Now | Evidence a stranger can check | What moves it |
 |---|---|---|---|
 | 1 Fresh | 1 | `/fwi-api/current` `meta.asOf` is 2026-10-26; no missing day in 30 (`npm run audit`) | |
-| 2 Inputs moving | 0.5 | `contributors` lists ten inputs, every one of which moved in the last 28 days or has under 14 stored days (the official monthly series). Gaps: NewsAPI delivered on fewer than 90% of the last 30 days (no rows 13 to 21 October, the v1 guard's rejections); four `serpapi_jobs` role rows sit at the depth-10 cap (45), under repair as the depth-100 Google Jobs trial | 20 November, when the NewsAPI gap leaves the window (Krish kept the bar, 2026-10-23); the Google Jobs repair through the gate |
+| 2 Inputs moving | 0.5 | `npm run citability`: 7 of 10 inputs pass every check; all ten move. Three missed too many days before the seam: `serpapi_linkedin` 25 of 30 (clears 31 October), `sec_edgar` 26 of 30 (clears 7 November), `newsapi` 21 of 30 (no rows 13 to 21 October, the v1 guard's rejections; clears 17 November). Each date assumes no further miss. Also, not part of the rule: four `serpapi_jobs` role rows sit at the depth-10 cap (45), under repair as the depth-100 Google Jobs trial | 17 November at the earliest; Krish kept the bar, 2026-10-23 |
 | 3 Construction | 1 | `fwi_scores` 2026-10-26 `metadata.votes`: ten votes, one per source, none carried; method `fwi-v2-2026-10-26` | |
 | 4 Precision and band | 1 | `46 (42 to 51)` on the API (`score.band`, `meta.citation`), the page title, the homepage, the brief, MCP and the RSS feed; the daily publication check fails if the title or the feed loses it | |
 | 5 Sources per number | 1 | `/fwi-api/current` `contributors`, each marked scored or held out | |
@@ -37,7 +47,9 @@ How to re-score: run the commands in each row's evidence column against producti
 | 9 Citation and machine access | 1 | `meta.citation`, `llms.txt`, MCP, `/fwi-api/history` | |
 | 10 Owner and contact | 1 | Krish Raja and `hello@krishraja.com` on `/methodology`, the API (`meta.owner`), `llms.txt` and `product-truth.json`; `npm run smoke:release` fails on a dead mailbox | |
 
-Expected: 9.5 at the Friday 30 October close; 10 on 20 November.
+Expected: 9.5 at the Friday 30 October close; 10 on 17 November at the earliest, if no input misses a day before then.
+
+**Correction (2026-10-26, same day):** the hand score above first named NewsAPI as the only gap in point 2 and 20 November as the date. The machine score found two more inputs below the bar (`serpapi_linkedin`, `sec_edgar`, both from pre-seam collection failures), and that the bar allows three misses in 30, so NewsAPI clears on 17 November, not when its last miss leaves the window. The score (0.5) is unchanged; the reason and the date were wrong. It also found that `trial_trends` had no rows for 24 and 25 October: on 2026-10-23 its daily path was made backfill-only and ingest writes it only from the seam. Both days were rebuilt from that day's stored Trends reading and are marked `backfilled`.
 
 **Read back on the seam day (2026-10-26):** the reading is 46 (42 to 51), link -9.5 over the 28 published days to 25 October (the 23 October preview measured -9.0 over the window then; the record is fixed now), completeness 0.97. The guard held one reading, `adzuna` CTO (7 postings, z 4), as designed; Adzuna voted from its other five roles. Three faults were found and fixed the same morning (commit `9a4c922`): ingest dropped the negative BLS year-over-year reading as "empty supply" (the vote was right, rebuilt from the release record; the stored row and the health row were wrong); the RSS feed carried no band and the v1 input count; the audit called the census series frozen on three days of rows.
 
@@ -169,3 +181,4 @@ The retirement at the 2026-10-26 seam stands, because each input still reads con
 | 2026-10-23 | 6.5 | `1dd4d1e` | Live on production and read back: `/methodology` and `/changelog` (7, 8); validation with n on the methodology page, `llms.txt` and `product-truth.json` (6); `contributors` in `/fwi-api/current` lists the inputs that made the reading, held-out ones marked (5); owner named, corrections to `hello@krishraja.com` (10, half: the mailbox has not been shown to receive). Method v2 is deployed behind the 2026-10-26 seam but has not published a reading, so 2, 3 and 4 still score 0 on live evidence. `npm run smoke:release` 18/18. |
 | 2026-10-23 | 7 | `f7e2e73` | Point 10 to 1: `data@fractionl.ai` stopped receiving when Krish shut the fractionl.ai Workspace; every public contact now reads `hello@krishraja.com`. Migration `020` applied, so the audit reads the run log. |
 | 2026-10-26 | 9.5 | `9a4c922` | Points 3 and 4 to 1 and point 2 to 0.5 on the first v2 reading, read back: ten votes, one per source, none carried; `46 (42 to 51)` on every surface, the RSS feed fixed the same morning; publication check 10/10, release smoke 18/18. Point 2 holds at 0.5 until NewsAPI's 13 to 21 October gap leaves the window on 20 November. |
+| 2026-10-26 | 9.5 | this commit | Scored by machine from today (`npm run citability`, daily in the publication check, record in `citability-log.jsonl`). Same score, corrected reason: three inputs below the delivery bar, not one; 10 on 17 November at the earliest, not 20 November. |
