@@ -6,7 +6,10 @@
 #
 # 09:15 UTC: after the 06:00 ingest, the 06:40 rebuild, the 08:00 backstop
 # ingest and the 08:40 rebuild, so a day the backstop rescued is not reported
-# as a failure. Read-only; needs no secrets.
+# as a failure. The checks are read-only. The run also commits the day's
+# citability line, rewrites the pinned "Pulse status" issue, and, when it opens
+# a new incident issue, starts one bounded Claude investigation (ANTHROPIC_API_KEY)
+# that reports on that issue and proposes fixes only as pull requests.
 #
 # Note: GitHub pauses scheduled workflows in a repository with no activity for
 # 60 days. This repository commits daily (the docs steward), so it does not.
@@ -16,6 +19,10 @@ on:
   schedule:
     - cron: '15 9 * * *'
   workflow_dispatch:
+    inputs:
+      investigate_issue:
+        description: 'Issue number for Claude to investigate (blank = only incidents this run opens)'
+        required: false
 
 permissions:
   contents: write   # commits the day's line to docs/citability-log.jsonl
@@ -24,6 +31,9 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    outputs:
+      # The issue opened by this run, if any; the investigate job works it.
+      incident: ${{ github.event.inputs.investigate_issue || steps.pubfail.outputs.issue || steps.drop.outputs.issue || steps.scorerfail.outputs.issue }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -82,6 +92,7 @@ jobs:
           echo '::error::could not push the citability record'; exit 1
 
       - name: Raise an issue when the scorer itself fails
+        id: scorerfail
         if: steps.cite.outcome == 'failure'
         uses: actions/github-script@v7
         with:
@@ -91,9 +102,11 @@ jobs:
             const open = await github.rest.issues.listForRepo({ owner, repo, labels: 'citability', state: 'open' });
             const body = `The daily citability score did not run, so today is missing from docs/citability-log.jsonl and the streak cannot be shown. Run: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
             if (open.data.some((i) => i.title.startsWith('Citability scorer failed'))) return;
-            await github.rest.issues.create({ owner, repo, title: `Citability scorer failed ${new Date().toISOString().slice(0, 10)}`, labels: ['citability'], assignees: ['krishanraja'], body });
+            const made = await github.rest.issues.create({ owner, repo, title: `Citability scorer failed ${new Date().toISOString().slice(0, 10)}`, labels: ['citability'], assignees: ['krishanraja'], body });
+            core.setOutput('issue', String(made.data.number));
 
       - name: Raise an issue when the score falls from 10
+        id: drop
         if: steps.cite.outputs.prev == '10' && steps.cite.outputs.score != '10'
         uses: actions/github-script@v7
         env:
@@ -104,11 +117,13 @@ jobs:
             const label = 'citability';
             await github.rest.issues.createLabel({ owner, repo, name: label, color: 'd93f0b' }).catch(() => {});
             const today = new Date().toISOString().slice(0, 10);
-            await github.rest.issues.create({ owner, repo, title: `Citability fell from 10/10 on ${today}`, labels: [label], assignees: ['krishanraja'],
+            const made = await github.rest.issues.create({ owner, repo, title: `Citability fell from 10/10 on ${today}`, labels: [label], assignees: ['krishanraja'],
               body: [`Run: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`, '', '```', process.env.REPORT, '```', '',
                 'The streak restarts from zero. Fix the named gap; the rules are in `docs/CITABILITY.md`, the daily record in `docs/citability-log.jsonl`.'].join('\n') });
+            core.setOutput('issue', String(made.data.number));
 
       - name: Open or update the failure issue
+        id: pubfail
         if: steps.check.outputs.exit_code != '0'
         uses: actions/github-script@v7
         env:
@@ -129,7 +144,8 @@ jobs:
             if (open.data.length) {
               await github.rest.issues.createComment({ owner, repo, issue_number: open.data[0].number, body: `Still failing on ${today}.\n\n${body}` });
             } else {
-              await github.rest.issues.create({ owner, repo, title: `Publication check failed ${today}`, labels: [label], assignees: ['krishanraja'], body });
+              const made = await github.rest.issues.create({ owner, repo, title: `Publication check failed ${today}`, labels: [label], assignees: ['krishanraja'], body });
+              core.setOutput('issue', String(made.data.number));
             }
             core.setFailed('publication check failed');
 
@@ -144,3 +160,90 @@ jobs:
               await github.rest.issues.createComment({ owner, repo, issue_number: issue.number, body: `Passing again: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}` });
               await github.rest.issues.update({ owner, repo, issue_number: issue.number, state: 'closed', state_reason: 'completed' });
             }
+
+      # One pinned issue, rewritten every day, is where Krish looks (2026-10-26:
+      # no hidden schedules to investigate). It comments, and so notifies, only
+      # when the streak starts, reaches its target, or resets.
+      - name: Build the status issue body
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -s cite.json ] || node scripts/citability.mjs --json 2>/dev/null > cite.json
+          [ -s check.txt ] || echo 'publication check did not run' > check.txt
+          gh issue list --state open --json number,title,labels \
+            --jq '[.[] | select(any(.labels[]; .name == "publication-check" or .name == "citability"))]' > open.json 2>/dev/null || echo '[]' > open.json
+          node scripts/status-issue.mjs cite.json check.txt open.json > status.md
+          cat status.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Rewrite the pinned status issue
+        if: always()
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (!fs.existsSync('status.md')) return;
+            const { owner, repo } = context.repo;
+            const label = 'pulse-status';
+            await github.rest.issues.createLabel({ owner, repo, name: label, color: '0e8a16', description: 'The one issue to read: rewritten daily' }).catch(() => {});
+            const body = fs.readFileSync('status.md', 'utf8');
+            const title = 'Pulse status (rewritten daily)';
+            const found = await github.rest.issues.listForRepo({ owner, repo, labels: label, state: 'open' });
+            let issue = found.data[0];
+            if (issue) await github.rest.issues.update({ owner, repo, issue_number: issue.number, body, title });
+            else issue = (await github.rest.issues.create({ owner, repo, title, labels: [label], assignees: ['krishanraja'], body })).data;
+            await github.graphql('mutation($id: ID!) { pinIssue(input: { issueId: $id }) { issue { number } } }', { id: issue.node_id })
+              .catch((e) => core.warning(`pin: ${e.message}`));
+            // Milestones only: these are the comments that notify.
+            const c = JSON.parse(fs.readFileSync('cite.json', 'utf8'));
+            const log = fs.readFileSync('docs/citability-log.jsonl', 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l));
+            const prev = log.filter((l) => l.date < c.date).at(-1);
+            let note = null;
+            if (c.streak_days_at_10 === 1) note = `The 10/10 streak started on ${c.date}. Target: ${c.streak_target_days} days in a row.`;
+            else if (c.streak_target_days && c.streak_days_at_10 === c.streak_target_days) note = `The streak reached its target: ${c.streak_days_at_10} days in a row at 10/10, on ${c.date}. Time to set the next length in docs/NORTH_STAR.md.`;
+            else if (prev?.score === 10 && c.score !== 10) note = `The streak reset on ${c.date} at ${c.score}/10. ${c.gaps.join('; ')}`;
+            if (note) await github.rest.issues.createComment({ owner, repo, issue_number: issue.number, body: note });
+
+  # A new incident gets one investigation by Claude, which reports back on the
+  # incident's own issue and proposes any fix as a pull request. Nothing reaches
+  # production without Krish merging it (functions deploy on merge to main).
+  # Bounded: runs only when this run opened a new issue, at most 40 turns and
+  # 30 minutes. ANTHROPIC_API_KEY added by Krish on 2026-10-26.
+  investigate:
+    needs: check
+    if: always() && needs.check.outputs.incident != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          claude_args: >-
+            --max-turns 40
+            --allowedTools "Bash(node scripts/*),Bash(npm run *),Bash(npm ci),Bash(git *),Bash(gh issue *),Bash(gh pr *),Bash(curl -sS https://pulse.fractionl.ai/*),Bash(curl -sS https://dtlcprcpvdomrehbejhw.supabase.co/*),Read,Edit,Write,Grep,Glob"
+          prompt: |
+            You are investigating a monitoring incident on krishanraja/fractionl-pulse, issue #${{ needs.check.outputs.incident }}. Read that issue first: gh issue view ${{ needs.check.outputs.incident }}
+
+            Read AGENTS.md, NOW.md and docs/CITABILITY.md before anything else; they are the rules. The North Star is 30 days in a row at 10/10 citability.
+
+            1. Reproduce: run node scripts/publication-check.mjs and npm run citability. Read the public API, pages and signals table with the public key in src/lib/supabase.ts if you need more. You have no production credentials and must not look for any.
+            2. Find the root cause. A transient provider failure that has already recovered is a finding, not a fix: say so.
+            3. If the fix is in this repository's code, make the smallest change, run npm ci, npm run lint, npm run test:method and node scripts/docs-audit.mjs, then open a pull request against main from a new branch named claude/incident-${{ needs.check.outputs.incident }}. Never push to main, never merge, never change a secret, a schedule or a published reading, never restate history.
+            4. Comment once on issue #${{ needs.check.outputs.incident }}: the cause in one sentence, the evidence, what the pull request changes (with its link) or why no code change is needed, and anything only Krish can do. Plain English, short.

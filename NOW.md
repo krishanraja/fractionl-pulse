@@ -77,7 +77,9 @@ Objection it answers: "One person with AI can prototype, but cannot run a data p
 
 ## What is next and what is waiting on Krish
 
-**Pick up next, in order** (set 2026-10-23, end of the citability sprint day; the session that wrote this has a check-in for 2026-10-26 09:45 UTC, but nothing below depends on it):
+**Where to look:** the pinned issue "Pulse status (rewritten daily)" holds today's score, the streak, each input's misses left and any open incident; it is rewritten by `.github/workflows/publication-check.yml` and comments only on milestones. A new incident opens its own issue for Krish and one bounded Claude investigation that reports on it and proposes any fix as a pull request (Krish, 2026-10-26: no hidden Claude schedules; none exist for Pulse).
+
+**Pick up next, in order** (set 2026-10-23, updated 2026-10-26):
 
 1. **Done 2026-10-26: the seam verified.** 46 (42 to 51), ten votes, publication check 10/10; three faults fixed the same morning (`docs/CITABILITY.md`, "Read back on the seam day"). Still to confirm on 2026-10-27: `bls_incorporated` stores its row and reads healthy (`select status, last_success from data_source_health where source='bls_incorporated'`), and whether the held `adzuna` CTO reading is confirmed or dropped. `openalex` (held-out context) failed 2026-10-24 to 10-26 on OpenAlex's keyless budget, which is shared per IP and spent by Supabase's shared egress. Fixed 2026-10-26: Krish set the `OPENALEX_API_KEY` secret, and `collect-trials?diagnose=openalex` read back HTTP 200 on all five phrases with the production filter, 52 works in total (48 stored on 10-24). To confirm on 2026-10-27: the 06:00 ingest stores an `openalex` row and its health reads healthy. Note: GitHub has been starting the 09:15 UTC publication check at about 13:00 to 14:00 UTC.
 2. **Fri 2026-10-30: sprint close.** Re-score; Krish ruled 9.5 is the bar for Friday, 10 on 20 November.
