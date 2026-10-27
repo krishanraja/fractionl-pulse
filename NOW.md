@@ -1,8 +1,8 @@
 ---
 repo: krishanraja/fractionl-pulse
 product: Pulse by Fractionl
-as_of: 2026-10-26
-head: 31a1806
+as_of: 2026-10-27
+head: 3130052
 lifecycle: live
 production_url: https://pulse.fractionl.ai
 state_doc: docs/DOCUMENTATION_GOVERNANCE.md
@@ -31,9 +31,9 @@ Angles a writer can use (the registry anonymises this repo; say "a side build", 
 
 Objection it answers: "One person with AI can prototype, but cannot run a data product." Here is one that has accumulated daily observations since June 2026, with its audit trail in the open.
 
-## Where it is right now (as of 2026-10-26)
+## Where it is right now (as of 2026-10-27)
 
-<!-- north-star-state {"week_of": "2026-10-26", "week_target": 0, "current": 0, "current_as_of": "2026-10-26", "current_source": "docs/citability-log.jsonl", "urgency": 2, "urgency_reason": "the streak cannot start before 2026-11-17 and three inputs have no misses left, so one missed day pushes the start; U2 inferred, the harness contract was not readable from the session that set it"} --> **North Star number: U2, on the ladder but with no slack.** Days in a row at 10/10 citability: 0 of 30 (target set by Krish on 2026-10-26: one month, then extend), recorded daily in `docs/citability-log.jsonl` by `npm run citability`. Today scores 9.5/10. The streak can start on 2026-11-17 at the earliest, when the last of three inputs clears the delivery bar (`serpapi_linkedin` 31 October, `sec_edgar` 7 November, `newsapi` 17 November), so the earliest the 30 days can be met is 2026-12-16. Each of the three has no misses left until it clears. Stage 0 of the sprint (Friday 30 October) closes at 9.5, the bar Krish kept.
+<!-- north-star-state {"week_of": "2026-10-26", "week_target": 0, "current": 0, "current_as_of": "2026-10-27", "current_source": "docs/citability-log.jsonl", "urgency": 2, "urgency_reason": "the streak cannot start before 2026-11-17 and three inputs have no misses left, so one missed day pushes the start; U2 inferred, the harness contract was not readable from the session that set it"} --> **North Star number: U2, on the ladder but with no slack.** Days in a row at 10/10 citability: 0 of 30 (target set by Krish on 2026-10-26: one month, then extend), recorded daily in `docs/citability-log.jsonl` by `npm run citability`. Today scores 9.5/10. The streak can start on 2026-11-17 at the earliest, when the last of three inputs clears the delivery bar (`serpapi_linkedin` 31 October, `sec_edgar` 7 November, `newsapi` 17 November), so the earliest the 30 days can be met is 2026-12-16. Each of the three has no misses left until it clears. Stage 0 of the sprint (Friday 30 October) closes at 9.5, the bar Krish kept.
 
 - **Lifecycle: live**, in the governance doc's own vocabulary: a user can use the public instrument in production now. **Production was read directly on 2026-09-24** (`data_source_health`, `pipeline_runs`, `signals`, `fwi_scores`, `supabase_migrations.schema_migrations`): the FWI reads **50.30 for 2026-09-24 at 0.93 completeness**, and the FWI pipeline carries **20 health rows, 18 healthy**, the two not healthy being `hn` and `gofractional`. That readback settles the "20 in code, 21 in production" question left open on 2026-09-21: production reads 20. `public/product-truth.json` `production_snapshot` and `docs/DATA_SOURCES_ROADMAP.md` section 1 are still stamped 11 August 2026 and remain stale; this file, not those, carries the current reading.
 - **Live (readback 2026-08-11, schedule readback 2026-09-21):** the public FWI with demand, supply and culture components; twelve months of mixed-frequency history; six US-scoped role-demand pages; the weekly brief; Ask the Index; public REST endpoints; four hosted MCP tools; discovery files at `/product-truth.json`, `/llms.txt` and `/.well-known/ai-plugin.json`; optional accounts and free operational API keys.

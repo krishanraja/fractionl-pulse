@@ -4,6 +4,12 @@ Newest first. Entries are written by the docs steward (see the steward link in
 NOW.md) and by humans doing the same job by hand. Nothing in this file
 describes current behaviour; NOW.md and the state doc do.
 
+## 2026-10-27 (steward)
+
+- stamped at `3130052`: `NOW.md`. Head moved from `31a1806` across one non-steward commit, the daily citability line in `docs/citability-log.jsonl` (9.5 of 10, unchanged from the day before; the gaps are the same three inputs). No documentation consequence, so only `head`, `as_of` and the two dates that mirror them moved. The North Star check line is carried forward unchanged.
+- checked, stale stamps not bumped: `docs/DOCUMENTATION_GOVERNANCE.md`, `docs/TECHNICAL_SPEC.md`, `docs/CORPORATE_STRATEGY.md`, `docs/AUTONOMOUS_GTM_PLAYBOOK.md`, `docs/FLEET_WIRING.md`; bodies not re-read.
+- no moves.
+
 ## 2026-10-26 (steward)
 
 - reconciled at `31a1806`: `NOW.md`. Head moved from `3df480e` across nine non-steward commits (seam day fixes, OpenAlex key, daily citability scorer, pinned status issue). The sessions had already updated the body, the pick-up list and the North Star line; the steward added four dated bullets and re-stamped `as_of` and `head`. The North Star check line is carried forward unchanged.
