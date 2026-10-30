@@ -2,7 +2,7 @@
 repo: krishanraja/fractionl-pulse
 product: Pulse by Fractionl
 as_of: 2026-10-29
-head: cb4a168
+head: 3b68f3d
 lifecycle: live
 production_url: https://pulse.fractionl.ai
 state_doc: docs/DOCUMENTATION_GOVERNANCE.md
@@ -33,7 +33,7 @@ Objection it answers: "One person with AI can prototype, but cannot run a data p
 
 ## Where it is right now (as of 2026-10-29)
 
-<!-- north-star-state {"week_of": "2026-10-26", "week_target": 0, "current": 0, "current_as_of": "2026-10-28", "current_source": "docs/citability-log.jsonl", "urgency": 2, "urgency_reason": "the streak cannot start before 2026-11-17 and three inputs have no misses left, so one missed day pushes the start; U2 inferred, the harness contract was not readable from the session that set it"} --> **North Star number: U2, on the ladder but with no slack.** Days in a row at 10/10 citability: 0 of 30 (target set by Krish on 2026-10-26: one month, then extend), recorded daily in `docs/citability-log.jsonl` by `npm run citability`. 2026-10-28 scored 9.5/10. The streak can start on 2026-11-17 at the earliest, when the last of three inputs clears the delivery bar (`serpapi_linkedin` 31 October, `sec_edgar` 7 November, `newsapi` 17 November), so the earliest the 30 days can be met is 2026-12-16. Each of the three has no misses left until it clears. Stage 0 of the sprint (Friday 30 October) closes at 9.5, the bar Krish kept.
+<!-- north-star-state {"week_of": "2026-10-26", "week_target": 0, "current": 0, "current_as_of": "2026-10-29", "current_source": "docs/citability-log.jsonl", "urgency": 2, "urgency_reason": "the streak cannot start before 2026-11-17 and three inputs have no misses left, so one missed day pushes the start; U2 inferred, the harness contract was not readable from the session that set it"} --> **North Star number: U2, on the ladder but with no slack.** Days in a row at 10/10 citability: 0 of 30 (target set by Krish on 2026-10-26: one month, then extend), recorded daily in `docs/citability-log.jsonl` by `npm run citability`. 2026-10-29 scored 9.5/10. The streak can start on 2026-11-17 at the earliest, when the last of three inputs clears the delivery bar (`serpapi_linkedin` 31 October, `sec_edgar` 7 November, `newsapi` 17 November), so the earliest the 30 days can be met is 2026-12-16. Each of the three has no misses left until it clears. Stage 0 of the sprint (Friday 30 October) closes at 9.5, the bar Krish kept.
 
 - **Lifecycle: live**, in the governance doc's vocabulary. Last direct production readback 2026-09-24 (20 health rows, 18 healthy); the 2026-10-26 seam day was read back (46, band 42 to 51, ten votes, completeness 0.97). `public/product-truth.json` `production_snapshot` and `docs/DATA_SOURCES_ROADMAP.md` section 1 are stamped 2026-08-11 and are stale; this file carries the current reading.
 - **Live surfaces:** the public FWI with demand, supply and culture components, six US-scoped role pages, the weekly brief, Ask the Index, public REST endpoints, four hosted MCP tools, `/methodology`, `/changelog`, terms and privacy, discovery files, optional accounts and free operational API keys. The `/answers` hub is built in code (`docs/ANSWER_HUB.md`); whether it is live is unverified.
