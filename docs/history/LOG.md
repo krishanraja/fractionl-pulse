@@ -4,6 +4,10 @@ Newest first. Entries are written by the docs steward (see the steward link in
 NOW.md) and by humans doing the same job by hand. Nothing in this file
 describes current behaviour; NOW.md and the state doc do.
 
+- reconciled at `f73e807`: `NOW.md` re-stamped. The only product commit since `2ec3c80` is the daily citability log line (2026-11-07, 9.5/10, reading 46 with band 41 to 51; the only gap listed is `newsapi`, 21 of 30 days, clearing 2026-11-17). The North Star state comment and sentence moved to 2026-11-07; the sentence naming `sec_edgar` and `serpapi_linkedin` as still open on 7 November was left as written because the log no longer lists them as gaps. The five stale stamps in the digest were not re-read.
+- checked, left to a session: audit finding `north_star_check` (check dated 2026-10-23, 15 days, limit 7). Only a session that re-reads the North Star against its work may re-date it; the steward carries the line forward unchanged.
+- no moves.
+
 ## 2026-11-07 (steward)
 
 - reconciled at `2ec3c80`: `NOW.md` re-stamped. The only product commit since `bfe8d1d` is the daily citability log line (2026-11-06, 9.5/10, reading 43 with band 37 to 47, same three gaps). The North Star state comment and sentence moved to 2026-11-06; no other prose changed. The five stale stamps in the digest were not re-read.
