@@ -1,8 +1,8 @@
 ---
 repo: krishanraja/fractionl-pulse
 product: Pulse by Fractionl
-as_of: 2026-11-12
-head: 74f73b7
+as_of: 2026-11-14
+head: 046d4af
 lifecycle: live
 production_url: https://pulse.fractionl.ai
 state_doc: docs/DOCUMENTATION_GOVERNANCE.md
@@ -31,9 +31,9 @@ Angles a writer can use (the registry anonymises this repo; say "a side build", 
 
 Objection it answers: "One person with AI can prototype, but cannot run a data product." Here is one that has collected daily since June 2026, with its audit trail in the open.
 
-## Where it is right now (as of 2026-11-12)
+## Where it is right now (as of 2026-11-14)
 
-<!-- north-star-state {"week_of": "2026-10-26", "week_target": 0, "current": 0, "current_as_of": "2026-11-11", "current_source": "docs/citability-log.jsonl", "urgency": 2, "urgency_reason": "the streak cannot start before 2026-11-17 and three inputs have no misses left, so one missed day pushes the start; U2 inferred, the harness contract was not readable from the session that set it"} --> **North Star number: U2, on the ladder but with no slack.** Days in a row at 10/10 citability: 0 of 30 (target set by Krish on 2026-10-26: one month, then extend), recorded daily in `docs/citability-log.jsonl` by `npm run citability`. 2026-11-11 scored 9.5/10 (reading 46, band 41 to 49); the one open gap is `newsapi` at 21 of 30 days (clears 2026-11-17 if it misses no more), `serpapi_linkedin` having cleared. The streak can start on 2026-11-17 at the earliest, when the last of three inputs clears the delivery bar (`sec_edgar` 7 November, `serpapi_linkedin` 7 November after misses that moved it from 31 October, `newsapi` 17 November), so the earliest the 30 days can be met is 2026-12-16. `newsapi` has no misses left until it clears. Stage 0 of the sprint (Friday 30 October) closed at 9.5, the bar Krish kept.
+<!-- north-star-state {"week_of": "2026-10-26", "week_target": 0, "current": 0, "current_as_of": "2026-11-13", "current_source": "docs/citability-log.jsonl", "urgency": 2, "urgency_reason": "the streak cannot start before 2026-11-29 after serpapi_linkedin slipped, so one missed day pushes the start again; U2 inferred, the harness contract was not readable from the session that set it"} --> **North Star number: U2, on the ladder but with no slack.** Days in a row at 10/10 citability: 0 of 30 (target set by Krish on 2026-10-26: one month, then extend), recorded daily in `docs/citability-log.jsonl` by `npm run citability`. 2026-11-13 scored 9.5/10 (reading 48, band 44 to 51); two open gaps, `newsapi` at 23 of 30 days (clears 2026-11-17 if it misses no more) and `serpapi_linkedin`, which had cleared on 2026-11-11 and is back at 26 of 30 days (clears 2026-11-29 per the log). The streak can now start on 2026-11-29 at the earliest, so the earliest the 30 days can be met is 2026-12-28 (it was 2026-12-16; inferred from the log's clearing dates, not re-run). `sec_edgar` cleared 7 November. `newsapi` has no misses left until it clears. Stage 0 of the sprint (Friday 30 October) closed at 9.5, the bar Krish kept.
 
 - **Lifecycle: live**, in the governance doc's vocabulary. Last direct production readback 2026-09-24 (20 health rows, 18 healthy); the 2026-10-26 seam day was read back (46, band 42 to 51, ten votes, completeness 0.97). `public/product-truth.json` `production_snapshot` and `docs/DATA_SOURCES_ROADMAP.md` section 1 are stamped 2026-08-11 and are stale; this file carries the current reading.
 - **Live surfaces:** the public FWI with demand, supply and culture components, six US-scoped role pages, the weekly brief, Ask the Index, public REST endpoints, four hosted MCP tools, `/methodology`, `/changelog`, terms and privacy, discovery files, optional accounts and free operational API keys. The `/answers` hub is built in code (`docs/ANSWER_HUB.md`); whether it is live is unverified.
@@ -60,7 +60,7 @@ Objection it answers: "One person with AI can prototype, but cannot run a data p
 
 ## What is next and what is waiting on Krish
 
-- Next: 2026-11-17 at the earliest for 10/10 (`npm run citability` prints each input's clearing date), and the 2026-11-20 trial review (`npm run trial`; a trial that passes goes to Krish and joins only at a dated seam). Unverified since 2026-09-25 and to read against production: the first `job_openings_pbs` row, the health of `hn` and `gofractional`, and a refresh of `production_snapshot`.
+- Next: 2026-11-29 at the earliest for 10/10 (`newsapi` clears 2026-11-17) (`npm run citability` prints each input's clearing date), and the 2026-11-20 trial review (`npm run trial`; a trial that passes goes to Krish and joins only at a dated seam). Unverified since 2026-09-25 and to read against production: the first `job_openings_pbs` row, the health of `hn` and `gofractional`, and a refresh of `production_snapshot`.
 - Decision for Krish: whether to adopt the peer-relative test as the data-quality §5 floor rule; both absolute bands are structurally unreachable (`docs/DATA_QUALITY_STRATEGY.md`, commit `12bad4f`).
 - Decision for Krish: the Apify allowance behind the GoFractional collector (a rejected proxied run is retried once without a proxy, which does not address the allowance).
 - Decision for Krish: the 31 October 2026 commercial validation gate in `docs/CORPORATE_STRATEGY.md` section 8; the repo holds no progress figures.
