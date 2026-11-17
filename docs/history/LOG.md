@@ -4,6 +4,15 @@ Newest first. Entries are written by the docs steward (see the steward link in
 NOW.md) and by humans doing the same job by hand. Nothing in this file
 describes current behaviour; NOW.md and the state doc do.
 
+## 2026-11-17 (steward)
+
+- reconciled at `499ab85`: `NOW.md` re-stamped. Product commit since `59c81de` is the daily citability log line (2026-11-16, 9/10, reading 47 with band 43 to 51; four gaps, earliest streak start moved to 2026-12-13). The North Star state comment and sentence moved with it. The five stale stamps in the digest were not re-read.
+- rolled from NOW.md: 2026-10-23 fractionl.ai stopped receiving mail, so public contacts moved to a new address and the root MX record was removed; migration `020` applied.
+- rolled from NOW.md: 2026-10-23 the citability checklist exists and the product scored 3.5 of 10. 8 of 16 weighted inputs had not moved since 2026-06-01, so "10.7 effective independent inputs" was a script artefact; the corrected figure is 4.4 (`docs/CITABILITY.md`).
+- rolled from NOW.md: 2026-10-21 Pulse got an answer hub (`c8972f9`, PR #56): five seed posts, a validator that fails the build on a bad post, and a PNG `og:image` replacing an SVG that social platforms do not render. Production was not read back.
+- checked, left to a session: audit finding `north_star_check` (check dated 2026-10-23, 25 days, limit 7). Only a session that re-reads the North Star against its work may re-date it; the steward carries the line forward unchanged.
+- no moves.
+
 - reconciled at `bd036e3`: `NOW.md` re-stamped. The only product commit since `9277c13` is the daily citability log line (2026-11-09, 9.5/10, reading 46 with band 43 to 50; gaps: `serpapi_linkedin` 26 of 30 days, clearing 2026-11-11, and `newsapi` 21 of 30 days, clearing 2026-11-17). The North Star state comment and sentence moved to 2026-11-09; the earliest streak start stays 2026-11-17. The five stale stamps in the digest were not re-read.
 - checked, left to a session: audit finding `north_star_check` (check dated 2026-10-23, 18 days, limit 7). Only a session that re-reads the North Star against its work may re-date it; the steward carries the line forward unchanged.
 - no moves.
