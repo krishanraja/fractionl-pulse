@@ -1,8 +1,8 @@
 ---
 repo: krishanraja/fractionl-pulse
 product: Pulse by Fractionl
-as_of: 2026-11-17
-head: 499ab85
+as_of: 2026-11-18
+head: c6e76b9
 lifecycle: live
 production_url: https://pulse.fractionl.ai
 state_doc: docs/DOCUMENTATION_GOVERNANCE.md
@@ -58,7 +58,7 @@ Objection it answers: "One person with AI can prototype, but cannot run a data p
 
 ## What is next and what is waiting on Krish
 
-- Next: 2026-12-13 at the earliest for 10/10 (`newsapi` clears 2026-11-17) (`npm run citability` prints each input's clearing date), and the 2026-11-20 trial review (`npm run trial`; a trial that passes goes to Krish and joins only at a dated seam). Unverified since 2026-09-25 and to read against production: the first `job_openings_pbs` row, the health of `hn` and `gofractional`, and a refresh of `production_snapshot`.
+- Next: 2026-12-14 at the earliest for 10/10 (`newsapi` cleared; the 2026-11-17 score was 9/10) (`npm run citability` prints each input's clearing date), and the 2026-11-20 trial review (`npm run trial`; a trial that passes goes to Krish and joins only at a dated seam). Unverified since 2026-09-25 and to read against production: the first `job_openings_pbs` row, the health of `hn` and `gofractional`, and a refresh of `production_snapshot`.
 - Decision for Krish: whether to adopt the peer-relative test as the data-quality §5 floor rule; both absolute bands are structurally unreachable (`docs/DATA_QUALITY_STRATEGY.md`, commit `12bad4f`).
 - Decision for Krish: whether to re-specify the `sec_exec_transitions` collected value as a 7-day filing count instead of the 90-day count, with an effective date and no restatement; proposed in `docs/DATA_QUALITY_STRATEGY.md`, re-run at n >= 30 weeks (about 2026-12-28).
 - Decision for Krish: the Apify allowance behind the GoFractional collector (a rejected proxied run is retried once without a proxy, which does not address the allowance).

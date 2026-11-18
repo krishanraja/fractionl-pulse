@@ -199,3 +199,7 @@ describes current behaviour; NOW.md and the state doc do.
 - 2026-11-14 checked, left to a session: audit finding `north_star_check` (check dated 2026-10-23, limit 7 days). Only a session that re-reads the North Star against its work may re-date it; carried forward unchanged.
 - 2026-11-16 reconciled at `59c81de`: `NOW.md` re-stamped. Product commits since `0242bf1`: the daily citability log line (2026-11-15, 9.5/10, reading 45 with band 41 to 50), where `serpapi_linkedin` slipped to 24 of 30 days (clears 2026-12-09), so the earliest streak start moved from 2026-12-02 to 2026-12-09 and the earliest 30 days end to 2027-01-07; and PR #57, the `sec_exec_transitions` evaluation (not promoted), added as a bullet and a decision for Krish. The canon block was left untouched.
 - 2026-11-16 checked, left to a session: audit finding `north_star_check` (check dated 2026-10-23, limit 7 days). Only a session that re-reads the North Star against its work may re-date it; carried forward unchanged.
+
+## 2026-11-18
+
+- stamped: NOW.md re-stamped at c6e76b9 (citability score 9/10 for 2026-11-17, earliest 10/10 moved to 2026-12-14). North Star check left dated 2026-10-23: only a session that re-reads the North Star can re-date it.
