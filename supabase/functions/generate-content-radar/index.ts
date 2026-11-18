@@ -34,7 +34,7 @@ interface ParsedRadar { topics?: LlmTopic[]; questions?: LlmQuestion[]; saturate
 interface ExampleDoc { text: string; url?: string; source: string }
 
 // Sources whose docs feed the radar, used for the confidence denominator.
-const EXPECTED_SOURCES = ['serpapi_related', 'serpapi_paa', 'google_autocomplete', 'newsapi', 'mediastack', 'guardian', 'brave_news', 'brave_web', 'reddit', 'hn', 'podchaser', 'ats_boards', 'youtube', 'marketplace'];
+const EXPECTED_SOURCES = ['serpapi_related', 'serpapi_paa', 'google_autocomplete', 'newsapi', 'mediastack', 'guardian', 'brave_news', 'brave_web', 'reddit', 'hn', 'ats_boards', 'youtube', 'marketplace'];
 
 function isoMonday(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00Z');
