@@ -1,4 +1,0 @@
-Status: Pulse no longer calls Podchaser. trial_podchaser_relevant is dropped from collect-trials and the Monday content harvest no longer reads Podchaser; the retired FWI input already skipped. No published FWI input changed. The Podchaser secrets in Pulse's Supabase project are now unused; removing them waits on Krish's yes, with the secret rotation.
-Changed: Ruling (Krish, 2026-11-18): all Podchaser attention goes to growth-mindmake and growth-makeyourmindup. The trial spent about 1,200 of the shared 25,000 monthly Podchaser points a day (82% of November's) to read 3 every day. This replaces the earlier ruling that brought a Podchaser input in on 2026-11-23.
-Next: confirm the 2026-11-19 05:40 UTC collect-trials run writes no trial_podchaser_relevant row.
-North Star check (2026-11-18): holds.
