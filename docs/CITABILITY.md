@@ -5,7 +5,7 @@
 
 A journalist, a fractional-talent firm or an AI assistant should be able to quote the Fractional Working Index and defend the quote if challenged. This file is the test. Ten points, each scored **1** (passes on evidence a stranger could check), **0.5** (partly true, the gap named) or **0** (fails). A point scores on evidence, never on intent or on code that is not live.
 
-How to re-score: `npm run citability` scores all ten points from live evidence (the public API, pages and `signals` table, public key only). It runs every day in `.github/workflows/publication-check.yml`, which appends the day's line to [`citability-log.jsonl`](citability-log.jsonl) and opens an issue assigned to Krish the day the score falls from 10. The hand-written re-score log at the bottom records only changes of method or interpretation.
+How to re-score: `npm run citability` scores all ten points from live evidence (the public API, pages and `signals` table, public key only). It runs every day in `.github/workflows/publication-check.yml`, which appends the day's line to [`citability-log.jsonl`](citability-log.jsonl) and opens an issue assigned to Krish the day the score falls from 10. The same run's input watch (`scripts/input-watch.mjs`, rules in `scripts/input-watch-lib.mjs`) opens an `input-failure` issue the day a provider refuses an index input's account, a fix only Krish can make, and on any input's second missed day in a row; it closes itself when every input delivers again. It exists because DataForSEO refused Pulse's login from 13 November 2026 and three inputs were dark for six days with no issue opened. The hand-written re-score log at the bottom records only changes of method or interpretation.
 
 ## How it is measured (from 2026-10-26)
 

@@ -7,7 +7,8 @@
 # 09:15 UTC: after the 06:00 ingest, the 06:40 rebuild, the 08:00 backstop
 # ingest and the 08:40 rebuild, so a day the backstop rescued is not reported
 # as a failure. The checks are read-only. The run also commits the day's
-# citability line, rewrites the pinned "Pulse status" issue, and, when it opens
+# citability line, opens an issue when an index input is down (the input
+# watch), rewrites the pinned "Pulse status" issue, and, when it opens
 # a new incident issue, starts one bounded Claude investigation (ANTHROPIC_API_KEY)
 # that reports on that issue and proposes fixes only as pull requests.
 #
@@ -33,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       # The issue opened by this run, if any; the investigate job works it.
-      incident: ${{ github.event.inputs.investigate_issue || steps.pubfail.outputs.issue || steps.drop.outputs.issue || steps.scorerfail.outputs.issue }}
+      incident: ${{ github.event.inputs.investigate_issue || steps.pubfail.outputs.issue || steps.drop.outputs.issue || steps.scorerfail.outputs.issue || steps.inputfail.outputs.issue }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -122,6 +123,54 @@ jobs:
                 'The streak restarts from zero. Fix the named gap; the rules are in `docs/CITABILITY.md`, the daily record in `docs/citability-log.jsonl`.'].join('\n') });
             core.setOutput('issue', String(made.data.number));
 
+      # 2026-11-18: DataForSEO refused Pulse's login from 13 November and three
+      # index inputs went dark for six days with no issue assigned to anyone.
+      # The watch names an input the day its provider refuses the account (only
+      # Krish can fix that), or the second day in a row it delivers nothing.
+      - name: Watch the index inputs
+        id: watch
+        if: always()
+        continue-on-error: true
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -s cite.json ] || node scripts/citability.mjs --json 2>/dev/null > cite.json
+          node scripts/input-watch.mjs cite.json > watch.json
+          cat watch.json
+
+      - name: Open, update or close the input issue
+        id: inputfail
+        if: always() && steps.watch.outcome == 'success'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const w = JSON.parse(fs.readFileSync('watch.json', 'utf8'));
+            const { owner, repo } = context.repo;
+            const label = 'input-failure';
+            await github.rest.issues.createLabel({ owner, repo, name: label, color: 'b60205', description: 'An index input is down: opened by the input watch' }).catch(() => {});
+            const open = (await github.rest.issues.listForRepo({ owner, repo, labels: label, state: 'open' })).data;
+            if (!w.alerts.length) {
+              for (const issue of open) {
+                await github.rest.issues.createComment({ owner, repo, issue_number: issue.number, body: `Every index input delivered on ${w.date}. Closing.` });
+                await github.rest.issues.update({ owner, repo, issue_number: issue.number, state: 'closed', state_reason: 'completed' });
+              }
+              return;
+            }
+            if (open.length) {
+              await github.rest.issues.createComment({ owner, repo, issue_number: open[0].number, body: `Still failing on ${w.date}.\n\n${w.body}` });
+              return;
+            }
+            const names = w.alerts.map((a) => a.source).join(', ');
+            const refused = w.alerts.some((a) => a.rule === 'account');
+            const made = await github.rest.issues.create({ owner, repo, labels: [label], assignees: ['krishanraja'],
+              title: `${refused ? 'Provider refused Pulse' : 'Index input down'}: ${names} (${w.date})`, body: w.body });
+            // A refused account has a known cause and a fix only Krish can make,
+            // so an investigation would spend tokens to restate the issue. Any
+            // other two-day miss has an unknown cause and gets one.
+            if (w.alerts.some((a) => a.rule === 'missed')) core.setOutput('issue', String(made.data.number));
+
       - name: Open or update the failure issue
         id: pubfail
         if: steps.check.outputs.exit_code != '0'
@@ -174,7 +223,7 @@ jobs:
           [ -s cite.json ] || node scripts/citability.mjs --json 2>/dev/null > cite.json
           [ -s check.txt ] || echo 'publication check did not run' > check.txt
           gh issue list --state open --json number,title,labels \
-            --jq '[.[] | select(any(.labels[]; .name == "publication-check" or .name == "citability"))]' > open.json 2>/dev/null || echo '[]' > open.json
+            --jq '[.[] | select(any(.labels[]; .name == "publication-check" or .name == "citability" or .name == "input-failure"))]' > open.json 2>/dev/null || echo '[]' > open.json
           node scripts/status-issue.mjs cite.json check.txt open.json > status.md
           cat status.md >> "$GITHUB_STEP_SUMMARY"
 
@@ -243,7 +292,7 @@ jobs:
 
             Read AGENTS.md, NOW.md and docs/CITABILITY.md before anything else; they are the rules. The North Star is 30 days in a row at 10/10 citability.
 
-            1. Reproduce: run node scripts/publication-check.mjs and npm run citability. Read the public API, pages and signals table with the public key in src/lib/supabase.ts if you need more. You have no production credentials and must not look for any.
+            1. Reproduce: run node scripts/publication-check.mjs and npm run citability; for an input-failure issue also run node scripts/citability.mjs --json > cite.json && node scripts/input-watch.mjs cite.json. Read the public API, pages and signals table with the public key in src/lib/supabase.ts if you need more. You have no production credentials and must not look for any.
             2. Find the root cause. A transient provider failure that has already recovered is a finding, not a fix: say so.
             3. If the fix is in this repository's code, make the smallest change, run npm ci, npm run lint, npm run test:method and node scripts/docs-audit.mjs, then open a pull request against main from a new branch named claude/incident-${{ needs.check.outputs.incident }}. Never push to main, never merge, never change a secret, a schedule or a published reading, never restate history.
             4. Comment once on issue #${{ needs.check.outputs.incident }}: the cause in one sentence, the evidence, what the pull request changes (with its link) or why no code change is needed, and anything only Krish can do. Plain English, short.

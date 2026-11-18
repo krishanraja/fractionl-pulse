@@ -15,6 +15,8 @@
 //                                            trial's own dated archive; rows are
 //                                            marked metadata.backfilled = true
 //   &only=trial_hn_wide,trial_wikipedia      limit to some trials
+//   GET  /collect-trials?diagnose=dataforseo is the stored DataForSEO login
+//                                            accepted; free, stores nothing
 //
 // Runs from the pipeline's address on purpose: Wikimedia rate-limits shared
 // addresses (it refused the sprint container on 2026-10-23).
@@ -254,6 +256,22 @@ serve(async (req) => {
         rows[phrase] = { status: r.status, count: j?.meta?.count ?? null, error: j?.error ?? null };
       }
       out[withConcepts ? 'with_concepts' : 'without_concepts'] = rows;
+    }
+    return new Response(JSON.stringify(out, null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+  // Read-only: does DataForSEO accept the stored login? Calls the free
+  // /appendix/user_data endpoint ("your account will not be charged") and
+  // reports only whether it was accepted, never the login, password or
+  // balance. Added 2026-11-18: a changed login took three index inputs down
+  // from 13 November, and the only proof of a fix was the next paid run.
+  if (url.searchParams.get('diagnose') === 'dataforseo') {
+    const out: Record<string, unknown> = { login_set: !!DATAFORSEO.login, password_set: !!DATAFORSEO.password };
+    try {
+      await dataForSeoGet('/appendix/user_data', DATAFORSEO);
+      out.accepted = true;
+    } catch (e) {
+      out.accepted = false;
+      out.error = (e as Error).message;
     }
     return new Response(JSON.stringify(out, null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
