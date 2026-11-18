@@ -61,5 +61,5 @@ test('the issue body says what only Krish can do and escapes table pipes', () =>
   assert.match(body, /only Krish can fix this/);
   assert.match(body, /Missed today and yesterday/);
   assert.match(body, /a \\\| b/);
-  assert.doesNotMatch(body, /—/, 'no em dashes');
+  assert.doesNotMatch(body, /\u2014/, 'no em dashes');
 });
