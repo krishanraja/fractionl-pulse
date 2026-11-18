@@ -25,15 +25,13 @@ import { METHOD_V2_EFFECTIVE, addDays } from '../_shared/fwi-method.ts';
 import { guardPromoted, writePromotedHealth } from '../_shared/promoted.ts';
 import { OPENALEX_PHRASES, openAlexHeaders, openAlexUrl } from '../_shared/openalex.ts';
 import {
-  BRAVE_ROLE_TERMS, FRACTIONAL_WORK, GUARDIAN_TRIAL_QUERY, HN_TRIAL_PHRASES, PODCHASER_TERMS, PROMOTED, SCALE_FULL, TRIAL_SOURCES, WIKI_TRIAL_PAGES,
+  BRAVE_ROLE_TERMS, GUARDIAN_TRIAL_QUERY, HN_TRIAL_PHRASES, PROMOTED, SCALE_FULL, TRIAL_SOURCES, WIKI_TRIAL_PAGES,
   logScale, trailingZScore,
 } from '../_shared/trials.ts';
 
 const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' };
 const supabase = createClient(Deno.env.get('SUPABASE_URL') || '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '');
 const DATAFORSEO = { login: Deno.env.get('DATAFORSEO_LOGIN') || '', password: Deno.env.get('DATAFORSEO_PASSWORD') || '' };
-const PODCHASER_ID = Deno.env.get('PODCHASER_CLIENT_ID') || '';
-const PODCHASER_SECRET = Deno.env.get('PODCHASER_CLIENT_SECRET') || '';
 const UA = 'pulse-fwi/2.0 (+https://pulse.fractionl.ai/methodology; hello@krishraja.com)';
 
 interface Row { date: string; source: string; signal_type: 'candidate'; category: string; raw_value: number; normalized_value: number; metadata: Record<string, unknown> }
@@ -69,23 +67,9 @@ async function googleJobs(date: string): Promise<Row[]> {
   return rows;
 }
 
-// Every stored total: the retired podchaser input until the seam, then this trial's own.
-// ---- trial_podchaser_relevant: new podcasts actually about fractional work
-async function relevantPodcasts(): Promise<Array<{ title: string; start: string }>> {
-  const tok = (await getJson('https://api.podchaser.com/graphql', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query: `mutation { requestAccessToken(input:{grant_type: CLIENT_CREDENTIALS, client_id:"${PODCHASER_ID}", client_secret:"${PODCHASER_SECRET}"}) { access_token } }` }) }, 1) as { data?: { requestAccessToken?: { access_token?: string } } }).data?.requestAccessToken?.access_token;
-  if (!tok) throw new Error('Podchaser token refused');
-  const seen = new Map<string, string>();
-  for (const term of PODCHASER_TERMS) {
-    const j = await getJson('https://api.podchaser.com/graphql', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
-      body: JSON.stringify({ query: `{ podcasts(searchTerm: ${JSON.stringify(term)}, first: 100, sort: { sortBy: DATE_OF_FIRST_EPISODE, direction: DESCENDING }) { data { title description startDate } } }` }) }, 2) as
-      { data?: { podcasts?: { data?: Array<{ title: string; description?: string; startDate?: string }> } } };
-    for (const p of j.data?.podcasts?.data || []) {
-      if (p.startDate && FRACTIONAL_WORK.test(`${p.title} ${p.description || ''}`)) seen.set(p.title, p.startDate.slice(0, 10));
-    }
-  }
-  return [...seen].map(([title, start]) => ({ title, start }));
-}
+// Podchaser is not called from Pulse (Ruling, Krish, 2026-11-18: all Podchaser
+// attention goes to growth-mindmake and growth-makeyourmindup). The trial
+// trial_podchaser_relevant is dropped; see DROPPED_TRIALS in _shared/trials.ts.
 
 // ---- trial_wikipedia: mean daily views over the 7 days ending each date
 async function wikiDaily(from: string, to: string): Promise<{ byDate: Record<string, number>; pages: string[]; missing: string[] }> {
@@ -254,34 +238,6 @@ serve(async (req) => {
     // never been through gate check 0 (2026-10-23).
     const prod = await getJson(`https://hn.algolia.com/api/v1/search?query=%22fractional%22&tags=story&hitsPerPage=50&numericFilters=created_at_i>${end - 30 * 86400}`, {}, 2) as { nbHits?: number; hits?: Array<{ title?: string; url?: string }> };
     out.hn_production = { total: prod.nbHits, titles: (prod.hits || []).map((h) => `${h.title} | ${h.url || ''}`) };
-    try {
-      const tok = (await getJson('https://api.podchaser.com/graphql', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: `mutation { requestAccessToken(input:{grant_type: CLIENT_CREDENTIALS, client_id:"${PODCHASER_ID}", client_secret:"${PODCHASER_SECRET}"}) { access_token } }` }) }, 1) as { data?: { requestAccessToken?: { access_token?: string } } }).data?.requestAccessToken?.access_token;
-      const j = await getJson('https://api.podchaser.com/graphql', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
-        body: JSON.stringify({ query: '{ podcasts(searchTerm: "fractional executive", first: 50, sort: { sortBy: DATE_OF_FIRST_EPISODE, direction: DESCENDING }) { paginatorInfo { total } data { title } } }' }) }, 1) as { data?: { podcasts?: { paginatorInfo?: { total?: number }; data?: Array<{ title: string }> } }; errors?: Array<{ message: string }> };
-      out.podchaser = j.errors ? j.errors.map((e) => e.message) : { total: j.data?.podcasts?.paginatorInfo?.total, newest_titles: (j.data?.podcasts?.data || []).map((p) => p.title) };
-    } catch (e) { out.podchaser = (e as Error).message; }
-    return new Response(JSON.stringify(out, null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-  }
-  // ?diagnose=podchaser: repair attempt for trial_podchaser_flow, which failed
-  // gate check 0 (about 3 of the 50 newest "fractional executive" matches are
-  // about fractional leadership; Podchaser's search is fuzzy). Counts only new
-  // podcasts whose title or description names fractional executive work.
-  if (url.searchParams.get('diagnose') === 'podchaser') {
-    const tok = (await getJson('https://api.podchaser.com/graphql', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: `mutation { requestAccessToken(input:{grant_type: CLIENT_CREDENTIALS, client_id:"${PODCHASER_ID}", client_secret:"${PODCHASER_SECRET}"}) { access_token } }` }) }, 1) as { data?: { requestAccessToken?: { access_token?: string } } }).data?.requestAccessToken?.access_token;
-    const pattern = /\bfractional\s+(c[a-z]o|chief|executive|exec|leader|leadership|cfo|cmo|cto|coo|cro|ceo)/i;
-    const out: Record<string, unknown> = {};
-    for (const term of ['fractional executive', 'fractional CFO', 'fractional CMO', 'fractional CTO']) {
-      const j = await getJson('https://api.podchaser.com/graphql', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
-        body: JSON.stringify({ query: `{ podcasts(searchTerm: ${JSON.stringify(term)}, first: 100, sort: { sortBy: DATE_OF_FIRST_EPISODE, direction: DESCENDING }) { paginatorInfo { total } data { title description startDate } } }` }) }, 1) as
-        { data?: { podcasts?: { paginatorInfo?: { total?: number }; data?: Array<{ title: string; description?: string; startDate?: string }> } }; errors?: Array<{ message: string }> };
-      if (j.errors) { out[term] = j.errors.map((e) => e.message); continue; }
-      const items = j.data?.podcasts?.data || [];
-      const relevant = items.filter((p) => pattern.test(`${p.title} ${p.description || ''}`));
-      out[term] = { total: j.data?.podcasts?.paginatorInfo?.total, sampled: items.length, relevant: relevant.length,
-        relevant_titles: relevant.map((p) => `${(p.startDate || '').slice(0, 10)} ${p.title}`), oldest_sampled: items.at(-1)?.startDate?.slice(0, 10) };
-    }
     return new Response(JSON.stringify(out, null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
   // Read-only: runs ingest's OpenAlex query with the project's key, with and
@@ -321,14 +277,6 @@ serve(async (req) => {
   };
 
   if (!backfilled) await attempt('trial_google_jobs', () => googleJobs(today));
-  await attempt('trial_podchaser_relevant', async () => {
-    const shows = await relevantPodcasts();
-    return dates.map((d) => {
-      const n = shows.filter((p) => p.start > addDays(d, -90) && p.start <= d).length;
-      return row(d, 'trial_podchaser_relevant', 'relevant_new_90d', n, logScale(n, SCALE_FULL.trial_podchaser_relevant),
-        { backfilled, note: backfilled ? 'backfilled from each show\'s first-episode date; a show indexed after it started is counted from its start date' : undefined });
-    });
-  });
   await attempt('trial_wikipedia', async () => {
     const w = await wikiDaily(from, to);
     // The seven days ending the day before: Wikimedia publishes a day's views

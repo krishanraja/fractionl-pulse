@@ -21,9 +21,6 @@ const BRAVE_API_KEY = Deno.env.get('BRAVE_API_KEY') || '';
 const NEWS_API_KEY = Deno.env.get('NEWS_API_KEY') || '';
 const MEDIASTACK_API_KEY = Deno.env.get('MEDIASTACK_API_KEY') || '';
 const GUARDIAN_API_KEY = Deno.env.get('GUARDIAN_API_KEY') || '';
-const PODCHASER_API_KEY = Deno.env.get('PODCHASER_API_KEY') || '';
-const PODCHASER_CLIENT_ID = Deno.env.get('PODCHASER_CLIENT_ID') || '';
-const PODCHASER_CLIENT_SECRET = Deno.env.get('PODCHASER_CLIENT_SECRET') || '';
 const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY') || '';
 const APIFY_API_KEY = Deno.env.get('APIFY_API_KEY') || '';
 
@@ -338,39 +335,8 @@ async function harvestHN(): Promise<ContentDoc[]> {
   return docs;
 }
 
-// Podchaser uses OAuth client-credentials: exchange client_id+secret for a short-lived
-// access token each run (auto-refreshing, so it can never silently expire like a hardcoded key).
-async function getPodchaserToken(): Promise<string> {
-  const r = await fetchWithRetry('https://api.podchaser.com/graphql', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query: `mutation { requestAccessToken(input:{grant_type: CLIENT_CREDENTIALS, client_id:"${PODCHASER_CLIENT_ID}", client_secret:"${PODCHASER_CLIENT_SECRET}"}) { access_token } }` }),
-  }, 1, 10000);
-  const j = await r.json();
-  const tok = j?.data?.requestAccessToken?.access_token;
-  if (!tok) throw new Error('token: ' + (j?.errors?.[0]?.message || 'no access_token'));
-  return tok;
-}
-
-async function harvestPodchaser(): Promise<ContentDoc[]> {
-  const haveCreds = PODCHASER_CLIENT_ID && PODCHASER_CLIENT_SECRET;
-  if (!haveCreds || shouldSkip('podchaser')) { diag('podchaser', haveCreds ? 'skipped' : 'no Podchaser client creds'); return []; }
-  const docs: ContentDoc[] = [];
-  try {
-    const token = await getPodchaserToken();
-    // Match the proven FWI ingest query shape exactly (paginatorInfo + first:50).
-    const query = `{ podcasts(searchTerm: "fractional executive", first: 50) { paginatorInfo { total } data { title } } }`;
-    const res = await fetchWithRetry('https://api.podchaser.com/graphql', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ query }),
-    }, 2, 10000);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const d = await res.json();
-    if (d.errors) diag('podchaser', 'gql_err: ' + JSON.stringify(d.errors).slice(0, 140));
-    else diag('podchaser', `total=${d.data?.podcasts?.paginatorInfo?.total ?? '?'} returned=${(d.data?.podcasts?.data || []).length}`);
-    for (const p of (d.data?.podcasts?.data || [])) if (p.title) docs.push({ source: 'podchaser', doc_type: 'podcast_title', text: p.title });
-  } catch (e) { console.error('[Podchaser]', (e as Error).message); diag('podchaser', 'err: ' + (e as Error).message); }
-  return docs;
-}
+// Podchaser is not harvested (Ruling, Krish, 2026-11-18: all Podchaser attention
+// goes to growth-mindmake and growth-makeyourmindup).
 
 async function harvestATS(): Promise<ContentDoc[]> {
   if (shouldSkip('ats_boards')) return [];
@@ -495,7 +461,6 @@ serve(async (req) => {
       t(harvestBraveWeb(), [] as ContentDoc[], 'brave_web'),
       t(harvestReddit(), [] as ContentDoc[], 'reddit'),
       t(harvestHN(), [] as ContentDoc[], 'hn'),
-      t(harvestPodchaser(), [] as ContentDoc[], 'podchaser'),
       t(harvestATS(), [] as ContentDoc[], 'ats_boards'),
       t(harvestYouTube(), [] as ContentDoc[], 'youtube'),
       t(harvestMarketplaces(), [] as ContentDoc[], 'marketplace'),
@@ -530,7 +495,7 @@ serve(async (req) => {
 
     // Source health (batched, healthy vs failed by whether the source produced any docs).
     const now = new Date().toISOString();
-    const sourceNames = ['serpapi_related', 'serpapi_paa', 'google_autocomplete', 'newsapi', 'mediastack', 'guardian', 'brave_news', 'brave_web', 'reddit', 'hn', 'podchaser', 'ats_boards', 'youtube', 'marketplace'];
+    const sourceNames = ['serpapi_related', 'serpapi_paa', 'google_autocomplete', 'newsapi', 'mediastack', 'guardian', 'brave_news', 'brave_web', 'reddit', 'hn', 'ats_boards', 'youtube', 'marketplace'];
     const produced = new Set(allDocs.map(d => d.source));
     // `pipeline` keeps these out of the FWI source universe. They share one
     // table with the index's own sources, and without the discriminator the

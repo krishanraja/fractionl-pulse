@@ -26,8 +26,6 @@ export interface TrialDef {
 export const TRIALS: TrialDef[] = [
   { source: 'trial_google_jobs', pillar: 'demand', replaces: 'serpapi_jobs', backfill: 'none', textMatch: true,
     what: 'Google Jobs results for six roles at depth 100. Production asks for 10, and CFO, CMO, COO and CTO read exactly 10 every day to 2026-10-23.' },
-  { source: 'trial_podchaser_relevant', pillar: 'culture', backfill: 'archive', textMatch: true, singleSite: true,
-    what: 'New podcasts in the last 90 days whose title or description names fractional executive work, from the 100 newest Podchaser matches for each of four role terms. Replaces trial_podchaser_flow, whose fuzzy search made about 3 of 50 matches relevant.' },
   { source: 'trial_brave_news', pillar: 'culture', backfill: 'none', textMatch: true,
     what: 'Distinct sites publishing on the role terms in Brave News over the past week. Counting results let one SEO publisher supply 16 of 22 on 2026-10-23 (Ruling, Krish, 2026-10-23: count distinct sites).' },
   { source: 'trial_brave_web', pillar: 'culture', backfill: 'none', textMatch: true,
@@ -53,9 +51,14 @@ export const TRIALS: TrialDef[] = [
 // trial_podchaser_flow failed gate check 0 the same day: Podchaser's search is
 // fuzzy, so its weekly total counted mostly unrelated new podcasts ("Sex, Death
 // & Olive Oil", "AI and Autism"); replaced by trial_podchaser_relevant.
-export const DROPPED_TRIALS = ['trial_gdelt', 'trial_guardian', 'trial_mediastack', 'trial_podchaser_flow'];
+// Dropped (Ruling, Krish, 2026-11-18: all Podchaser attention goes to
+// growth-mindmake and growth-makeyourmindup): trial_podchaser_relevant. It
+// spent about 1,200 of the shared 25,000 monthly Podchaser points a day (82% of
+// November's) to read 3 every day, and it was a trial, so no published number
+// used it. This also ends the Podchaser input that was ruled in for 2026-11-23.
+// Its stored candidate rows are kept as the record.
+export const DROPPED_TRIALS = ['trial_gdelt', 'trial_guardian', 'trial_mediastack', 'trial_podchaser_flow', 'trial_podchaser_relevant'];
 
-export const PODCHASER_TERMS = ['fractional executive', 'fractional CFO', 'fractional CMO', 'fractional CTO'];
 export const FRACTIONAL_WORK = /\bfractional\s+(c[a-z]os?|chief|executives?|execs?|leaders?|leadership)\b/i;
 
 // Promoted into the composite at the 2026-10-26 seam (Ruling, Krish,
@@ -74,7 +77,6 @@ export const logScale = (count: number, full: number) =>
 
 export const SCALE_FULL = {
   trial_google_jobs: 200,     // same anchor as production job counts (200 postings = 100)
-  trial_podchaser_relevant: 50, // relevant new podcasts per 90 days; ~4-5 a month observed
   trial_wikipedia: 2000,      // mean daily views
   trial_hn_wide: 500,         // stories + comments per 30 days
   trial_brave_news: 50,       // distinct sites per week

@@ -153,7 +153,7 @@ The two level failures were shared trends rather than shared information: Hacker
 | Brave News | one page of 20 over a month, always full | past week, 50 per request (`trial_brave_news`) | 22, uncapped |
 | Brave web | one page of 20, always full | past week per role term, paged (`trial_brave_web`) | 50, uncapped |
 | Reddit via Brave | one page of 20, always full | past month per role term, paged (`trial_reddit`) | 9, uncapped |
-| Podchaser | the total sat at the ceiling | weekly new podcasts (`trial_podchaser_flow`) | ruled in for 2026-11-23 |
+| Podchaser | the total sat at the ceiling | weekly new podcasts (`trial_podchaser_flow`), then relevant new podcasts (`trial_podchaser_relevant`) | **dropped 2026-11-18**: Pulse no longer calls Podchaser (Ruling, Krish, 2026-11-18: all Podchaser attention goes to growth-mindmake and growth-makeyourmindup); this replaces the earlier ruling in for 2026-11-23 |
 | LinkedIn talent via Brave | page cap | none works: 0 under any time filter | stays retired; the DataForSEO LinkedIn count remains |
 | GoFractional | a published marketing figure | none: not a measurement | stays retired |
 
@@ -165,7 +165,7 @@ The retirement at the 2026-10-26 seam stands, because each input still reads con
 |---|---|---|
 | Guardian (repair) | 7 of 7 "fractional" matches unrelated (cricket, F1, fractional jet ownership); "interim CEO" matches name individual executives | **Dropped**; the original retirement was right |
 | Mediastack (repair) | about 1 in 21 on topic; the keyword matches "fraction" | **Dropped**; the original retirement was right |
-| Podchaser weekly flow (ruled in for 2026-11-23) | about 3 of the 50 newest matches on topic; the search is fuzzy | **Fails check 0.** Repair tried: a title-and-description filter keeps 46 of 46 relevant shows, but only 2 started in the last 90 days, so the count has sat at 2 since 2026-09-23 and fails check 2 |
+| Podchaser weekly flow (ruled in for 2026-11-23, dropped 2026-11-18) | about 3 of the 50 newest matches on topic; the search is fuzzy | **Fails check 0.** Repair tried: a title-and-description filter keeps 46 of 46 relevant shows, but only 2 started in the last 90 days, so the count has sat at 2 since 2026-09-23 and fails check 2 |
 | Brave web | 48 of 49 on topic, top site 18% | passes check 0 |
 | Brave News | 22 of 22 on topic, one site 73% | passes by counting distinct sites |
 | Hacker News (wide) | 15 of 15 on topic | passes; ready for a ruling |
