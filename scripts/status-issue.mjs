@@ -41,6 +41,6 @@ const lines = [
   open.length ? open.map((i) => `- #${i.number} ${i.title}`).join('\n') : '- None.',
   '',
   '---',
-  `Rewritten every day by the [daily publication check](../actions/workflows/publication-check.yml)${run ? ` ([today's run](${run}))` : ''}. Rules: \`docs/CITABILITY.md\`. Daily record: \`docs/citability-log.jsonl\`. A new failure opens its own issue assigned to Krish, and an investigation by Claude that reports back on that issue. This issue only comments, and so notifies, when the streak starts, reaches its target, or resets.`,
+  `Rewritten every day by the [daily publication check](../actions/workflows/publication-check.yml)${run ? ` ([today's run](${run}))` : ''}. Rules: \`docs/CITABILITY.md\`. Daily record: \`docs/citability-log.jsonl\`. A new failure opens its own issue assigned to Krish, and an investigation by Claude that reports back on that issue; an index input its provider refuses opens one on the first day, with the fix only Krish can make, and any other input on its second missed day in a row. This issue only comments, and so notifies, when the streak starts, reaches its target, or resets.`,
 ];
 console.log(lines.join('\n'));
