@@ -4,6 +4,12 @@ Newest first. Entries are written by the docs steward (see the steward link in
 NOW.md) and by humans doing the same job by hand. Nothing in this file
 describes current behaviour; NOW.md and the state doc do.
 
+## 2026-11-19 (steward)
+
+- reconciled at `c86d4ef`: `NOW.md` re-stamped. Product commits since `499ab85` are the daily citability log lines (2026-11-17 at 9/10; 2026-11-18 at 9.5/10, reading 47 with band 42 to 51; three gaps left, `newsapi` no longer listed, earliest streak start moved to 2026-12-15) and the Podchaser removal (#77), already in `NOW.md` through the closeout fold. The North Star state comment and sentence moved with the log. The five stale stamps in the digest were not re-read.
+- audit: `.steward/now-audit.md` passes with no findings.
+- no moves.
+
 ## 2026-11-17 (steward)
 
 - reconciled at `499ab85`: `NOW.md` re-stamped. Product commit since `59c81de` is the daily citability log line (2026-11-16, 9/10, reading 47 with band 43 to 51; four gaps, earliest streak start moved to 2026-12-13). The North Star state comment and sentence moved with it. The five stale stamps in the digest were not re-read.

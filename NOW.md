@@ -1,8 +1,8 @@
 ---
 repo: krishanraja/fractionl-pulse
 product: Pulse by Fractionl
-as_of: 2026-11-18
-head: 499ab85
+as_of: 2026-11-19
+head: c86d4ef
 lifecycle: live
 production_url: https://pulse.fractionl.ai
 state_doc: docs/DOCUMENTATION_GOVERNANCE.md
@@ -31,9 +31,9 @@ Angles a writer can use (the registry anonymises this repo; say "a side build", 
 
 Objection it answers: "One person with AI can prototype, but cannot run a data product." Here is one that has collected daily since June 2026, with its audit trail in the open.
 
-## Where it is right now (as of 2026-11-18)
+## Where it is right now (as of 2026-11-19)
 
-<!-- north-star-state {"week_of": "2026-10-26", "week_target": 0, "current": 0, "current_as_of": "2026-11-16", "current_source": "docs/citability-log.jsonl", "urgency": 2, "urgency_reason": "the streak cannot start before 2026-12-13 after serpapi_jobs and serpapi_linkedin slipped again, so one missed day pushes the start again; U2 inferred, the harness contract was not readable from the session that set it"} --> **North Star number: U2, on the ladder but with no slack.** Days in a row at 10/10 citability: 0 of 30 (target set by Krish on 2026-10-26: one month, then extend), recorded daily in `docs/citability-log.jsonl` by `npm run citability`. 2026-11-16 scored 9/10 (reading 47, band 43 to 51); the one input-delivery check scored 0, with four open gaps: `serpapi_jobs` at 26 of 30 days (clears 2026-12-13), `serpapi_linkedin` at 23 of 30 (clears 2026-12-13), `newsapi` at 26 of 30 (clears 2026-11-17) and `trial_trends` at 25 of 30 (clears 2026-12-13), each only if it misses no more. The streak can now start on 2026-12-13 at the earliest, so the earliest the 30 days can be met is 2027-01-11 (it was 2027-01-07; inferred from the log's clearing dates, not re-run). Stage 0 of the sprint (Friday 30 October) closed at 9.5, the bar Krish kept.
+<!-- north-star-state {"week_of": "2026-10-26", "week_target": 0, "current": 0, "current_as_of": "2026-11-18", "current_source": "docs/citability-log.jsonl", "urgency": 2, "urgency_reason": "the streak cannot start before 2026-12-15 after serpapi_jobs and serpapi_linkedin slipped again, so one missed day pushes the start again; U2 inferred, the harness contract was not readable from the session that set it"} --> **North Star number: U2, on the ladder but with no slack.** Days in a row at 10/10 citability: 0 of 30 (target set by Krish on 2026-10-26: one month, then extend), recorded daily in `docs/citability-log.jsonl` by `npm run citability`. 2026-11-18 scored 9.5/10 (reading 47, band 42 to 51); the one input-delivery check scored 0.5, with three open gaps: `serpapi_jobs` at 24 of 30 days (clears 2026-12-15), `serpapi_linkedin` at 21 of 30 (clears 2026-12-15) and `trial_trends` at 23 of 30 (clears 2026-12-15), each only if it misses no more; `newsapi` is no longer listed. The streak can now start on 2026-12-15 at the earliest, so the earliest the 30 days can be met is 2027-01-13 (it was 2027-01-11; inferred from the log's clearing dates, not re-run). Stage 0 of the sprint (Friday 30 October) closed at 9.5, the bar Krish kept.
 
 - Pulse no longer calls Podchaser. trial_podchaser_relevant is dropped from collect-trials and the Monday content harvest no longer reads Podchaser; the retired FWI input already skipped. No published FWI input changed. The Podchaser secrets in Pulse's Supabase project are now unused; removing them waits on Krish's yes, with the secret rotation. (2026-11-18)
 - **Lifecycle: live**, in the governance doc's vocabulary. Last direct production readback 2026-09-24 (20 health rows, 18 healthy); the 2026-10-26 seam day was read back (46, band 42 to 51, ten votes, completeness 0.97). `public/product-truth.json` `production_snapshot` and `docs/DATA_SOURCES_ROADMAP.md` section 1 are stamped 2026-08-11 and are stale; this file carries the current reading.
