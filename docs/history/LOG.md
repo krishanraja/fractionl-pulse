@@ -4,6 +4,14 @@ Newest first. Entries are written by the docs steward (see the steward link in
 NOW.md) and by humans doing the same job by hand. Nothing in this file
 describes current behaviour; NOW.md and the state doc do.
 
+## 2026-11-20 (steward)
+
+- reconciled at `db8d17c`: `NOW.md` re-stamped and audit findings fixed (`too_long`, `where_too_many`). Product commits since `c86d4ef`: PR #78 merged (input watch and DataForSEO login check; the "open" sentence corrected) and the 2026-11-19 citability line (8.5/10, reading 47 with band 44 to 56; two extra checks failed; earliest streak start moved to 2026-12-16). The canon sync (`df0c9ea`) was left untouched.
+- rolled from NOW.md: 2026-10-23 Six of nine retired inputs had a simple repair and went back to the trial lane (`f4c2810`); Krish asked that nothing be retired as unfixable without testing a repair; page caps, a normalizer floor and a two-word keyword were the causes.
+- rolled from NOW.md: 2026-10-23 The trial lane went live (`0977c83`): candidates are collected daily outside the index and gated before joining; function deploys became automatic from main once Krish added the access-token secret.
+- rolled from NOW.md: 2026-11-18 Podchaser removal as a "where it is" bullet, folded into the 2026-11-18 ruling bullet; the unused Podchaser secrets await Krish's yes.
+- no moves.
+
 ## 2026-11-19 (steward)
 
 - reconciled at `c86d4ef`: `NOW.md` re-stamped. Product commits since `499ab85` are the daily citability log lines (2026-11-17 at 9/10; 2026-11-18 at 9.5/10, reading 47 with band 42 to 51; three gaps left, `newsapi` no longer listed, earliest streak start moved to 2026-12-15) and the Podchaser removal (#77), already in `NOW.md` through the closeout fold. The North Star state comment and sentence moved with the log. The five stale stamps in the digest were not re-read.
