@@ -1,0 +1,6 @@
+# Incident #85: the LinkedIn supply input stored nothing on 23 and 24 November
+
+Status: Cause found and fixed in PR (branch `claude/incident-85`), not merged or deployed. The input's four live search queries ran one after another and, most likely, outlasted the 55-second per-collector timeout. That timeout's fallback for this input was an empty list, so no row was stored and its health row was left at 2026-11-22 with no error. Evidence: on both days every other index input wrote at exactly 06:01:13 UTC (20 to 26 seconds later than on 20 to 22 November, when the input delivered), and its health row was not touched; any other path through the code would have written a failed health row. Inferred, not read: the function logs that would name the timeout need production access. The fix runs the four queries at once and has a timeout write a visible "collector timeout" failure. The DataForSEO login itself works again: the jobs input and the Trends input delivered on both days.
+
+Next: Krish merges the PR (function deploys run from main), then the next morning's `npm run citability` shows `serpapi_linkedin` delivered or names its error.
+North Star check (2026-11-24): holds. Score 9.5; `serpapi_linkedin` is at 18 of 30 and now clears 2026-12-18 at the earliest, two days later than 2026-12-16, so the streak's earliest start moves to 2026-12-18 if it misses no more.

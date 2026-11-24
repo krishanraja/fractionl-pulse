@@ -998,7 +998,11 @@ async function collectDataForSeoLinkedInSupply(_date: string): Promise<SignalRes
   const priorByRole: Record<string, number[]> = {};
   for (const r of (priorRows || [])) (priorByRole[r.category] ||= []).push(Number(r.raw_value));
 
-  for (const role of roles) {
+  // The four live queries run at once, not one after another. Run in turn
+  // they can outlast the 55 s per-collector timeout, whose fallback used to be
+  // an empty list: on 2026-11-23 and 2026-11-24 the input stored no row and its
+  // health row was not touched, so nothing said why (issue #85).
+  const perRole = await Promise.all(roles.map(async (role): Promise<{ result: SignalResult; count: number }> => {
     try {
       const tasks = await dataForSeoPost<Record<string, unknown>>(
         '/serp/google/organic/live/advanced',
@@ -1012,31 +1016,30 @@ async function collectDataForSeoLinkedInSupply(_date: string): Promise<SignalRes
       // so the v1 days still to be published are computed as before.
       if (_date >= METHOD_V2_EFFECTIVE && isRatioOutlier(count, priorByRole[category] || [])) {
         console.warn(`[DataForSEO LinkedIn] "${role}": ${count} is >10x off its 14-day level; treated as missing`);
-        results.push({
+        return { count: 0, result: {
           source: 'serpapi_linkedin', signal_type: 'supply', category,
           raw_value: 0, normalized_value: 10, metadata: { provider: 'dataforseo' },
           success: false, error: `Result count ${count} is more than 10x from its 14-day median; provider estimate unstable`,
-        });
-        continue;
+        } };
       }
-      totalResults += count;
-      results.push({
+      console.log(`[DataForSEO LinkedIn] "${role}": ~${count} profiles`);
+      return { count, result: {
         source: 'serpapi_linkedin', signal_type: 'supply',
         category: role.split(' ')[1]?.toLowerCase() || 'other',
         raw_value: count, normalized_value: normalizeSupplyCount(count),
         metadata: { provider: 'dataforseo', reported_cost: Number(tasks[0].cost) || 0, query: role, search_operator: 'site:linkedin.com/in' }, success: true
-      });
-      console.log(`[DataForSEO LinkedIn] "${role}": ~${count} profiles`);
+      } };
     } catch (error) {
       console.error(`[DataForSEO LinkedIn] ${role} failed:`, error.message);
-      results.push({
+      return { count: 0, result: {
         source: 'serpapi_linkedin', signal_type: 'supply',
         category: role.split(' ')[1]?.toLowerCase() || 'other',
         raw_value: 0, normalized_value: 10, metadata: { provider: 'dataforseo' },
         success: false, error: error.message,
-      });
+      } };
     }
-  }
+  }));
+  for (const r of perRole) { results.push(r.result); totalResults += r.count; }
 
   const successful = results.filter((result) => result.success);
   if (successful.length > 0) {
@@ -1703,7 +1706,7 @@ serve(async (req) => {
       unlessRetired('hn', () => t(collectHNSignal(today), failedSignal('hn', 'momentum', 'community_discourse'), 'hn'), null),
       unlessRetired('brave_news', () => t(collectBraveNewsSignal(today), failedSignal('brave_news', 'momentum', 'media_coverage'), 'brave_news'), null),
       unlessRetired('brave_web', () => t(collectBraveWebMentionsSignal(today), failedSignal('brave_web', 'momentum', 'web_discourse'), 'brave_web'), null),
-      t(collectDataForSeoLinkedInSupply(today), [] as SignalResult[], 'serpapi_linkedin'),
+      t(collectDataForSeoLinkedInSupply(today), [failedSignal('serpapi_linkedin', 'supply', 'aggregate')], 'serpapi_linkedin'),
       unlessRetired('brave_talent', () => t(collectBraveTalentSupply(today), [] as SignalResult[], 'brave_talent'), [] as SignalResult[]),
       unlessRetired('gofractional', () => t(collectGoFractionalSupply(today), failedSignal('gofractional', 'supply', 'marketplace'), 'gofractional'), null),
       t(collectSecExecTransitions(today), failedSignal('sec_exec_transitions', 'context', 'exec_transitions'), 'sec_exec_transitions'),
