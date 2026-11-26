@@ -4,6 +4,20 @@ Newest first. Entries are written by the docs steward (see the steward link in
 NOW.md) and by humans doing the same job by hand. Nothing in this file
 describes current behaviour; NOW.md and the state doc do.
 
+## 2026-11-26 (steward)
+
+- reconciled at `5c82905`: `NOW.md` re-stamped. Product commits since `db8d17c` are the daily citability lines (2026-11-20 to 2026-11-25; latest 9/10, reading 51 with band 47 to 55; `trial_wikipedia` slipped to 26 of 30 days; earliest streak start moved to 2026-12-18, so 30 days lands 2027-01-16, inferred) and PR #81, whose note added the 2026-11-20 bullet. The five stale stamps in the digest were not re-read.
+- rolled from NOW.md: 2026-10-26 **The first method v2 reading went out and the readback found three faults the same morning** (`9a4c922`, `aa7d81c`). Reading 46 (42 to 51), publication check 9/9. Ingest had dropped `bls_incorporated` as an "empty supply" reading because its year-over-year change is negative (-3.73); the RSS feed said "46 (Stable)" with no band and 20 inputs; the audit called a monthly release frozen after three days. All fixed; the checks now fail without the band.
+- rolled from NOW.md: 2026-10-26 **OpenAlex had failed since 2026-10-24 for a reason the collector hid** (`9bbf89a`, `e752bbf`). OpenAlex meters keyless requests per IP and Supabase's shared egress spends the budget (HTTP 429); the collector had reported "zero works across all phrases". It now sends a key, names the first error in its health row, and has a read-only `?diagnose=openalex` mode.
+- rolled from NOW.md: 2026-10-26 **Citability is scored every day by a machine, and the North Star is a 30-day streak** (`a6cec2d`, `5663a76`). The score had been a hand count. The first run found three inputs under the 27-of-30 bar, not one, so 10/10 moved to 17 November at the earliest. Ruling (Krish, 2026-10-26): one month of consecutive 10/10 days for now, then extend.
+- rolled from NOW.md: 2026-10-26 **Watching moved into the repository** (`31a1806`). Krish, 2026-10-26: "keep watch and report back without hidden Claude schedules". One pinned status issue, and at most 40 turns and 30 minutes of public-data investigation per incident, proposing fixes only as pull requests.
+- rolled from NOW.md: 2026-10-23 **Nothing on the road to 10/10 depends on a scheduled session now.** Krish: "all of this needs to be antifragile, claude schedules suck." Seam clean-up, changelog link amounts and a daily publication check that opens and closes its own issue moved into the system. Two silent failures found on the way: a failed index calculation raised no alert, and the 14-healthy-source floor would have alerted daily after the seam.
+- rolled from NOW.md: 2026-10-23 **The entry gate checks that an input measures the thing, and caught three** (`e0ef579`). All 7 Guardian "fractional" matches in 90 days were unrelated; Mediastack was about 1 in 21 on topic. Both repairs dropped, and Podchaser-as-flow fails the relevance check (about 3 of 50).
+- rolled from NOW.md: 2026-10-23 **Method v2 was deployed behind a dated seam** (`354ad1c`, `dc9ea9c`). Nine never-moving inputs retire, one vote per source, supply rebuilt, chain-linked, whole numbers with a band. A dry run gave 45 (40 to 50) against the published 48; the pre-registered Indeed test failed with the opposite sign (r = -0.53, n = 18).
+- checked, left to a session: audit finding `north_star_check` (dated 2026-11-18). Only a session that re-reads the North Star may re-date it; carried forward unchanged.
+- left for a person: `now-notes/2026-11-20-firecrawl-parallel-keys.md` is malformed for the fold; not deleted.
+- no moves.
+
 ## 2026-11-20 (steward)
 
 - reconciled at `db8d17c`: `NOW.md` re-stamped and audit findings fixed (`too_long`, `where_too_many`). Product commits since `c86d4ef`: PR #78 merged (input watch and DataForSEO login check; the "open" sentence corrected) and the 2026-11-19 citability line (8.5/10, reading 47 with band 44 to 56; two extra checks failed; earliest streak start moved to 2026-12-16). The canon sync (`df0c9ea`) was left untouched.
