@@ -998,13 +998,20 @@ async function collectDataForSeoLinkedInSupply(_date: string): Promise<SignalRes
   const priorByRole: Record<string, number[]> = {};
   for (const r of (priorRows || [])) (priorByRole[r.category] ||= []).push(Number(r.raw_value));
 
-  for (const role of roles) {
+  // The four live searches run at once, not one after another: a live SERP
+  // call can take well over ten seconds, and four in sequence overran the
+  // 55-second collector budget on 2026-11-26 and 11-27, so the run kept
+  // nothing and recorded no error (issue #89). Same four paid calls as before.
+  const settled = await Promise.allSettled(roles.map((role) => dataForSeoPost<Record<string, unknown>>(
+    '/serp/google/organic/live/advanced',
+    [{ keyword: `site:linkedin.com/in "${role}"`, location_code: 2840, language_code: 'en', depth: 10 }],
+    { login: DATAFORSEO_LOGIN, password: DATAFORSEO_PASSWORD },
+  )));
+  for (const [i, role] of roles.entries()) {
     try {
-      const tasks = await dataForSeoPost<Record<string, unknown>>(
-        '/serp/google/organic/live/advanced',
-        [{ keyword: `site:linkedin.com/in "${role}"`, location_code: 2840, language_code: 'en', depth: 10 }],
-        { login: DATAFORSEO_LOGIN, password: DATAFORSEO_PASSWORD },
-      );
+      const outcome = settled[i];
+      if (outcome.status === 'rejected') throw outcome.reason;
+      const tasks = outcome.value;
       const count = parseOrganicCount(tasks[0]);
       const category = role.split(' ')[1]?.toLowerCase() || 'other';
       // Committed 2026-10-13 but never deployed (production ran v65 of
@@ -1703,7 +1710,7 @@ serve(async (req) => {
       unlessRetired('hn', () => t(collectHNSignal(today), failedSignal('hn', 'momentum', 'community_discourse'), 'hn'), null),
       unlessRetired('brave_news', () => t(collectBraveNewsSignal(today), failedSignal('brave_news', 'momentum', 'media_coverage'), 'brave_news'), null),
       unlessRetired('brave_web', () => t(collectBraveWebMentionsSignal(today), failedSignal('brave_web', 'momentum', 'web_discourse'), 'brave_web'), null),
-      t(collectDataForSeoLinkedInSupply(today), [] as SignalResult[], 'serpapi_linkedin'),
+      t(collectDataForSeoLinkedInSupply(today), [failedSignal('serpapi_linkedin', 'supply', 'aggregate')], 'serpapi_linkedin'),
       unlessRetired('brave_talent', () => t(collectBraveTalentSupply(today), [] as SignalResult[], 'brave_talent'), [] as SignalResult[]),
       unlessRetired('gofractional', () => t(collectGoFractionalSupply(today), failedSignal('gofractional', 'supply', 'marketplace'), 'gofractional'), null),
       t(collectSecExecTransitions(today), failedSignal('sec_exec_transitions', 'context', 'exec_transitions'), 'sec_exec_transitions'),
