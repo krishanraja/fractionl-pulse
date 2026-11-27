@@ -4,6 +4,12 @@ Newest first. Entries are written by the docs steward (see the steward link in
 NOW.md) and by humans doing the same job by hand. Nothing in this file
 describes current behaviour; NOW.md and the state doc do.
 
+## 2026-11-27 (steward)
+
+- reconciled at `64a9113`: `NOW.md` re-stamped; the only product commit since `5c82905` is the daily citability log line (2026-11-26, 9/10, reading 50 with band 45 to 54; `serpapi_linkedin` slipped to 17 of 30, so the earliest streak start moves to 2026-12-19).
+- reshaped: `now-notes/2026-11-20-firecrawl-parallel-keys.md` rewritten into the Status, Changed, Next and North Star check form the fold reads; the fold had rejected it as free prose. The provider map in the old text stays in git history.
+- checked, left to a session: audit finding `north_star_check` (check dated 2026-11-18, limit 7 days). Only a session that re-reads the North Star may re-date it; the recalibration line is carried forward unchanged.
+
 ## 2026-11-26 (steward)
 
 - reconciled at `5c82905`: `NOW.md` re-stamped. Product commits since `db8d17c` are the daily citability lines (2026-11-20 to 2026-11-25; latest 9/10, reading 51 with band 47 to 55; `trial_wikipedia` slipped to 26 of 30 days; earliest streak start moved to 2026-12-18, so 30 days lands 2027-01-16, inferred) and PR #81, whose note added the 2026-11-20 bullet. The five stale stamps in the digest were not re-read.
