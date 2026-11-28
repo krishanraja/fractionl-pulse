@@ -1,8 +1,8 @@
 ---
 repo: krishanraja/fractionl-pulse
 product: Pulse by Fractionl
-as_of: 2026-11-27
-head: 64a9113
+as_of: 2026-11-28
+head: ed18a07
 lifecycle: live
 production_url: https://pulse.fractionl.ai
 state_doc: docs/DOCUMENTATION_GOVERNANCE.md
@@ -31,9 +31,9 @@ Angles a writer can use (the registry anonymises this repo; say "a side build", 
 
 Objection it answers: "One person with AI can prototype, but cannot run a data product." Here is one that has collected daily since June 2026, with its audit trail in the open.
 
-## Where it is right now (as of 2026-11-27)
+## Where it is right now (as of 2026-11-28)
 
-<!-- north-star-state {"week_of": "2026-10-26", "week_target": 0, "current": 0, "current_as_of": "2026-11-26", "current_source": "docs/citability-log.jsonl", "urgency": 2, "urgency_reason": "the streak cannot start before 2026-12-19 after serpapi_linkedin slipped again, so one missed day pushes the start again; U2 inferred, the harness contract was not readable from the session that set it"} --> **North Star number: U2, on the ladder but with no slack.** Days in a row at 10/10 citability: 0 of 30 (target set by Krish on 2026-10-26: one month, then extend), recorded daily in `docs/citability-log.jsonl` by `npm run citability`. 2026-11-26 scored 9/10 (reading 50, band 45 to 54); the one input-delivery check scored 0, with four open gaps: `serpapi_jobs` at 23 of 30 days, `serpapi_linkedin` at 17 of 30, `trial_trends` at 22 of 30 (each clears 2026-12-16 or later, only if it misses no more) and `trial_wikipedia` at 26 of 30 (clears 2026-12-08). The streak can start on 2026-12-19 at the earliest, so the earliest the 30 days can be met is 2027-01-17 (inferred from the log's clearing dates, not re-run). Stage 0 of the sprint (Friday 30 October) closed at 9.5, the bar Krish kept.
+<!-- north-star-state {"week_of": "2026-10-26", "week_target": 0, "current": 0, "current_as_of": "2026-11-27", "current_source": "docs/citability-log.jsonl", "urgency": 2, "urgency_reason": "the streak cannot start before 2026-12-23 after serpapi_linkedin slipped again, so one missed day pushes the start again; U2 inferred, the harness contract was not readable from the session that set it"} --> **North Star number: U2, on the ladder but with no slack.** Days in a row at 10/10 citability: 0 of 30 (target set by Krish on 2026-10-26: one month, then extend), recorded daily in `docs/citability-log.jsonl` by `npm run citability`. 2026-11-27 scored 9/10 (reading 50, band 46 to 55); the one input-delivery check scored 0, with four open gaps: `serpapi_jobs` at 23 of 30 days, `serpapi_linkedin` at 16 of 30, `trial_trends` at 22 of 30 (each clears 2026-12-16 or later, `serpapi_linkedin` not before 2026-12-23, only if it misses no more) and `trial_wikipedia` at 26 of 30 (clears 2026-12-08). The streak can start on 2026-12-23 at the earliest, so the earliest the 30 days can be met is 2027-01-21 (inferred from the log's clearing dates, not re-run). Stage 0 of the sprint (Friday 30 October) closed at 9.5, the bar Krish kept.
 
 - DataForSEO has rejected Pulse's login (HTTP 401, code 40100) since 2026-11-13, so serpapi_jobs, serpapi_linkedin and trial_trends have delivered nothing since 2026-11-12. Krish said he updated it on 2026-11-18, but at 18:54 UTC Pulse's Supabase project still showed both DataForSEO secrets last changed on 2026-08-11. PR #78 (input watch plus a free DataForSEO login check) merged 2026-11-19. Alert emails go through the backup sender because the Resend account behind Pulse's key reports fractionl.ai as not verified. (2026-11-19)
 - **Lifecycle: live**, in the governance doc's vocabulary. Last direct production readback 2026-09-24 (20 health rows, 18 healthy); the 2026-10-26 seam day was read back (46, band 42 to 51, ten votes, completeness 0.97). `public/product-truth.json` `production_snapshot` and `docs/DATA_SOURCES_ROADMAP.md` section 1 are stamped 2026-08-11 and are stale; this file carries the current reading.
@@ -56,12 +56,12 @@ Objection it answers: "One person with AI can prototype, but cannot run a data p
 - Next (2026-11-26): Confirm serpapi_jobs, serpapi_linkedin, trial_trends and trial_wikipedia show a new last_success in data_source_health after the 06:00 UTC ingest; the two checks that failed on 2026-11-19 passed from 2026-11-20.
 - Decision for Krish: whether to adopt the peer-relative test as the data-quality §5 floor rule; both absolute bands are structurally unreachable (`docs/DATA_QUALITY_STRATEGY.md`, commit `12bad4f`).
 - Decision for Krish: whether to re-specify the `sec_exec_transitions` collected value as a 7-day filing count instead of the 90-day count, with an effective date and no restatement; proposed in `docs/DATA_QUALITY_STRATEGY.md`, re-run at n >= 30 weeks (about 2026-12-28).
-- Waiting on a person: `now-notes/2026-11-20-firecrawl-parallel-keys.md` was malformed, so it was not folded; the steward reshaped it to the fold's form (2026-11-27) so the next fold can take it. Its substance is in the 2026-11-20 bullet above. The North Star check below is 9 days old and stays, because only a session that re-reads the North Star may re-date it.
+- Waiting on a person: the North Star check below is dated 2026-11-20, 8 days old (audit limit 7). Only a session that re-reads the North Star against its work may re-date it, so the steward leaves it.
 - Decision for Krish: whether to remove the now unused Podchaser secrets from Pulse's Supabase project, with the secret rotation.
 - Decision for Krish: the Apify allowance behind the GoFractional collector (a rejected proxied run is retried once without a proxy, which does not address the allowance).
 - Decision for Krish: the 31 October 2026 commercial validation gate in `docs/CORPORATE_STRATEGY.md` section 8; the repo holds no progress figures.
 - Decision for Krish: `docs/FLEET_WIRING.md` and the governance ownership map still say "Mindmaker OS"; the OS was renamed Mindmake on 2026-08-29. Renaming is a naming call, not drift the steward resolves.
-- North Star check (2026-11-18): recalibration proposed. The metric block's 2026-12-16 deadline cannot be met: the streak cannot start before 2026-12-18, so 30 days lands on 2027-01-16 at the earliest, and Krish should set a new deadline.
+- North Star check (2026-11-20): recalibration proposed. The 2026-11-18 proposal on the deadline stands for Krish; a trial input moves the citability streak only if it clears the delivery bar.
 
 ## Read next
 

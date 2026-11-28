@@ -1,4 +1,0 @@
-Status: A page-reading key and a web-search key were added on 2026-11-20 to the edge function secrets of the Supabase project Pulse runs on. Checked by name only; no value was read. Nothing uses them yet and no spend has happened. They are readable from edge functions only, not from GitHub Actions, Vercel or Python unless mirrored, which is a secret write needing Krish's approval.
-Changed: Nothing in the tree. Rule kept: any new input starts in collect-trials and must pass the entry gate in docs/CITABILITY.md, and a page reader that returns text is not an input until it is shown to measure the thing.
-Next: Pick one failing or retired input and run a trial through collect-trials, recording cost per reading.
-North Star check (2026-11-20): recalibration proposed. The 2026-11-18 proposal on the deadline stands for Krish; a trial input moves the citability streak only if it clears the delivery bar.
